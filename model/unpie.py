@@ -1,3 +1,5 @@
+import numpy as np
+
 from dataset.pie_data import PIE
 
 
@@ -29,6 +31,47 @@ class UnPIE(object):
             'output_type': self.data_opts['output_type']
         }
 
+    def get_tracks(self, sequences, seq_length, overlap_stride):
+        """
+        Generate tracks by sampling from pedestrian sequences
+        :param dataset: raw data from the dataset
+        """
+        sub_seqs = []
+        for seq in sequences:
+            sub_seqs.extend([seq[i:i+seq_length] for i in\
+                         range(0,len(seq)\
+                        - seq_length + 1, overlap_stride)])
+        return sub_seqs
+
+    def get_train_val_data(self, dataset, seq_length, overlap):
+        """
+        A helper function for data generation that combines different data types into a single
+        representation.
+        :param data: A dictionary of data types
+        :param seq_length: the length of the sequence
+        :param overlap: defines the overlap between consecutive sequences (between 0 and 1)
+        :return: A unified data representation as a list.
+        """
+        bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, 4)
+        images = dataset['image'].copy() # shape: (num_ped, num_frames, 68)
+        ped_ids = dataset['ped_id'].copy() # shape: (num_ped, num_frames, 1)
+        int_bin = dataset['intention_binary'].copy() # shape: (num_ped, num_frames, 1)
+
+        overlap_stride = seq_length if overlap == 0 else \
+        int((1 - overlap) * seq_length)
+
+        overlap_stride = 1 if overlap_stride < 1 else overlap_stride
+
+        bboxes = self.get_tracks(bboxes, seq_length, overlap_stride)
+        images = self.get_tracks(images, seq_length, overlap_stride)
+        ped_ids = self.get_tracks(ped_ids, seq_length, overlap_stride)
+        int_bin = self.get_tracks(int_bin, seq_length, overlap_stride)
+
+        return {'images': images,
+                'bboxes': bboxes,
+                'ped_ids': ped_ids,
+                'output': int_bin}
+
     def build_train(self):
         '''
         Build the inputs for the embedding computation
@@ -49,7 +92,7 @@ class UnPIE(object):
                                             train_d['ped_ids'],
                                             data_type='train',
                                             save_path=self.get_path(type_save='data',
-                                                                    data_type='features'+'_'+data_opts['crop_type']+'_'+data_opts['crop_mode'], # images    
+                                                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                                                     model_name='vgg16_'+'none',
                                                                     data_subset = 'train'))
 
