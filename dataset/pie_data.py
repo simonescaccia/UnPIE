@@ -46,7 +46,7 @@ import os
 
 import pandas as pd
 
-from pie_utils import img_pad, jitter_bbox, squarify, update_progress
+from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress
 
 from PIL import Image
 
