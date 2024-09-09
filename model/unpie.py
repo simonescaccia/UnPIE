@@ -29,11 +29,6 @@ class UnPIE(object):
             'decoder_input_type': ['bbox'],
             'output_type': ['intention_binary']
         }
-        self.data_type = {
-            'encoder_input_type': self.data_opts['encoder_input_type'],
-            'decoder_input_type': self.data_opts['decoder_input_type'],
-            'output_type': self.data_opts['output_type']
-        }
 
     def get_path(self,
                  type_save='models', # model or data
@@ -92,7 +87,7 @@ class UnPIE(object):
         :return: a list of image features
         """
         # load the feature files if exists
-        print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, save_path))
+        print("\nLoading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, save_path))
 
         sequences = []
         i = -1
@@ -155,7 +150,7 @@ class UnPIE(object):
         ped_ids = self.get_tracks(ped_ids, seq_length, overlap_stride)
         int_bin = self.get_tracks(int_bin, seq_length, overlap_stride)
 
-        int_bin = int_bin[:, 0] # every frame has the same intention label
+        int_bin = np.array(int_bin)[:, 0] # every frame has the same intention label
 
         return {'images': images,
                 'bboxes': bboxes,
@@ -174,8 +169,8 @@ class UnPIE(object):
         
         seq_length = self.data_opts['max_size_observe']
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
-        train_d = self.get_train_val_data(seq_train, self.data_type, seq_length, seq_ovelap_rate)
-        val_d = self.get_train_val_data(seq_val, self.data_type, seq_length, seq_ovelap_rate)
+        train_d = self.get_train_val_data(seq_train, seq_length, seq_ovelap_rate)
+        val_d = self.get_train_val_data(seq_val, seq_length, seq_ovelap_rate)
 
         train_img = self.load_features(train_d['images'],
                                        train_d['bboxes'],
@@ -193,6 +188,8 @@ class UnPIE(object):
                                                              data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
                                                              model_name='vgg16_'+'none',
                                                              data_subset='val'))
+
+        print("train_img shape: ", train_img.shape)
 
         self.inputs = ''
 

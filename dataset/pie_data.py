@@ -46,6 +46,7 @@ import os
 
 import pandas as pd
 
+from model.pretrained_extractor import PretraineExtractor
 from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress
 
 from PIL import Image
@@ -59,27 +60,22 @@ class PIE(object):
         :param regen_database: Whether generate the database or not
         :param data_path: The path to wh
         """
-        self._year = '2019'
-        self._name = 'pie'
-        self._image_ext = '.png'
-        self._regen_database = regen_database
+        self.regen_database = regen_database
 
         # Paths
-        self._pie_path = data_path if data_path else self._get_default_path()
-        assert isdir(self._pie_path), \
-            'pie path does not exist: {}'.format(self._pie_path)
+        self.pie_path = data_path if data_path else self._get_default_path()
+        assert isdir(self.pie_path), \
+            'pie path does not exist: {}'.format(self.pie_path)
 
-        self._annotation_path = join(self._pie_path, 'annotations')
-        self._annotation_attributes_path = join(self._pie_path, 'annotations_attributes')
-        self._annotation_vehicle_path = join(self._pie_path, 'annotations_vehicle')
+        self.annotation_path = join(self.pie_path, 'annotations')
+        self.annotation_attributes_path = join(self.pie_path, 'annotations_attributes')
+        self.annotation_vehicle_path = join(self.pie_path, 'annotations_vehicle')
 
-        self._clips_path = join(self._pie_path, 'PIE_clips')
-        self._images_path = join(self._pie_path, 'images')
+        self.clips_path = join(self.pie_path, 'PIE_clips')
+        self.images_path = join(self.pie_path, 'images')
 
         # Create context model
-        self.context_model = vgg16.VGG16(input_shape=(224, 224, 3),
-                                         include_top=False,
-                                         weights='imagenet')
+        self.pretrained_extractor = PretraineExtractor()
         
         self.data_opts = {'fstride': 1,
             'sample_type': 'all', 
@@ -106,7 +102,7 @@ class PIE(object):
         Generates a path to save cache files
         :return: Cache file folder path
         """
-        cache_path = abspath(join(self._pie_path, 'data_cache'))
+        cache_path = abspath(join(self.pie_path, 'data_cache'))
         if not isdir(cache_path):
             makedirs(cache_path)
         return cache_path
@@ -138,7 +134,7 @@ class PIE(object):
         :param fid: Frame id
         :return: Return the path to the given image
         """
-        return join(self._images_path, sid, vid,
+        return join(self.images_path, sid, vid,
                     '{:05d}.png'.format(fid))
 
     # Visual helpers
@@ -197,7 +193,7 @@ class PIE(object):
         """
 
         print("Generating annotated frame numbers for", set_id)
-        annotated_frames_file = join(self._pie_path, "annotations", set_id, set_id + '_annotated_frames.csv')
+        annotated_frames_file = join(self.pie_path, "annotations", set_id, set_id + '_annotated_frames.csv')
         # If the file exists, load from the file
         if isfile(annotated_frames_file):
             with open(annotated_frames_file, 'rt') as f:
@@ -206,12 +202,12 @@ class PIE(object):
             return annotated_frames
         else:
             # Generate annotated frame ids for each video
-            annotated_frames = {v.split('_annt.xml')[0]: [] for v in sorted(listdir(join(self._annotation_path,
+            annotated_frames = {v.split('_annt.xml')[0]: [] for v in sorted(listdir(join(self.annotation_path,
                                                                                          set_id))) if
                                 v.endswith("annt.xml")}
             for vid, annot_frames in sorted(annotated_frames.items()):
                 _frames = []
-                path_to_file = join(self._annotation_path, set_id, vid + '_annt.xml')
+                path_to_file = join(self.annotation_path, set_id, vid + '_annt.xml')
                 tree = ET.parse(path_to_file)
                 tracks = tree.findall('./track')
                 for t in tracks:
@@ -244,11 +240,11 @@ class PIE(object):
                 {<video_id>: [<number_of_frames>,<frame_id_0>,... <frame_id_n>]}
         """
         print("Generating frame numbers for", set_id)
-        frame_ids = {v.split('_annt.xml')[0]: [] for v in sorted(listdir(join(self._annotation_path,
+        frame_ids = {v.split('_annt.xml')[0]: [] for v in sorted(listdir(join(self.annotation_path,
                                                                               set_id))) if
                      v.endswith("annt.xml")}
         for vid, frames in sorted(frame_ids.items()):
-            path_to_file = join(self._annotation_path, set_id, vid + '_annt.xml')
+            path_to_file = join(self.annotation_path, set_id, vid + '_annt.xml')
             tree = ET.parse(path_to_file)
             num_frames = int(tree.find("./meta/task/size").text)
             frames.extend([i for i in range(num_frames)])
@@ -262,16 +258,16 @@ class PIE(object):
                              Note: extracting 'all' frames requires approx. 3TB space whereas
                                    'annotated' requires approx. 1TB
         """
-        set_folders = [f for f in sorted(listdir(self._clips_path))]
+        set_folders = [f for f in sorted(listdir(self.clips_path))]
         for set_id in set_folders:
             print('Extracting frames from', set_id)
-            set_folder_path = join(self._clips_path, set_id)
+            set_folder_path = join(self.clips_path, set_id)
             if extract_frame_type == 'annotated':
                 extract_frames = self.get_annotated_frame_numbers(set_id)
             else:
                 extract_frames = self.get_frame_numbers(set_id)
 
-            set_images_path = join(self._pie_path, "images", set_id)
+            set_images_path = join(self.pie_path, "images", set_id)
             for vid, frames in sorted(extract_frames.items()):
                 print(vid)
                 video_images_path = join(set_images_path, vid)
@@ -318,7 +314,7 @@ class PIE(object):
         :return: The full path for the save folder
         """
         if save_root_folder == '':
-            save_root_folder = os.path.join(self._pie_path, 'data')
+            save_root_folder = os.path.join(self.pie_path, 'data')
 
         assert(type_save in ['models', 'data'])
         if data_type != '':
@@ -453,7 +449,7 @@ class PIE(object):
             image_array = img_to_array(img_data)
             preprocessed_img = vgg16.preprocess_input(image_array)
             expanded_img = np.expand_dims(preprocessed_img, axis=0)
-            img_features = self.context_model.predict(expanded_img, verbose = 0)
+            img_features = self.pretrained_extractor(expanded_img)
             if not os.path.exists(img_save_folder):
                 os.makedirs(img_save_folder)
             with open(img_save_path, 'wb') as fid:
@@ -483,10 +479,10 @@ class PIE(object):
         print("Extracting features and saving on hard drive")
 
         # Extract images and features
-        set_folders = [f for f in sorted(listdir(self._clips_path))]
+        set_folders = [f for f in sorted(listdir(self.clips_path))]
         for set_id in set_folders:
             print('Extracting frames from', set_id)
-            set_folder_path = join(self._clips_path, set_id)
+            set_folder_path = join(self.clips_path, set_id)
             extract_frames = self.get_annotated_frame_numbers(set_id)
 
             for vid, frames in sorted(extract_frames.items()):
@@ -623,7 +619,7 @@ class PIE(object):
         :param vid: The video id
         :return: A dictionary of annotations
         """
-        path_to_file = join(self._annotation_path, setid, vid + '_annt.xml')
+        path_to_file = join(self.annotation_path, setid, vid + '_annt.xml')
         print(path_to_file)
 
         tree = ET.parse(path_to_file)
@@ -693,7 +689,7 @@ class PIE(object):
         :param vid: The video id
         :return: A dictionary of attributes
         """
-        path_to_file = join(self._annotation_attributes_path, setid, vid + '_attributes.xml')
+        path_to_file = join(self.annotation_attributes_path, setid, vid + '_attributes.xml')
         tree = ET.parse(path_to_file)
 
         attributes = {}
@@ -721,7 +717,7 @@ class PIE(object):
         :param vid: The video id
         :return: A dictionary of vehicle attributes (obd sensor recording)
         """
-        path_to_file = join(self._annotation_vehicle_path, setid, vid + '_obd.xml')
+        path_to_file = join(self.annotation_vehicle_path, setid, vid + '_obd.xml')
         tree = ET.parse(path_to_file)
 
         veh_attributes = {}
@@ -799,7 +795,7 @@ class PIE(object):
         print("Generating database for pie")
 
         cache_file = join(self.cache_path, 'pie_database.pkl')
-        if isfile(cache_file) and not self._regen_database:
+        if isfile(cache_file) and not self.regen_database:
             with open(cache_file, 'rb') as fid:
                 try:
                     database = pickle.load(fid)
@@ -809,12 +805,12 @@ class PIE(object):
             return database
 
         # Path to the folder annotations
-        set_ids = [f for f in sorted(listdir(self._annotation_path))]
+        set_ids = [f for f in sorted(listdir(self.annotation_path))]
 
         # Read the content of set folders
         database = {}
         for setid in set_ids:
-            video_ids = [v.split('_annt.xml')[0] for v in sorted(listdir(join(self._annotation_path,
+            video_ids = [v.split('_annt.xml')[0] for v in sorted(listdir(join(self.annotation_path,
                                                                               setid))) if v.endswith("annt.xml")]
             database[setid] = {}
             for vid in video_ids:
