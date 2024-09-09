@@ -9,6 +9,8 @@ pie_path = config_file['PIE_PATH']
 
 os.chdir(pie_path)
 
+sets_to_extract = ['set01', 'set02', 'set03', 'set04', 'set05', 'set06'] or config_file['SETS_TO_EXTRACT']
+
 imdb = PIE(data_path=pie_path)
-imdb.extract_images_and_save_features()
+imdb.extract_images_and_save_features(sets_to_extract)
 imdb.organize_features()

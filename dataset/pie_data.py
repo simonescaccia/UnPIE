@@ -455,7 +455,7 @@ class PIE(object):
             with open(img_save_path, 'wb') as fid:
                 pickle.dump(img_features, fid, pickle.HIGHEST_PROTOCOL)        
 
-    def extract_images_and_save_features(self):
+    def extract_images_and_save_features(self, set_to_extract):
         """
         @author: Simone Scaccia
         Extracts annotated images from clips, compute features and saves on hard drive
@@ -479,7 +479,7 @@ class PIE(object):
         print("Extracting features and saving on hard drive")
 
         # Extract images and features
-        set_folders = [f for f in sorted(listdir(self.clips_path))]
+        set_folders = set_to_extract
         for set_id in set_folders:
             print('Extracting frames from', set_id)
             set_folder_path = join(self.clips_path, set_id)
