@@ -27,7 +27,7 @@ if __name__ == '__main__':
     set_environment(config_file)
 
     # Laod parameters
-    params = get_params()
+    params = get_params(config_file)
 
     # Train and/or test
     train_test = int(sys.argv[1]) # 0: train and test, 1: test only
