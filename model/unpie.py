@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import PurePath
 
 from dataset.pie_data import PIE
+from model.temporal_aggregator import TemporalAggregator
 from utils.pie_utils import update_progress
 
 
@@ -29,6 +30,7 @@ class UnPIE(object):
             'decoder_input_type': ['bbox'],
             'output_type': ['intention_binary']
         }
+        self.temporal_aggregator = TemporalAggregator()
 
     def get_path(self,
                  type_save='models', # model or data
@@ -72,7 +74,7 @@ class UnPIE(object):
                       img_sequences,
                       bbox_sequences,
                       ped_ids,
-                      save_path,
+                      load_path,
                       data_type='train'):
         """
         Load image features. The images are first
@@ -87,7 +89,7 @@ class UnPIE(object):
         :return: a list of image features
         """
         # load the feature files if exists
-        print("\nLoading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, save_path))
+        print("\nLoading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, load_path))
 
         sequences = []
         i = -1
@@ -99,7 +101,7 @@ class UnPIE(object):
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]
-                img_save_folder = os.path.join(save_path, set_id, vid_id)
+                img_save_folder = os.path.join(load_path, set_id, vid_id)
                 img_save_path = os.path.join(img_save_folder, img_name+'_'+p[0]+'.pkl')
                 if not os.path.exists(img_save_path):
                     Exception("Image features not found at {}".format(img_save_path))
@@ -159,8 +161,9 @@ class UnPIE(object):
 
     def build_train(self):
         '''
-        Build the inputs for the embedding computation
+        Build the inputs for the clustering computation
         '''
+        # Generate image sequences
         seq_train = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
         seq_train = self.pie.balance_samples_count(seq_train, label_type='intention_binary')
 
@@ -172,11 +175,12 @@ class UnPIE(object):
         train_d = self.get_train_val_data(seq_train, seq_length, seq_ovelap_rate)
         val_d = self.get_train_val_data(seq_val, seq_length, seq_ovelap_rate)
 
+        # Load image features, shape: (batch_size, seq_length, embedding_size)
         train_img = self.load_features(train_d['images'],
                                        train_d['bboxes'],
                                        train_d['ped_ids'],
                                        data_type='train',
-                                       save_path=self.get_path(type_save='data',
+                                       load_path=self.get_path(type_save='data',
                                                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                                                model_name='vgg16_'+'none',
                                                                data_subset = 'train')) # shape: (num_seqs, seq_length, 7, 7, 512) using VGG16
@@ -184,14 +188,14 @@ class UnPIE(object):
                                      val_d['bboxes'],
                                      val_d['ped_ids'],
                                      data_type='val',
-                                     save_path=self.get_path(type_save='data',
+                                     load_path=self.get_path(type_save='data',
                                                              data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
                                                              model_name='vgg16_'+'none',
                                                              data_subset='val'))
-
-        print("train_img shape: ", train_img.shape)
-
-        self.inputs = ''
+        print("train_img shape: ", train_img.shape) # TODO: remove
+        
+        # Compute sequence features
+        train_img = self.temporal_aggregator(train_img) # shape: (batch_size, embedding_size)
 
     def train(self):
         self.build_train()
