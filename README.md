@@ -31,6 +31,7 @@ Create `config.yml`:
   PIE_RAW_PATH: 'path\to\PIE_clips'
   PRETRAINED_MODEL_PATH: 'path\to\pretrained\model'
   IS_GPU: False or True
+  SETS_TO_EXTRACT: None or ['set01', ...]
   ```
 
 Download annotations and video clips from the [PIE webpage](http://data.nvision2.eecs.yorku.ca/PIE_dataset/) and place them in the `PIE_dataset` directory. 
