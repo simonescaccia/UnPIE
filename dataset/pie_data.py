@@ -113,7 +113,7 @@ class PIE(object):
         """
         return 'data/pie'
 
-    def _get_image_set_ids(self, image_set):
+    def get_image_set_ids(self, image_set):
         """
         Returns default image set ids
         :param image_set: Image set split
@@ -455,7 +455,7 @@ class PIE(object):
             with open(img_save_path, 'wb') as fid:
                 pickle.dump(img_features, fid, pickle.HIGHEST_PROTOCOL)        
 
-    def extract_images_and_save_features(self, set_to_extract):
+    def extract_images_and_save_features(self, sets_to_extract):
         """
         @author: Simone Scaccia
         Extracts annotated images from clips, compute features and saves on hard drive
@@ -464,7 +464,7 @@ class PIE(object):
         """        
 
         annot_database = self.generate_database()
-        sequence_data = self._get_intention('all', annot_database, **self.data_opts)
+        sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
         images = sequence_data['image']
         bboxes = sequence_data['bbox']
         ped_ids = sequence_data['ped_id']
@@ -479,7 +479,7 @@ class PIE(object):
         print("Extracting features and saving on hard drive")
 
         # Extract images and features
-        set_folders = set_to_extract
+        set_folders = sets_to_extract
         for set_id in set_folders:
             print('Extracting frames from', set_id)
             set_folder_path = join(self.clips_path, set_id)
@@ -541,7 +541,7 @@ class PIE(object):
                                 data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                 model_name='vgg16_'+'none',
                                 data_subset = folder)
-            sets = self._get_image_set_ids(folder)
+            sets = self.get_image_set_ids(folder)
             for set_id in sets:
                 # Move the folder set_id from source_path to path
                 source_set_path = os.path.join(source_path, set_id)
@@ -1095,9 +1095,9 @@ class PIE(object):
         """
         _pids = None
         if params['data_split_type'] == 'default':
-            set_ids = self._get_image_set_ids(image_set)
+            set_ids = self.get_image_set_ids(image_set)
         else:
-            set_ids = self._get_image_set_ids('all')
+            set_ids = self.get_image_set_ids('all')
         if params['data_split_type'] == 'random':
             _pids = self._get_random_pedestrian_ids(image_set, **params['random_params'])
         elif params['data_split_type'] == 'kfold':
@@ -1446,7 +1446,7 @@ class PIE(object):
         intention_prob, intention_binary = [], []
         image_seq, pids_seq = [], []
         box_seq, center_seq, occ_seq = [], [], []
-        set_ids, _pids = self._get_data_ids(image_set, params)
+        set_ids, _pids = self._get_data_ids(image_set, params) if type(image_set) == str else image_set, None
 
         for sid in set_ids:
             for vid in sorted(annotations[sid]):
