@@ -30,7 +30,10 @@ if __name__ == '__main__':
     params = get_params(config_file)
 
     # Train and/or test
-    train_test = int(sys.argv[1]) # 0: train and test, 1: test only
+    if len(sys.argv) == 1:
+        train_test = 0 # empty param means train and test
+    else:
+        train_test = int(sys.argv[1]) # 0: train and test, 1: test only
     
     unpie = UnPIE(params)
 
