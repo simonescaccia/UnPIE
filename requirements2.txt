@@ -1,0 +1,12 @@
+pypng
+opencv-python
+opencv-contrib-python
+wheel
+scikit-learn
+tensorflow==1.15.5
+keras
+matplotlib
+prettytable
+ptable
+pyyaml
+pandas
