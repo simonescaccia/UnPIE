@@ -1212,7 +1212,7 @@ class PIE(object):
 
         print('---------------------------------------------------------')
         print("Generating trajectory sequence data")
-        self._print_dict(params)
+        # self._print_dict(params)
         annot_database = self.generate_database()
 
         if params['seq_type'] == 'trajectory':
@@ -1446,8 +1446,9 @@ class PIE(object):
         intention_prob, intention_binary = [], []
         image_seq, pids_seq = [], []
         box_seq, center_seq, occ_seq = [], [], []
-        set_ids, _pids = self._get_data_ids(image_set, params) if type(image_set) == str else image_set, None
+        set_ids, _pids = self._get_data_ids(image_set, params) if type(image_set) == str else (image_set, None)
 
+        print("set_ids", set_ids)
         for sid in set_ids:
             for vid in sorted(annotations[sid]):
                 img_width = annotations[sid][vid]['width']
