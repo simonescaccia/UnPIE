@@ -324,7 +324,7 @@ def build_output(
             'model_type': model_type,
             'trn_use_mean': trn_use_mean}
 
-    data_len = kwargs.get('instance_data_len', DATA_LEN_IMAGENET_FULL)
+    data_len = kwargs.get('instance_data_len')
     with tf.variable_scope('instance', reuse=tf.AUTO_REUSE):
         all_labels = tf.get_variable(
             'all_labels',
