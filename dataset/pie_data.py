@@ -40,8 +40,10 @@ from os.path import join, abspath, isfile, isdir
 from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
 
-from keras.applications import vgg16
-from keras.utils import img_to_array
+# from keras.applications import vgg16
+from tensorflow.keras.applications import VGG16
+# from keras.utils import img_to_array (tensorflow 2)
+from tensorflow.keras.preprocessing.image import img_to_array
 import os
 
 import pandas as pd
@@ -447,7 +449,7 @@ class PIE(object):
             cropped_image = image.crop(bbox)
             img_data = img_pad(cropped_image, mode='pad_resize', size=224)                        
             image_array = img_to_array(img_data)
-            preprocessed_img = vgg16.preprocess_input(image_array)
+            preprocessed_img = VGG16.preprocess_input(image_array)
             expanded_img = np.expand_dims(preprocessed_img, axis=0)
             img_features = self.pretrained_extractor(expanded_img)
             if not os.path.exists(img_save_folder):

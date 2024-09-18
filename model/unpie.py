@@ -221,8 +221,11 @@ class UnPIE(object):
     
     def build_inputs(self):
         data_params = self.params['train_params']['data_params']
+        data_params = tf.Print(data_params, [data_params], message='data_params: ')
         func = data_params.pop('func')
         self.inputs = func(**data_params)
+        import sys
+        sys.exit(0)
 
     def build_network(self, inputs, train):
         model_params = self.model_params

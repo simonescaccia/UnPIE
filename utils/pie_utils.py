@@ -20,7 +20,9 @@ Updated by: Simone Scaccia
 """
 import sys
 import PIL
-from keras.utils import img_to_array, load_img
+# from keras.utils import load_img (tensorflow 2)
+from keras.preprocessing.image import load_img
+
 from matplotlib import pyplot as plt
 import pandas as pd
 

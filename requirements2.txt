@@ -10,3 +10,5 @@ prettytable
 ptable
 pyyaml
 pandas
+numpy==1.18.5
+torchvision

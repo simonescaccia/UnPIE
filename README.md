@@ -19,6 +19,7 @@ To install via virtual environment (recommended) follow these steps:
       ```bash
       virtualenv --system-site-packages -p python3.10 ./venv
       source venv/bin/activate
+      pip install -U pip
       ```
 
 Install dependencies:
