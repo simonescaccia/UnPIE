@@ -2,6 +2,10 @@ from dataset.pie_data import PIE
 import os
 import yaml
 
+# (tensorflow 1)
+import tensorflow as tf
+tf.enable_eager_execution()
+
 with open('config.yml', 'r') as file:
     config_file = yaml.safe_load(file)
 

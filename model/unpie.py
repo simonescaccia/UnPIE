@@ -1,5 +1,6 @@
 import os
-import pickle
+import pickle5 as pickle
+# import pickle (tensorflow 2)
 import time
 import numpy as np
 from pathlib import PurePath
@@ -128,6 +129,9 @@ class UnPIE(object):
                         img_features = pickle.load(fid)
                     except:
                         img_features = pickle.load(fid, encoding='bytes')
+                print("type(img_features): ", type(img_features))
+                import sys
+                sys.exit(0)
                 img_features = np.squeeze(img_features) # VGG16 output shape: (7, 7, 512)
                 img_seq.append(img_features)
             sequences.append(img_seq)

@@ -21,7 +21,7 @@ Updated by: Simone Scaccia
 import sys
 import PIL
 # from keras.utils import load_img (tensorflow 2)
-from keras.preprocessing.image import load_img
+from tensorflow.keras.preprocessing.image import load_img
 
 from matplotlib import pyplot as plt
 import pandas as pd
