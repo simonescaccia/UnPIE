@@ -9,6 +9,8 @@ instance_k: 4096
 kmeans_k: 100
 num_classes: 2
 trn_use_mean: True
+num_frames: 15
+img_emb_size: 128
 vd_3dresnet_IR:
   db_name: 'vd_unsup_fx'
   col_name: 'dyn_clstr'

@@ -77,7 +77,7 @@ def get_loss_lr_opt_params_from_arg(args, setting):
     # optimizer_params: use tfutils optimizer,
     # as mini batch is implemented there
     optimizer_params = {
-            'optimizer': tf.train.MomentumOptimizer,
+            'optimizer': tf.compat.v1.train.MomentumOptimizer,
             'momentum': .9,
             }
     return loss_params, learning_rate_params, optimizer_params
@@ -122,6 +122,25 @@ def get_model_func_params(args, setting):
 def get_params(config, args, setting):
     loss_params, learning_rate_params, optimizer_params = get_loss_lr_opt_params_from_arg(args, setting)
     save_params, load_params = get_save_load_params_from_arg(args, setting)
+
+    data_opts = {
+        'fstride': 1,
+        'sample_type': 'all', 
+        'height_rng': [0, float('inf')],
+        'squarify_ratio': 0,
+        'data_split_type': 'default',  #  kfold, random, default
+        'seq_type': 'intention', #  crossing , intention
+        'min_track_size': 0, #  discard tracks that are shorter
+        'max_size_observe': args['num_frames'],  # number of observation frames
+        'max_size_predict': 5,  # number of prediction frames
+        'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
+        'balance': True,  # balance the training and testing samples
+        'crop_type': 'context',  # crop 2x size of bbox around the pedestrian
+        'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
+        'encoder_input_type': [],
+        'decoder_input_type': ['bbox'],
+        'output_type': ['intention_binary']
+}
 
     # train_data_loader = get_train_pt_loader_from_arg(args)
     # dataset_len = train_data_loader.dataset.__len__()
@@ -180,8 +199,8 @@ def get_params(config, args, setting):
     train_data_param = {
             'func': data.get_placeholders,
             'batch_size': args[setting]['batch_size'], 
-            'num_frames': 15,
-            'crop_size': 112,
+            'num_frames': args['num_frames'],
+            'img_emb_size': args['img_emb_size'],
             'multi_frame': True}
     train_params = {
             'validate_first': False,
@@ -200,7 +219,8 @@ def get_params(config, args, setting):
         'save_params': save_params,
         'load_params': load_params,
         # 'model_params': model_params,
-        'train_params': train_params
+        'train_params': train_params,
+        'data_opts': data_opts
     }
     return params
 
