@@ -123,58 +123,58 @@ def get_params(config, args, setting):
     loss_params, learning_rate_params, optimizer_params = get_loss_lr_opt_params_from_arg(args, setting)
     save_params, load_params = get_save_load_params_from_arg(args, setting)
 
-    train_data_loader = get_train_pt_loader_from_arg(args)
-    dataset_len = train_data_loader.dataset.__len__()
+    # train_data_loader = get_train_pt_loader_from_arg(args)
+    # dataset_len = train_data_loader.dataset.__len__()
 
-    # model_params: a function that will build the model
-    model_func_params = get_model_func_params(args, setting)
-    model_func_params["instance_data_len"] = dataset_len
-    nn_clusterings = []
-    first_step = []
-    def build_output(inputs, outputs, train, **kwargs):
-        res = instance_model.build_output(inputs, outputs, train, **model_func_params)
-        if not train:
-            return res
-        outputs, logged_cfg, clustering = res
-        nn_clusterings.append(clustering)
-        return outputs, logged_cfg
+    # # model_params: a function that will build the model
+    # model_func_params = get_model_func_params(args, setting)
+    # model_func_params["instance_data_len"] = dataset_len
+    # nn_clusterings = []
+    # first_step = []
+    # def build_output(inputs, outputs, train, **kwargs):
+    #     res = instance_model.build_output(inputs, outputs, train, **model_func_params)
+    #     if not train:
+    #         return res
+    #     outputs, logged_cfg, clustering = res
+    #     nn_clusterings.append(clustering)
+    #     return outputs, logged_cfg
 
-    model_params = {'func': build_output}
+    # model_params = {'func': build_output}
 
-    data_enumerator = [enumerate(train_data_loader)]
-    def train_loop(sess, train_targets, num_minibatches=1, **params):
-        assert num_minibatches==1, "Mini-batch not supported!"
+    # data_enumerator = [enumerate(train_data_loader)]
+    # def train_loop(sess, train_targets, num_minibatches=1, **params):
+    #     assert num_minibatches==1, "Mini-batch not supported!"
 
-        global_step_vars = [v for v in tf.global_variables() \
-                            if 'global_step' in v.name]
-        assert len(global_step_vars) == 1
-        global_step = sess.run(global_step_vars[0])
+    #     global_step_vars = [v for v in tf.global_variables() \
+    #                         if 'global_step' in v.name]
+    #     assert len(global_step_vars) == 1
+    #     global_step = sess.run(global_step_vars[0])
 
-        first_flag = len(first_step) == 0
-        update_fre = args.clstr_update_fre or dataset_len // args.batch_size
-        if (global_step % update_fre == 0 or first_flag) \
-                and (nn_clusterings[0] is not None):
-            if first_flag:
-                first_step.append(1)
-            print("Recomputing clusters...")
-            new_clust_labels = nn_clusterings[0].recompute_clusters(sess)
-            for clustering in nn_clusterings:
-                clustering.apply_clusters(sess, new_clust_labels)
+    #     first_flag = len(first_step) == 0
+    #     update_fre = args.clstr_update_fre or dataset_len // args.batch_size
+    #     if (global_step % update_fre == 0 or first_flag) \
+    #             and (nn_clusterings[0] is not None):
+    #         if first_flag:
+    #             first_step.append(1)
+    #         print("Recomputing clusters...")
+    #         new_clust_labels = nn_clusterings[0].recompute_clusters(sess)
+    #         for clustering in nn_clusterings:
+    #             clustering.apply_clusters(sess, new_clust_labels)
 
-        if args.part_vd is None:
-            data_en_update_fre = dataset_len // args.batch_size
-        else:
-            new_length = int(dataset_len * args.part_vd)
-            data_en_update_fre = new_length // args.batch_size
+    #     if args.part_vd is None:
+    #         data_en_update_fre = dataset_len // args.batch_size
+    #     else:
+    #         new_length = int(dataset_len * args.part_vd)
+    #         data_en_update_fre = new_length // args.batch_size
 
-        # TODO: make this smart
-        if global_step % data_en_update_fre == 0:
-            data_enumerator.pop()
-            data_enumerator.append(enumerate(train_data_loader))
-        _, (image, label, index) = next(data_enumerator[0])
-        feed_dict = data.get_feeddict(image, label, index)
-        sess_res = sess.run(train_targets, feed_dict=feed_dict)
-        return sess_res
+    #     # TODO: make this smart
+    #     if global_step % data_en_update_fre == 0:
+    #         data_enumerator.pop()
+    #         data_enumerator.append(enumerate(train_data_loader))
+    #     _, (image, label, index) = next(data_enumerator[0])
+    #     feed_dict = data.get_feeddict(image, label, index)
+    #     sess_res = sess.run(train_targets, feed_dict=feed_dict)
+    #     return sess_res
 
     # train_params: parameters about training data
     train_data_param = {
@@ -189,7 +189,7 @@ def get_params(config, args, setting):
             'queue_params': None,
             'thres_loss': float('Inf'),
             'num_steps': args[setting]['train_num_steps'],
-            'train_loop': {'func': train_loop},
+            # 'train_loop': {'func': train_loop},
             }
 
     params = {
@@ -199,7 +199,7 @@ def get_params(config, args, setting):
         'optimizer_params': optimizer_params,
         'save_params': save_params,
         'load_params': load_params,
-        'model_params': model_params,
+        # 'model_params': model_params,
         'train_params': train_params
     }
     return params
