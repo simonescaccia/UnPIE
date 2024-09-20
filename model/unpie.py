@@ -15,24 +15,7 @@ from utils.pie_utils import update_progress
 class UnPIE(object):
     def __init__(self, params):
         self.params = params
-        self.data_opts = {
-            'fstride': 1,
-            'sample_type': 'all', 
-            'height_rng': [0, float('inf')],
-            'squarify_ratio': 0,
-            'data_split_type': 'default',  #  kfold, random, default
-            'seq_type': 'intention', #  crossing , intention
-            'min_track_size': 0, #  discard tracks that are shorter
-            'max_size_observe': 15,  # number of observation frames
-            'max_size_predict': 5,  # number of prediction frames
-            'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
-            'balance': True,  # balance the training and testing samples
-            'crop_type': 'context',  # crop 2x size of bbox around the pedestrian
-            'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
-            'encoder_input_type': [],
-            'decoder_input_type': ['bbox'],
-            'output_type': ['intention_binary']
-        }
+        self.data_opts = params['data_opts']
 
         self.pie = PIE(data_path=params['pie_path'])
         self.temporal_aggregator = TemporalAggregator()
@@ -129,9 +112,6 @@ class UnPIE(object):
                         img_features = pickle.load(fid)
                     except:
                         img_features = pickle.load(fid, encoding='bytes')
-                print("type(img_features): ", type(img_features))
-                import sys
-                sys.exit(0)
                 img_features = np.squeeze(img_features) # VGG16 output shape: (7, 7, 512)
                 img_seq.append(img_features)
             sequences.append(img_seq)
@@ -217,19 +197,16 @@ class UnPIE(object):
         # Compute image features: TODO implement Spatial Aggregator
 
         # Compute sequence features
-        self.train_img = self.temporal_aggregator(train_img) # shape: (num_seqs, embedding_size)
-        self.val_img = self.temporal_aggregator(val_img) # shape: (num_seqs, embedding_size)
+        # self.train_img = self.temporal_aggregator(train_img) # shape: (num_seqs, embedding_size)
+        # self.val_img = self.temporal_aggregator(val_img) # shape: (num_seqs, embedding_size)
 
         self.build_inputs()
         self.build_network(self.inputs, train=True)
     
     def build_inputs(self):
         data_params = self.params['train_params']['data_params']
-        data_params = tf.Print(data_params, [data_params], message='data_params: ')
         func = data_params.pop('func')
         self.inputs = func(**data_params)
-        import sys
-        sys.exit(0)
 
     def build_network(self, inputs, train):
         model_params = self.model_params
@@ -239,6 +216,9 @@ class UnPIE(object):
                 outputs=self.train_img,
                 train=train,
                 **model_params)
+        print("type(self.outputs): ", type(self.outputs))
+        import sys
+        sys.exit(0)
 
     def build_train_op(self):
         loss_params = self.loss_params
