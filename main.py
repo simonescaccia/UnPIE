@@ -24,7 +24,7 @@ def reg_loss(loss, weight_decay):
         return 'batch_normalization' not in name
     l2_loss = weight_decay * tf.add_n(
             [tf.nn.l2_loss(tf.cast(v, tf.float32))
-                for v in tf.trainable_variables()
+                for v in tf.compat.v1.trainable_variables()
                 if exclude_batch_norm(v.name)])
     loss_all = tf.add(loss, l2_loss)
     return loss_all
@@ -36,7 +36,7 @@ def get_lr_from_boundary_and_ramp_up(
         global_step, boundaries, 
         init_lr, target_lr, ramp_up_epoch,
         num_batches_per_epoch):
-    curr_epoch  = tf.div(
+    curr_epoch  = tf.math.divide(
             tf.cast(global_step, tf.float32), 
             tf.cast(num_batches_per_epoch, tf.float32))
     curr_phase = (tf.minimum(curr_epoch/float(ramp_up_epoch), 1))
@@ -77,7 +77,7 @@ def get_loss_lr_opt_params_from_arg(args, setting):
     # optimizer_params: use tfutils optimizer,
     # as mini batch is implemented there
     optimizer_params = {
-            'optimizer': tf.train.MomentumOptimizer,
+            'optimizer': tf.compat.v1.train.MomentumOptimizer,
             'momentum': .9,
             }
     return loss_params, learning_rate_params, optimizer_params

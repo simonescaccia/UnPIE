@@ -11,7 +11,7 @@ class MemoryBank(object):
         self._bank = self._create()
 
     def _create(self):
-        mb_init = tf.random_uniform(
+        mb_init = tf.random.uniform(
             shape=(self.size, self.dim),
             seed=self.seed,
         )
