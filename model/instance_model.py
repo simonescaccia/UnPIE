@@ -7,6 +7,8 @@ import copy
 import pdb
 from collections import OrderedDict
 
+from model.temporal_aggregator import TemporalAggregator
+
 from . import resnet_model
 from . import resnet_model_slowfast
 from . import resnet3D_model
@@ -112,6 +114,10 @@ def color_normalize(image):
     image = (image - mean) / std
     return image
 
+def temp_aggr_embedding(image_emb):
+    image_emb = tf.cast(image_emb, tf.float32)
+    temporal_aggregator = TemporalAggregator()
+    return temporal_aggregator(image_emb)
 
 def resnet_embedding(image,
                      data_format=None, train=False,
@@ -307,7 +313,7 @@ class InstanceModel(object):
 
 
 def build_output(
-        inputs, outputs, train,
+        inputs, train,
         trn_use_mean,
         kmeans_k,
         task,
@@ -315,7 +321,7 @@ def build_output(
         **kwargs):
     # This will be stored in the db
     logged_cfg = {'kwargs': kwargs}
-
+    
     data_len = kwargs.get('instance_data_len')
     with tf.variable_scope('instance', reuse=tf.AUTO_REUSE):
         all_labels = tf.get_variable(
@@ -338,8 +344,9 @@ def build_output(
                 initializer=lbl_init_values,
                 trainable=False, dtype=tf.int64,
             )
-
-    output = tf.nn.l2_normalize(outputs, axis=1)
+    
+    output = temp_aggr_embedding(inputs['image'])
+    output = tf.nn.l2_normalize(output, axis=1)
 
     if not train:
         all_dist = memory_bank.get_all_dot_products(output)

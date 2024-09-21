@@ -91,7 +91,7 @@ class UnPIE(object):
         :return: a list of image features
         """
         # load the feature files if exists
-        print("\nLoading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, load_path))
+        print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, load_path))
 
         sequences = []
         i = -1
@@ -115,6 +115,8 @@ class UnPIE(object):
                 img_features = np.squeeze(img_features) # VGG16 output shape: (7, 7, 512)
                 img_seq.append(img_features)
             sequences.append(img_seq)
+        update_progress(1)
+        print("\n")
         sequences = np.array(sequences)
         return sequences
 
@@ -215,15 +217,13 @@ class UnPIE(object):
         func = model_params.pop('func')
         self.outputs, _ = func(
                 inputs=inputs,
-                outputs=self.train_img,
                 train=train,
                 **model_func_params)
-        print("type(self.outputs): ", type(self.outputs))
-        import sys
-        sys.exit(0)
 
     def build_train_op(self):
-        loss_params = self.loss_params
+        self.params['learning_rate_params']['num_batches_per_epoch'] = \
+            self.train_img.shape[0] // self.params['train_params']['data_params']['batch_size']
+        loss_params = self.params['loss_params']
 
         input_targets = [self.inputs[key] \
                 for key in loss_params['pred_targets']]
@@ -278,14 +278,14 @@ class UnPIE(object):
             self.load_from_ckpt(self.load_from_curr_exp)
         else:
             split_cache_path = self.cache_dir.split('/')
-            split_cache_path[-1] = self.load_params['exp_id']
-            split_cache_path[-2] = self.load_params['collname']
-            split_cache_path[-3] = self.load_params['dbname']
+            split_cache_path[-1] = self.params['load_params']['exp_id']
+            split_cache_path[-2] = self.params['load_params']['collname']
+            split_cache_path[-3] = self.params['load_params']['dbname']
             load_dir = '/'.join(split_cache_path)
-            if self.load_params['query']:
+            if self.params['load_params']['query']:
                 ckpt_path = os.path.join(
                         load_dir, 
-                        'model.ckpt-%i' % self.load_params['query']['step'])
+                        'model.ckpt-%i' % self.params['load_params']['query']['step'])
             else:
                 ckpt_path = tf.train.latest_checkpoint(load_dir)
             if ckpt_path:
@@ -314,6 +314,8 @@ class UnPIE(object):
         pass
 
     def run_train_loop(self):
+        import sys
+        sys.exit(0)
         self.start_time = time.time()
         for curr_step in range(self.global_step, int(self.train_params['num_steps']+1)):
             self.training_loop()

@@ -1,6 +1,6 @@
-weight_decay: 1e-4
+weight_decay: 0.0001
 init_lr: 0.03
-target_lr: None
+target_lr: null
 ramp_up_epoch: 1
 cache_dir: 'video_pub_cache'
 fre_metric: 50
@@ -11,6 +11,7 @@ num_classes: 2
 trn_use_mean: True
 num_frames: 15
 img_emb_size: 128
+resume: False
 vd_3dresnet_IR:
   db_name: 'vd_unsup_fx'
   col_name: 'dyn_clstr'
@@ -27,10 +28,12 @@ vd_3dresnet_IR:
   exp_id: 'vd_3dresnet_IR'
   model_type: '3dresnet'
   task: 'IR'
-  lr_boundaries: None
+  lr_boundaries: null
   train_num_workers': 1
   val_num_workers: 1
   train_num_steps: 100
+  load_exp: null
+  load_step: null
 vd_3dresnet:
   db_name: 'vd_unsup_fx'
   col_name: 'dyn_clstr'
