@@ -77,7 +77,7 @@ def get_loss_lr_opt_params_from_arg(args, setting):
     # optimizer_params: use tfutils optimizer,
     # as mini batch is implemented there
     optimizer_params = {
-            'optimizer': tf.compat.v1.train.MomentumOptimizer,
+            'optimizer': tf.train.MomentumOptimizer,
             'momentum': .9,
             }
     return loss_params, learning_rate_params, optimizer_params
@@ -101,10 +101,24 @@ def get_save_load_params_from_arg(args, setting):
             'cache_dir': cache_dir,
             }
 
+    load_exp = args[setting]['load_exp']
+    load_step = args[setting]['load_step']
+    load_query = None
+
+    if not args['resume']:
+        if load_exp is not None:
+            load_dbname, load_collname, load_exp_id = load_exp.split('/')
+        if load_step:
+            load_query = {'exp_id': load_exp_id,
+                          'saved_filters': True,
+                          'step': load_step}
+            print('Load query', load_query)
+
     load_params = {
             'dbname': load_dbname,
             'collname': load_collname,
-            'exp_id': load_exp_id
+            'exp_id': load_exp_id,
+            'query': load_query,
             }
     return save_params, load_params
 
@@ -147,8 +161,8 @@ def get_params(config, args, setting):
 
     # model_params: a function that will build the model
     nn_clusterings = []
-    def build_output(inputs, outputs, train, **kwargs):
-        res = instance_model.build_output(inputs, outputs, train, **kwargs)
+    def build_output(inputs, train, **kwargs):
+        res = instance_model.build_output(inputs, train, **kwargs)
         if not train:
             return res
         outputs, logged_cfg, clustering = res
