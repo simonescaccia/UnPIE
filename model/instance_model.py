@@ -307,9 +307,7 @@ class InstanceModel(object):
 
 
 def build_output(
-        inputs, outputs, train, 
-        resnet_size,
-        model_type,
+        inputs, outputs, train,
         trn_use_mean,
         kmeans_k,
         task,
@@ -317,12 +315,6 @@ def build_output(
         **kwargs):
     # This will be stored in the db
     logged_cfg = {'kwargs': kwargs}
-
-    embedding_kwargs = {
-            'train': train,
-            'resnet_size': resnet_size,
-            'model_type': model_type,
-            'trn_use_mean': trn_use_mean}
 
     data_len = kwargs.get('instance_data_len')
     with tf.variable_scope('instance', reuse=tf.AUTO_REUSE):

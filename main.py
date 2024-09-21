@@ -145,21 +145,23 @@ def get_params(config, args, setting):
     # train_data_loader = get_train_pt_loader_from_arg(args)
     # dataset_len = train_data_loader.dataset.__len__()
 
-    # # model_params: a function that will build the model
-    # model_func_params = get_model_func_params(args, setting)
-    # model_func_params["instance_data_len"] = dataset_len
-    # nn_clusterings = []
-    # first_step = []
-    # def build_output(inputs, outputs, train, **kwargs):
-    #     res = instance_model.build_output(inputs, outputs, train, **model_func_params)
-    #     if not train:
-    #         return res
-    #     outputs, logged_cfg, clustering = res
-    #     nn_clusterings.append(clustering)
-    #     return outputs, logged_cfg
+    # model_params: a function that will build the model
+    nn_clusterings = []
+    def build_output(inputs, outputs, train, **kwargs):
+        res = instance_model.build_output(inputs, outputs, train, **kwargs)
+        if not train:
+            return res
+        outputs, logged_cfg, clustering = res
+        nn_clusterings.append(clustering)
+        return outputs, logged_cfg
 
-    # model_params = {'func': build_output}
+    model_func_params = get_model_func_params(args, setting)
+    model_params = {
+        'func': build_output,
+        'model_func_params': model_func_params
+    }
 
+    first_step = []
     # data_enumerator = [enumerate(train_data_loader)]
     # def train_loop(sess, train_targets, num_minibatches=1, **params):
     #     assert num_minibatches==1, "Mini-batch not supported!"
@@ -218,7 +220,7 @@ def get_params(config, args, setting):
         'optimizer_params': optimizer_params,
         'save_params': save_params,
         'load_params': load_params,
-        # 'model_params': model_params,
+        'model_params': model_params,
         'train_params': train_params,
         'data_opts': data_opts
     }
