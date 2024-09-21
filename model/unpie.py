@@ -178,7 +178,7 @@ class UnPIE(object):
         val_d = self.get_train_val_data(seq_val, seq_length, seq_ovelap_rate)
 
         # Load image features, shape: (num_seqs, seq_length, embedding_size)
-        train_img = self.load_features(train_d['images'],
+        self.train_img = self.load_features(train_d['images'],
                                        train_d['bboxes'],
                                        train_d['ped_ids'],
                                        data_type='train',
@@ -186,14 +186,14 @@ class UnPIE(object):
                                                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                                                model_name='vgg16_'+'none',
                                                                data_subset = 'train')) # shape: (num_seqs, seq_length, 7, 7, 512) using VGG16
-        val_img = self.load_features(val_d['images'],
+        self.val_img = self.load_features(val_d['images'],
                                      val_d['bboxes'],
                                      val_d['ped_ids'],
                                      data_type='val',
                                      load_path=self.get_path(type_save='data',
                                                              data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
                                                              model_name='vgg16_'+'none',
-                                                             data_subset='val'))
+                                                             data_subset='val'))        
         # Compute image features: TODO implement Spatial Aggregator
 
         # Compute sequence features
@@ -209,13 +209,15 @@ class UnPIE(object):
         self.inputs = func(**data_params)
 
     def build_network(self, inputs, train):
-        model_params = self.model_params
+        self.params['model_params']['model_func_params']['instance_data_len'] = self.train_img.shape[0]
+        model_params = self.params['model_params']
+        model_func_params = model_params['model_func_params']
         func = model_params.pop('func')
         self.outputs, _ = func(
                 inputs=inputs,
                 outputs=self.train_img,
                 train=train,
-                **model_params)
+                **model_func_params)
         print("type(self.outputs): ", type(self.outputs))
         import sys
         sys.exit(0)
