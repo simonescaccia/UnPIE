@@ -250,7 +250,7 @@ class UnPIE(object):
         opt = func(learning_rate=learning_rate, **opt_params)
 
         with tf.control_dependencies(
-                tf.get_collection(tf.GraphKeys.UPDATE_OPS)):
+                tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)):
             self.train_op = opt.minimize(
                     self.loss_retval, 
                     global_step=self.global_step)
@@ -260,18 +260,18 @@ class UnPIE(object):
         self.saver.restore(self.sess, ckpt_path)
 
     def build_sess_and_saver(self):
-        gpu_options = tf.GPUOptions(allow_growth=True)
-        sess = tf.Session(config=tf.ConfigProto(
+        gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+        sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True,
                 gpu_options=gpu_options,
                 ))
         self.sess = sess
-        self.saver = tf.train.Saver()
+        self.saver = tf.compat.v1.train.Saver()
 
     def init_and_restore(self):
-        init_op_global = tf.global_variables_initializer()
+        init_op_global = tf.compat.v1.global_variables_initializer()
         self.sess.run(init_op_global)
-        init_op_local = tf.local_variables_initializer()
+        init_op_local = tf.compat.v1.local_variables_initializer()
         self.sess.run(init_op_local)
 
         if self.load_from_curr_exp:
