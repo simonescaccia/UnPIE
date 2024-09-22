@@ -283,7 +283,7 @@ class InstanceModel(object):
         return self._softmax(logits)
 
     def compute_noise_prob(self):
-        noise_indx = tf.random_uniform(
+        noise_indx = tf.random.uniform(
             shape=(self.batch_size, self.instance_k),
             minval=0,
             maxval=self.instance_data_len,
@@ -300,10 +300,10 @@ class InstanceModel(object):
         eps = 1e-7
         ## Pmt
         data_div = data_prob + (self.instance_k*base_prob + eps)
-        ln_data = tf.log(data_prob / data_div)
+        ln_data = tf.math.log(data_prob / data_div)
         ## Pon
         noise_div = noise_prob + (self.instance_k*base_prob + eps)
-        ln_noise = tf.log((self.instance_k*base_prob) / noise_div)
+        ln_noise = tf.math.log((self.instance_k*base_prob) / noise_div)
 
         curr_loss = -(tf.reduce_sum(ln_data) \
                       + tf.reduce_sum(ln_noise)) / self.batch_size
@@ -323,8 +323,8 @@ def build_output(
     logged_cfg = {'kwargs': kwargs}
     
     data_len = kwargs.get('instance_data_len')
-    with tf.variable_scope('instance', reuse=tf.AUTO_REUSE):
-        all_labels = tf.get_variable(
+    with tf.compat.v1.variable_scope('instance', reuse=tf.compat.v1.AUTO_REUSE):
+        all_labels = tf.compat.v1.get_variable(
             'all_labels',
             initializer=tf.zeros_initializer,
             shape=(data_len,),

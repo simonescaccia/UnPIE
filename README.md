@@ -60,3 +60,16 @@ Run the following command to preprocess the image features without extracting al
   ```bash
   python extract_images.py
   ```
+
+## Training and testing
+
+  Training:
+  ```bash
+  python train_test.py
+  ```
+
+  Testing:
+  ```bash
+  python train_test.py 1
+  ```
+

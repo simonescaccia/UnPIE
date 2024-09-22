@@ -17,7 +17,7 @@ class MemoryBank(object):
         )
         std_dev = 1. / np.sqrt(self.dim/3)
         mb_init = mb_init * (2*std_dev) - std_dev
-        return tf.get_variable(
+        return tf.compat.v1.get_variable(
             'memory_bank',
             initializer=mb_init,
             dtype=tf.float32,
