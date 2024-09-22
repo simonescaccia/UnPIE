@@ -236,7 +236,7 @@ class UnPIE(object):
                 self.loss_retval,
                 **loss_params.get('agg_func_kwargs', {}))
 
-        self.global_step = tf.get_variable(
+        self.global_step = tf.compat.v1.get_variable(
                 'global_step', [],
                 dtype=tf.int64, trainable=False,
                 initializer=tf.constant_initializer(0))
