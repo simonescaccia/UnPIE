@@ -8,6 +8,51 @@ Some modules are taken and modified from the following repositories:
 - [Unsupervised Learning from Video with Deep Neural Embeddings (VIE) model](https://github.com/neuroailab/VIE).
 
 ## Setup
+
+### Conda environment
+
+[Miniconda](https://docs.anaconda.com/miniconda/) Linux installation:
+  
+  ```bash
+  mkdir -p ~/miniconda3
+  wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+  bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+  rm ~/miniconda3/miniconda.sh
+  ```
+
+Check `$PATH`:
+  ```bash
+  echo $PATH
+  ```
+
+Add `export PATH="/home/username/miniconda3/bin:$PATH"` at the end of `~/.profile` file if the directory is not present (substituting username):
+  
+  ```bash
+  echo "export PATH=\"/home/username/miniconda3/bin:\$PATH\"" >> ~/.profile
+  ```
+
+Create environment:
+  ```bash
+  conda env create -f environment.yaml
+  ```
+
+Install requirements after creation (optional)
+  ```bash
+  conda install --file requirements_tfx.txt
+  ```
+
+Activate environment:
+  ```bash
+  conda activate unpie-tf1-env
+  ```
+
+Deactivate environment:
+  ```bash
+  conda deactivate
+  ```
+
+### Venv environment
+
 To install via virtual environment (recommended) follow these steps:
 
 - Linux:
@@ -23,7 +68,9 @@ To install via virtual environment (recommended) follow these steps:
       ```
 
 Install dependencies:
-`python3 -m pip install -r requirements.txt`
+`python3 -m pip install -r requirements_tfx.txt`
+
+### UnPIE setup
 
 Create `config.yml`:
 
@@ -52,7 +99,6 @@ PIE_dataset
         ...
 
 ```
-
 
 ## Preprocessing
 Run the following command to preprocess the image features without extracting all the annotated frames:

@@ -4,7 +4,7 @@ opencv-python
 opencv-contrib-python
 wheel
 scikit-learn
-tensorflow==1.15.5
+tensorflow-gpu==1.15
 keras==2.11.0
 matplotlib==3.5.3
 prettytable
@@ -16,3 +16,4 @@ torchvision
 pillow==9.5.0
 kiwisolver==1.4.5
 pickle5
+protobuf==3.20.3
