@@ -26,6 +26,8 @@ from tensorflow.keras.preprocessing.image import load_img
 from matplotlib import pyplot as plt
 import pandas as pd
 
+from utils.print_utils import print_separator
+
 
 def update_progress(progress):
     barLength = 20 # Modify this to change the length of the progress bar
@@ -39,8 +41,7 @@ def update_progress(progress):
     sys.stdout.flush()
 
 def save_graphs(history_path, loss_graph_path, accuracy_graph_path, lr_graph_path):
-    print('---------------------------------------------------------')
-    print("Saving the loss and accuracy graphs")
+    print_separator("Saving the loss and accuracy graphs")
     obj = pd.read_pickle(history_path)
     loss = obj['loss']
     val_loss = obj['val_loss']
