@@ -6,6 +6,7 @@ import tensorflow as tf
 
 import data
 
+from dataset.pie_preprocessing import PIEPreprocessing
 from model import instance_model
 from model.unpie import UnPIE
 from utils.print_utils import print_separator
@@ -134,10 +135,8 @@ def get_model_func_params(args, setting):
     }
     return model_params
 
-def get_params(config, args, setting):
-    loss_params, learning_rate_params, optimizer_params = get_loss_lr_opt_params_from_arg(args, setting)
-    save_params, load_params = get_save_load_params_from_arg(args, setting)
-
+def get_pie_params(config, args):
+    pie_path = config['PIE_PATH']
     data_opts = {
         'fstride': 1,
         'sample_type': 'all', 
@@ -155,10 +154,19 @@ def get_params(config, args, setting):
         'encoder_input_type': [],
         'decoder_input_type': ['bbox'],
         'output_type': ['intention_binary']
-}
+    }
+    pie_params = {
+        'data_opts': data_opts,
+        'pie_path': pie_path
+    }
+    return pie_params
+
+def get_params(config, args, setting):
+    loss_params, learning_rate_params, optimizer_params = get_loss_lr_opt_params_from_arg(args, setting)
+    save_params, load_params = get_save_load_params_from_arg(args, setting)
+    pie_params = get_pie_params(config, args)
 
     # train_data_loader = get_train_pt_loader_from_arg(args)
-    # dataset_len = train_data_loader.dataset.__len__()
 
     # model_params: a function that will build the model
     nn_clusterings = []
@@ -177,40 +185,40 @@ def get_params(config, args, setting):
     }
 
     first_step = []
-    # data_enumerator = [enumerate(train_data_loader)]
-    # def train_loop(sess, train_targets, num_minibatches=1, **params):
-    #     assert num_minibatches==1, "Mini-batch not supported!"
+    data_enumerator = [enumerate(train_data_loader)]
+    def train_loop(sess, train_targets, num_minibatches=1, **params):
+        assert num_minibatches==1, "Mini-batch not supported!"
 
-    #     global_step_vars = [v for v in tf.global_variables() \
-    #                         if 'global_step' in v.name]
-    #     assert len(global_step_vars) == 1
-    #     global_step = sess.run(global_step_vars[0])
+        global_step_vars = [v for v in tf.global_variables() \
+                            if 'global_step' in v.name]
+        assert len(global_step_vars) == 1
+        global_step = sess.run(global_step_vars[0])
 
-    #     first_flag = len(first_step) == 0
-    #     update_fre = args.clstr_update_fre or dataset_len // args.batch_size
-    #     if (global_step % update_fre == 0 or first_flag) \
-    #             and (nn_clusterings[0] is not None):
-    #         if first_flag:
-    #             first_step.append(1)
-    #         print("Recomputing clusters...")
-    #         new_clust_labels = nn_clusterings[0].recompute_clusters(sess)
-    #         for clustering in nn_clusterings:
-    #             clustering.apply_clusters(sess, new_clust_labels)
+        first_flag = len(first_step) == 0
+        update_fre = args.clstr_update_fre or dataset_len // args.batch_size
+        if (global_step % update_fre == 0 or first_flag) \
+                and (nn_clusterings[0] is not None):
+            if first_flag:
+                first_step.append(1)
+            print("Recomputing clusters...")
+            new_clust_labels = nn_clusterings[0].recompute_clusters(sess)
+            for clustering in nn_clusterings:
+                clustering.apply_clusters(sess, new_clust_labels)
 
-    #     if args.part_vd is None:
-    #         data_en_update_fre = dataset_len // args.batch_size
-    #     else:
-    #         new_length = int(dataset_len * args.part_vd)
-    #         data_en_update_fre = new_length // args.batch_size
+        if args.part_vd is None:
+            data_en_update_fre = dataset_len // args.batch_size
+        else:
+            new_length = int(dataset_len * args.part_vd)
+            data_en_update_fre = new_length // args.batch_size
 
-    #     # TODO: make this smart
-    #     if global_step % data_en_update_fre == 0:
-    #         data_enumerator.pop()
-    #         data_enumerator.append(enumerate(train_data_loader))
-    #     _, (image, label, index) = next(data_enumerator[0])
-    #     feed_dict = data.get_feeddict(image, label, index)
-    #     sess_res = sess.run(train_targets, feed_dict=feed_dict)
-    #     return sess_res
+        # TODO: make this smart
+        if global_step % data_en_update_fre == 0:
+            data_enumerator.pop()
+            data_enumerator.append(enumerate(train_data_loader))
+        _, (image, label, index) = next(data_enumerator[0])
+        feed_dict = data.get_feeddict(image, label, index)
+        sess_res = sess.run(train_targets, feed_dict=feed_dict)
+        return sess_res
 
     # train_params: parameters about training data
     train_data_param = {
@@ -225,11 +233,11 @@ def get_params(config, args, setting):
             'queue_params': None,
             'thres_loss': float('Inf'),
             'num_steps': args[setting]['train_num_steps'],
-            # 'train_loop': {'func': train_loop},
+            'train_loop': {'func': train_loop},
             }
 
     params = {
-        'pie_path': config['PIE_PATH'],
+        'pie_path': pie_params['pie_path'],
         'loss_params': loss_params,
         'learning_rate_params': learning_rate_params,
         'optimizer_params': optimizer_params,
@@ -237,17 +245,24 @@ def get_params(config, args, setting):
         'load_params': load_params,
         'model_params': model_params,
         'train_params': train_params,
-        'data_opts': data_opts
+        'data_opts': pie_params['data_opts']
     }
     return params
 
 if __name__ == '__main__':
     
-    print_separator('Setting up the environment', top_new_line=False)
-
-    # Setup environment
     config_file = get_yml_file('config.yml')
     args_file = get_yml_file('args.yml')
+    pie_params = get_pie_params(config_file, args_file)
+    
+    pie_preprocessing = PIEPreprocessing(pie_params)
+
+    # PIE preprocessing
+    print_separator('PIE preprocessing', top_new_line=False)
+    train_data_loader, val_data_loader = pie_preprocessing.get_dataloaders()
+
+    # Setup environment
+    print_separator('Setting up the environment', bottom_new_line=False)
     set_environment(config_file)
 
     # Train and/or test
