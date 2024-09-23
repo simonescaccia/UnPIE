@@ -56,6 +56,8 @@ from PIL import Image
 
 import shutil
 
+from utils.print_utils import print_separator
+
 class PIE(object):
     def __init__(self, regen_database=False, data_path=''):
         """
@@ -406,8 +408,7 @@ class PIE(object):
         :return: A dataframe containing annotations for each image
         """
 
-        print('---------------------------------------------------------')
-        print("Preparing annotations for each images")
+        print_separator("Preparing annotations for each images")
 
         # Store the annotations in a dataframe wit the following columns: set_id, vid_id, image_name, img_path, bbox, ped_id
         df = pd.DataFrame(columns=['set_id', 'vid_id', 'image_name', 'img_path', 'bbox', 'ped_id'])
@@ -480,8 +481,7 @@ class PIE(object):
 
         ped_dataframe = self._get_ped_info_per_image(images, bboxes, ped_ids)
         
-        print('---------------------------------------------------------')
-        print("Extracting features and saving on hard drive")
+        print_separator("Extracting features and saving on hard drive")
 
         # Extract images and features
         set_folders = sets_to_extract
@@ -534,8 +534,7 @@ class PIE(object):
         @author: Simone Scaccia
         Organizes the features in the default folders
         """
-        print('---------------------------------------------------------') 
-        print("Moving features to the default folder")
+        print_separator("Moving features to the default folder")
         source_path = self.get_path(type_save='data',
                                     data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                     model_name='vgg16_'+'none',
@@ -796,8 +795,7 @@ class PIE(object):
         :return: A database dictionary
         """
 
-        print('---------------------------------------------------------')
-        print("Generating database for pie")
+        print_separator("Generating database for pie", space=False)
 
         cache_file = join(self.cache_path, 'pie_database.pkl')
         if isfile(cache_file) and not self.regen_database:
@@ -888,7 +886,7 @@ class PIE(object):
                     signalized[self._map_scalar_to_text('signalized', ped_annots['attributes']['signalized'])] += 1
                     gender[self._map_scalar_to_text('gender', ped_annots['attributes']['gender'])] += 1
 
-        print('---------------------------------------------------------')
+        print_separator()
         print("Number of sets: %d" % set_count)
         print("Number of videos: %d" % video_count)
         print("Number of annotated frames: %d" % total_frames)
@@ -929,8 +927,7 @@ class PIE(object):
                                     " either 0 or 1")
 
         # balances the number of positive and negative samples
-        print('---------------------------------------------------------')
-        print("Balancing the number of positive and negative intention samples")
+        print_separator("Balancing the number of positive and negative intention samples", space=False)
 
         gt_labels = [gt[0] for gt in seq_data[label_type]]
         num_pos_samples = np.count_nonzero(np.array(gt_labels))
@@ -1215,8 +1212,7 @@ class PIE(object):
 
         params.update(opts)
 
-        print('---------------------------------------------------------')
-        print("Generating trajectory sequence data")
+        print_separator("Generating trajectory sequence data", bottom_new_line=False)
         # self._print_dict(params)
         annot_database = self.generate_database()
 
@@ -1240,8 +1236,7 @@ class PIE(object):
         :param params: Parameters to generate data (see generade_database)
         :return: A dictionary of trajectories
         """
-        print('---------------------------------------------------------')
-        print("Generating trajectory data")
+        print_separator("Generating trajectory data")
 
         num_pedestrians = 0
         seq_stride = params['fstride']
@@ -1324,8 +1319,7 @@ class PIE(object):
         :return: A dictionary of trajectories
         """
 
-        print('---------------------------------------------------------')
-        print("Generating crossing data")
+        print_separator("Generating crossing data")
 
         print('Excluding tracks with less than {}'.format(params['min_track_size']))
         num_pedestrians = 0
@@ -1440,8 +1434,7 @@ class PIE(object):
         :param params: Parameters to generate data (see generade_database)
         :return: A dictionary of trajectories
         """
-        print('---------------------------------------------------------')
-        print("Generating intention data")
+        print_separator("Generating intention data", space=False)
 
         num_pedestrians = 0
         seq_stride = params['fstride']
@@ -1517,8 +1510,7 @@ class PIE(object):
         :return: A dictionary of trajectories
         """
 
-        print('---------------------------------------------------------')
-        print("Generating all data")
+        print_separator("Generating all data")
         num_pedestrians = 0
         image_seq, pids_seq = [], []
         traffic_seq = []

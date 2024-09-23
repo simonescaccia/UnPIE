@@ -10,6 +10,7 @@ import tensorflow as tf
 from dataset.pie_data import PIE
 from model.temporal_aggregator import TemporalAggregator
 from utils.pie_utils import update_progress
+from utils.print_utils import print_separator
 
 
 class UnPIE(object):
@@ -321,6 +322,8 @@ class UnPIE(object):
             self.training_loop()
 
     def train(self):
+        print_separator('Starting UnPIE training')
+
         self.build_train_val_data()
         self.build_train_op()
 

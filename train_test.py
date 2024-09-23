@@ -8,6 +8,7 @@ import data
 
 from model import instance_model
 from model.unpie import UnPIE
+from utils.print_utils import print_separator
 
 def get_yml_file(name):
     with open(name, 'r') as file:
@@ -241,6 +242,8 @@ def get_params(config, args, setting):
     return params
 
 if __name__ == '__main__':
+    
+    print_separator('Setting up the environment', top_new_line=False)
 
     # Setup environment
     config_file = get_yml_file('config.yml')
@@ -262,3 +265,5 @@ if __name__ == '__main__':
         unpie.train()
     if train_test >= 0:
         unpie.test()
+
+    print_separator('UnPIE finished', bottom_new_line=False)
