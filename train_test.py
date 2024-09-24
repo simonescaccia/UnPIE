@@ -137,6 +137,7 @@ def get_model_func_params(args, setting):
 
 def get_pie_params(config, args):
     pie_path = config['PIE_PATH']
+    batch_size = args['batch_size']
     data_opts = {
         'fstride': 1,
         'sample_type': 'all', 
@@ -157,7 +158,8 @@ def get_pie_params(config, args):
     }
     pie_params = {
         'data_opts': data_opts,
-        'pie_path': pie_path
+        'pie_path': pie_path,
+        'batch_size': batch_size,
     }
     return pie_params
 
@@ -165,8 +167,6 @@ def get_params(config, args, setting):
     loss_params, learning_rate_params, optimizer_params = get_loss_lr_opt_params_from_arg(args, setting)
     save_params, load_params = get_save_load_params_from_arg(args, setting)
     pie_params = get_pie_params(config, args)
-
-    # train_data_loader = get_train_pt_loader_from_arg(args)
 
     # model_params: a function that will build the model
     nn_clusterings = []
@@ -223,7 +223,7 @@ def get_params(config, args, setting):
     # train_params: parameters about training data
     train_data_param = {
             'func': data.get_placeholders,
-            'batch_size': args[setting]['batch_size'], 
+            'batch_size': args['batch_size'], 
             'num_frames': args['num_frames'],
             'img_emb_size': args['img_emb_size'],
             'multi_frame': True}
@@ -251,18 +251,12 @@ def get_params(config, args, setting):
 
 if __name__ == '__main__':
     
+    # Setup environment
+    print_separator('Setting up the environment', bottom_new_line=False)
     config_file = get_yml_file('config.yml')
     args_file = get_yml_file('args.yml')
     pie_params = get_pie_params(config_file, args_file)
-    
     pie_preprocessing = PIEPreprocessing(pie_params)
-
-    # PIE preprocessing
-    print_separator('PIE preprocessing', top_new_line=False)
-    train_data_loader, val_data_loader = pie_preprocessing.get_dataloaders()
-
-    # Setup environment
-    print_separator('Setting up the environment', bottom_new_line=False)
     set_environment(config_file)
 
     # Train and/or test
@@ -271,13 +265,13 @@ if __name__ == '__main__':
     else:
         train_test = int(sys.argv[1]) # 0: train and test, 1: test only
     
+    training_steps = ['vd_3dresnet_IR', 'vd_3dresnet']
     if train_test == 0:
-        params = get_params(config_file, args_file, 'vd_3dresnet_IR')
-        unpie = UnPIE(params)
-        unpie.train()
-        params = get_params(config_file, args_file, 'vd_3dresnet')
-        unpie = UnPIE(params)
-        unpie.train()
+        for step in training_steps:
+            train_data_loader, val_data_loader = pie_preprocessing.get_dataloaders()
+            params = get_params(config_file, args_file, step, train_data_loader)
+            unpie = UnPIE(params)
+            unpie.train()
     if train_test >= 0:
         unpie.test()
 

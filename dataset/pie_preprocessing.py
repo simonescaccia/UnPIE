@@ -4,14 +4,23 @@ import pickle5 as pickle
 # import pickle (tensorflow 2)
 
 from pathlib import PurePath
+
+import torch
 from dataset.pie_data import PIE
+from dataset.pie_dataset import PIEDataset
 from utils.pie_utils import update_progress
+from utils.print_utils import print_separator
 
 
 class PIEPreprocessing(object):
+    '''
+    Given the PIE data, this class combines image features to create the image embedding for each pedestrian,
+    generating input data for clustering computation.
+    '''
     def __init__(self, params):
         self.pie_path = params['pie_path']
         self.data_opts = params['data_opts']
+        self.batch_size = params['batch_size']
 
         self.pie = PIE(data_path=self.pie_path)
 
@@ -19,6 +28,9 @@ class PIEPreprocessing(object):
         '''
         Build the inputs for the clustering computation
         '''
+        # PIE preprocessing
+        print_separator('PIE preprocessing', top_new_line=False)
+
         # Generate image sequences
         seq_train = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
         seq_train = self.pie.balance_samples_count(seq_train, label_type='intention_binary')
@@ -31,27 +43,40 @@ class PIEPreprocessing(object):
         train_d = self._get_train_val_data(seq_train, seq_length, seq_ovelap_rate)
         val_d = self._get_train_val_data(seq_val, seq_length, seq_ovelap_rate)
 
-        # Load image features, shape: (num_seqs, seq_length, embedding_size)
-        self.train_img = self._load_features(train_d['images'],
-                                             train_d['bboxes'],
-                                             train_d['ped_ids'],
-                                             data_type='train',
-                                             load_path=self._get_path(type_save='data',
-                                                                      data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                                                      model_name='vgg16_'+'none',
-                                                                      data_subset = 'train'))
-        self.val_img = self._load_features(val_d['images'],
-                                           val_d['bboxes'],
-                                           val_d['ped_ids'],
-                                           data_type='val',
-                                           load_path=self._get_path(type_save='data',
-                                                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
-                                                                    model_name='vgg16_'+'none',
-                                                                    data_subset='val'))        
+        # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
+        train_img = self._load_features(train_d['images'],
+                                        train_d['bboxes'],
+                                        train_d['ped_ids'],
+                                        data_type='train',
+                                        load_path=self._get_path(type_save='data',
+                                                                 data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                                                                 model_name='vgg16_'+'none',
+                                                                 data_subset = 'train'))
+        val_img = self._load_features(val_d['images'],
+                                      val_d['bboxes'],
+                                      val_d['ped_ids'],
+                                      data_type='val',
+                                      load_path=self._get_path(type_save='data',
+                                                               data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
+                                                               model_name='vgg16_'+'none',
+                                                               data_subset='val'))        
         # Compute image features: TODO implement Spatial Aggregator
 
-        return self.train_img, self.val_img
+        # Create dataloaders
+        train_loader = self._get_dataloader(train_img, train_d['output']) # train_d['output'] shape: (num_seqs, 1)
+        val_loader = self._get_dataloader(val_img, val_d['output'])
 
+        return train_loader, val_loader
+
+    def _get_dataloader(self, img_features, labels):
+        '''
+        Create a dataloader for the clustering computation
+        '''
+        dataset = PIEDataset(img_features, labels)
+        dataloader = torch.utils.data.DataLoader(
+            dataset, batch_size=self.batch_size, shuffle=True, pin_memory=False)
+        return dataloader
+        
     def _get_train_val_data(self, dataset, seq_length, overlap):
         """
         A helper function for data generation that combines different data types into a single

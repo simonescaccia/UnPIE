@@ -12,11 +12,11 @@ trn_use_mean: True
 num_frames: 15
 img_emb_size: 128
 resume: False
+batch_size: 2
+test_batch_size: 2
 vd_3dresnet_IR:
   db_name: 'vd_unsup_fx'
   col_name: 'dyn_clstr'
-  batch_size: 2
-  test_batch_size: 2
   test_no_frames: 5
   kNN_val: 10
   fre_filter: 50
@@ -37,8 +37,6 @@ vd_3dresnet_IR:
 vd_3dresnet:
   db_name: 'vd_unsup_fx'
   col_name: 'dyn_clstr'
-  batch_size: 2
-  test_batch_size: 2
   test_no_frames: 5
   kNN_val: 10
   fre_filter: 50

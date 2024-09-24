@@ -7,7 +7,7 @@ class PIEDataset(data.Dataset):
         self.labels = labels
 
     def __getitem__(self, index):
-        return self.data[index], self.labels[index]
+        return self.data[index], self.labels[index], index
 
     def __len__(self):
         return len(self.data)
