@@ -28,34 +28,28 @@ SOFTWARE.
 
 Updated by: Simone Scaccia
 """
-from pathlib import PurePath
 import pickle5 as pickle
 # import pickle (tensorflow 2)
 import cv2
 import sys
+import os
+import shutil
 
 import xml.etree.ElementTree as ET
 import numpy as np
+import pandas as pd
 
 from os.path import join, abspath, isfile, isdir
 from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
-
+from pathlib import PurePath
 # from keras.applications import VGG16 (tensorflow 2)
 from tensorflow.keras.applications import vgg16
 # from keras.utils import img_to_array (tensorflow 2)
 from tensorflow.keras.preprocessing.image import img_to_array
-import os
-
-import pandas as pd
-
-from model.pretrained_extractor import PretraineExtractor
-from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress
-
+from dataset.pretrained_extractor import PretraineExtractor
 from PIL import Image
-
-import shutil
-
+from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress
 from utils.print_utils import print_separator
 
 class PIE(object):

@@ -150,6 +150,7 @@ def get_pie_params(config, args):
     pie_path = config['PIE_PATH']
     batch_size = args['batch_size']
     val_batch_size = args['val_batch_size']
+    val_num_clips = args['val_num_clips']
     data_opts = {
         'fstride': 1,
         'sample_type': 'all', 
@@ -172,7 +173,8 @@ def get_pie_params(config, args):
         'data_opts': data_opts,
         'pie_path': pie_path,
         'batch_size': batch_size,
-        'val_batch_size': val_batch_size
+        'val_batch_size': val_batch_size,
+        'val_num_clips': val_num_clips
     }
     return pie_params
 
@@ -199,10 +201,10 @@ def rep_loss_func(
     for device, memory_bank, all_labels \
             in zip(devices, memory_bank_list, all_labels_list):
         with tf.device(device):
-            mb_update_op = tf.scatter_update(
+            mb_update_op = tf.compat.v1.scatter_update(
                     memory_bank, data_indx, new_data_memory)
             update_ops.append(mb_update_op)
-            lb_update_op = tf.scatter_update(
+            lb_update_op = tf.compat.v1.scatter_update(
                     all_labels, data_indx,
                     inputs['label'])
             update_ops.append(lb_update_op)
@@ -230,8 +232,8 @@ def online_agg(agg_res, res, step):
 def valid_perf_func_kNN(
         inputs, output, 
         instance_t,
-        k, test_no_frames,
-        num_classes):
+        k, val_num_clips,
+        num_classes=2):
     curr_dist, all_labels = output
     all_labels = tuple_get_one(all_labels)
     top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
@@ -242,7 +244,7 @@ def valid_perf_func_kNN(
     top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
     top_labels_one_hot = tf.reshape(
             top_labels_one_hot,
-            [-1, test_no_frames, num_classes])
+            [-1, val_num_clips, num_classes])
     top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
     _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
     curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
@@ -255,10 +257,10 @@ def valid_perf_func_kNN(
 
 def valid_sup_func(
         inputs, output, 
-        test_no_frames):
+        val_num_clips):
     num_classes = output.get_shape().as_list()[-1]
     curr_output = tf.nn.softmax(output)
-    curr_output = tf.reshape(output, [-1, test_no_frames, num_classes])
+    curr_output = tf.reshape(output, [-1, val_num_clips, num_classes])
     curr_output = tf.reduce_mean(curr_output, axis=1)
 
     top1_accuracy = tf.nn.in_top_k(curr_output, inputs['label'], k=1)
@@ -284,7 +286,12 @@ def get_valid_loop_from_arg(args, val_data_loader):
 def get_topn_val_data_param_from_arg(args):
     topn_val_data_param = {
             'func': data.get_placeholders,
-            'batch_size': args['val_batch_size']}
+            'batch_size': args['val_batch_size'],
+            'num_frames': args['num_frames'] * args['val_num_clips'],
+            'img_emb_size': args['img_emb_size'],
+            'multi_frame': True,
+            'multi_group': args['val_num_clips'],
+            'name_prefix': 'VAL'}
     return topn_val_data_param
 
 
@@ -316,7 +323,7 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
     def train_loop(sess, train_targets, num_minibatches=1, **params):
         assert num_minibatches==1, "Mini-batch not supported!"
 
-        global_step_vars = [v for v in tf.global_variables() \
+        global_step_vars = [v for v in tf.compat.v1.global_variables() \
                             if 'global_step' in v.name]
         assert len(global_step_vars) == 1
         global_step = sess.run(global_step_vars[0])
@@ -353,7 +360,9 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
             'batch_size': args['batch_size'], 
             'num_frames': args['num_frames'],
             'img_emb_size': args['img_emb_size'],
-            'multi_frame': True}
+            'multi_frame': True,
+            'multi_group': None,
+            'name_prefix': 'TRAIN'}
     train_params = {
             'validate_first': False,
             'data_params': train_data_param,
@@ -377,11 +386,11 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
                 'func': valid_perf_func_kNN,
                 'k': args['kNN_val'],
                 'instance_t': args['instance_t'],
-                'val_no_frames': args['num_frames']}
+                'val_num_clips': args['val_num_clips']}
     else:
         val_targets = {
                 'func': valid_sup_func,
-                'val_no_frames': args['num_frames']}
+                'val_num_clips': args['val_num_clips']}
 
     valid_loop, val_step_num = get_valid_loop_from_arg(args, val_data_loader)
 

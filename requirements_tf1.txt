@@ -16,4 +16,5 @@ torchvision
 pillow==9.5.0
 kiwisolver==1.4.5
 pickle5
+tqdm
 protobuf==3.20.3
