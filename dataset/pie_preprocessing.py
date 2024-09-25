@@ -21,6 +21,7 @@ class PIEPreprocessing(object):
         self.pie_path = params['pie_path']
         self.data_opts = params['data_opts']
         self.batch_size = params['batch_size']
+        self.val_batch_size = params['val_batch_size']
 
         self.pie = PIE(data_path=self.pie_path)
 
@@ -63,18 +64,23 @@ class PIEPreprocessing(object):
         # Compute image features: TODO implement Spatial Aggregator
 
         # Create dataloaders
-        train_loader = self._get_dataloader(train_img, train_d['output']) # train_d['output'] shape: (num_seqs, 1)
-        val_loader = self._get_dataloader(val_img, val_d['output'])
+        train_loader = self._get_dataloader(train_img, train_d['output'], True) # train_d['output'] shape: (num_seqs, 1)
+        val_loader = self._get_dataloader(val_img, val_d['output'], False)
 
         return train_loader, val_loader
 
-    def _get_dataloader(self, img_features, labels):
+    def _get_dataloader(self, img_features, labels, is_train):
         '''
         Create a dataloader for the clustering computation
         '''
         dataset = PIEDataset(img_features, labels)
-        dataloader = torch.utils.data.DataLoader(
-            dataset, batch_size=self.batch_size, shuffle=True, pin_memory=False)
+        if is_train:
+            dataloader = torch.utils.data.DataLoader(
+                dataset, batch_size=self.batch_size, shuffle=True, pin_memory=False)
+        else:
+            dataloader = torch.utils.data.DataLoader(
+                dataset, batch_size=self.val_batch_size, shuffle=False, pin_memory=False)
+
         return dataloader
         
     def _get_train_val_data(self, dataset, seq_length, overlap):
