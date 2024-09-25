@@ -140,7 +140,6 @@ def get_model_func_params(args, setting, dataset_len):
         "trn_use_mean": args['trn_use_mean'],
         "kmeans_k": args['kmeans_k'],
         "task": args[setting]['task'],
-        "num_classes": args['num_classes'],
         "instance_data_len": dataset_len
     }
     return model_params
@@ -233,7 +232,7 @@ def valid_perf_func_kNN(
         inputs, output, 
         instance_t,
         k, val_num_clips,
-        num_classes=2):
+        num_classes):
     curr_dist, all_labels = output
     all_labels = tuple_get_one(all_labels)
     top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
@@ -301,6 +300,12 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
     loss_params, learning_rate_params, optimizer_params = get_loss_lr_opt_params_from_arg(args, setting, dataset_len)
     save_params, load_params = get_save_load_params_from_arg(args, setting)
     pie_params = get_pie_params(config, args)
+
+    kmeans_k = args['kmeans_k']
+    if kmeans_k.isdigit():
+        args['kmeans_k'] = [int(kmeans_k)]
+    else:
+        args['kmeans_k'] = [int(each_k) for each_k in kmeans_k.split(',')]
 
     # model_params: a function that will build the model
     nn_clusterings = []
@@ -386,7 +391,8 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
                 'func': valid_perf_func_kNN,
                 'k': args['kNN_val'],
                 'instance_t': args['instance_t'],
-                'val_num_clips': args['val_num_clips']}
+                'val_num_clips': args['val_num_clips'],
+                'num_classes': args['kmeans_k']}
     else:
         val_targets = {
                 'func': valid_sup_func,
