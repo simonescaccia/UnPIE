@@ -4,9 +4,8 @@ target_lr: null
 ramp_up_epoch: 1
 cache_dir: 'video_pub_cache'
 instance_t: 0.07
-instance_k: 4096
-kmeans_k: 100
-num_classes: 2
+instance_k: 4096 # number of neighbor embeddings to evaluate
+kmeans_k: '2' # number of different clusters
 trn_use_mean: True
 num_frames: 15
 img_emb_size: 128

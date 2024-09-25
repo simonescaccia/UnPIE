@@ -317,7 +317,6 @@ def build_output(
         trn_use_mean,
         kmeans_k,
         task,
-        num_classes,
         **kwargs):
     # This will be stored in the db
     logged_cfg = {'kwargs': kwargs}
