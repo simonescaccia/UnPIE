@@ -22,6 +22,7 @@ class PIEPreprocessing(object):
         self.data_opts = params['data_opts']
         self.batch_size = params['batch_size']
         self.val_batch_size = params['val_batch_size']
+        self.val_num_clips = params['val_num_clips']
 
         self.pie = PIE(data_path=self.pie_path)
 
@@ -38,11 +39,11 @@ class PIEPreprocessing(object):
 
         seq_val = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
         seq_val = self.pie.balance_samples_count(seq_val, label_type='intention_binary')
-        
+
         seq_length = self.data_opts['max_size_observe']
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
         train_d = self._get_train_val_data(seq_train, seq_length, seq_ovelap_rate)
-        val_d = self._get_train_val_data(seq_val, seq_length, seq_ovelap_rate)
+        val_d = self._get_train_val_data(seq_val, seq_length*self.val_num_clips, seq_ovelap_rate)
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         train_img = self._load_features(train_d['images'],
@@ -108,6 +109,7 @@ class PIEPreprocessing(object):
         int_bin = self._get_tracks(int_bin, seq_length, overlap_stride)
 
         int_bin = np.array(int_bin)[:, 0] # every frame has the same intention label
+        int_bin = np.squeeze(int_bin, axis=1) # shape: (num_seqs, 1)
 
         return {'images': images,
                 'bboxes': bboxes,

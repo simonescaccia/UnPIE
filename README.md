@@ -33,12 +33,7 @@ Add `export PATH="/home/username/miniconda3/bin:$PATH"` at the end of `~/.profil
 
 Create environment:
   ```bash
-  conda env create -f environment.yaml
-  ```
-
-Install requirements after creation (optional)
-  ```bash
-  conda install --file requirements_tfx.txt
+  conda env create -f environment_tf1.yaml
   ```
 
 Activate environment:

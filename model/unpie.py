@@ -1,7 +1,7 @@
 import os
 import time
+import tqdm
 import numpy as np
-
 import tensorflow as tf
 
 from dataset.pie_data import PIE
@@ -31,7 +31,7 @@ class UnPIE(object):
 
     def build_train(self):
         self.build_inputs()
-        self.output = self.build_network(self.inputs, train=True)
+        self.outputs = self.build_network(self.inputs, train=True)
         self.build_train_op()
         self.build_train_targets()
     
@@ -44,13 +44,12 @@ class UnPIE(object):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
         func = model_params.pop('func')
-        self.outputs, _ = func(
+        outputs, _ = func(
                 inputs=inputs,
                 train=train,
                 **model_func_params)
         model_params['func'] = func
-
-        return self.outputs
+        return outputs
 
     def build_train_op(self):
         loss_params = self.params['loss_params']
@@ -151,13 +150,26 @@ class UnPIE(object):
                 _load_saver = tf.train.Saver(var_list=filtered_var_list)
                 _load_saver.restore(self.sess, ckpt_path)
 
+    def run_each_validation(self, val_key):
+        agg_res = None
+        num_steps = self.params['validation_params'][val_key]['num_steps']
+        for _step in tqdm.trange(num_steps, desc=val_key):
+            if self.params['validation_params'][val_key].get('valid_loop', None) is None:
+                res = self.sess.run(self.all_val_targets[val_key])
+            else:
+                res = self.params['validation_params'][val_key]['valid_loop']['func'](
+                        self.sess, self.all_val_targets[val_key])
+            online_func = self.params['validation_params'][val_key]['online_agg_func']
+            agg_res = online_func(agg_res, res, _step)
+        agg_func = self.params['validation_params'][val_key]['agg_func']
+        val_result = agg_func(agg_res)
+        return val_result
+
     def run_train_loop(self):
         start_step = self.sess.run(self.global_step)
-        train_loop = self.train_params.get('train_loop', None)
+        train_loop = self.params['train_params'].get('train_loop', None)
 
-        import sys
-        sys.exit(0)
-        for curr_step in range(start_step, int(self.train_params['num_steps']+1)):
+        for curr_step in range(start_step, int(self.params['train_params']['num_steps']+1)):
             self.start_time = time.time()
             if train_loop is None:
                 train_res = self.sess.run(self.train_targets)
@@ -174,7 +186,7 @@ class UnPIE(object):
             message += ', '.join(rep_msg)
             print(message)
 
-            if curr_step % self.save_params['cache_filters_freq'] == 0 \
+            if curr_step % self.params['save_params']['cache_filters_freq'] == 0 \
                     and curr_step > 0:
                 print('Saving model...')
                 self.saver.save(
@@ -185,12 +197,12 @@ class UnPIE(object):
                         global_step=curr_step)
 
             self.log_writer.write(message + '\n')
-            if curr_step % self.save_params['save_metrics_freq'] == 0:
+            if curr_step % self.params['save_params']['save_metrics_freq'] == 0:
                 self.log_writer.close()
                 self.log_writer = open(self.log_file_path, 'a+')
 
-            if curr_step % self.save_params['save_valid_freq'] == 0:
-                for each_val_key in self.validation_params:
+            if curr_step % self.params['save_params']['save_valid_freq'] == 0:
+                for each_val_key in self.params['validation_params']:
                     val_result = self.run_each_validation(each_val_key)
                     self.val_log_writer.write(
                             '%s: %s\n' % (each_val_key, str(val_result)))
@@ -216,7 +228,7 @@ class UnPIE(object):
         return val_targets
 
     def build_val(self):
-        tf.get_variable_scope().reuse_variables()
+        tf.compat.v1.get_variable_scope().reuse_variables()
         self.all_val_targets = {}
         for each_val_key in self.params['validation_params']:
             val_inputs = self.build_val_inputs(each_val_key)

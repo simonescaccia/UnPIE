@@ -8,11 +8,11 @@ sys.path.append(os.path.abspath('../'))
 
 
 def get_feeddict(image, label, index, name_prefix='TRAIN'):
-    image_placeholder = tf.get_default_graph().get_tensor_by_name(
+    image_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
             '%s_IMAGE_PLACEHOLDER:0' % name_prefix)
-    label_placeholder = tf.get_default_graph().get_tensor_by_name(
+    label_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
             '%s_LABEL_PLACEHOLDER:0' % name_prefix)
-    index_placeholder = tf.get_default_graph().get_tensor_by_name(
+    index_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
             '%s_INDEX_PLACEHOLDER:0' % name_prefix)
     feed_dict = {
             image_placeholder: image.numpy(),
@@ -22,9 +22,9 @@ def get_feeddict(image, label, index, name_prefix='TRAIN'):
 
 
 def get_placeholders(
-        batch_size, num_frames=1, 
-        img_emb_size=128,
-        name_prefix='TRAIN', multi_frame=False, multi_group=None):
+        batch_size, num_frames, 
+        img_emb_size,
+        name_prefix, multi_frame, multi_group):
     image_placeholder = tf.compat.v1.placeholder(
             tf.uint8,
             (batch_size, num_frames, img_emb_size),

@@ -14,7 +14,7 @@ resume: False
 batch_size: 2
 val_batch_size: 2
 test_batch_size: 2
-val_no_frames: 5
+val_num_clips: 5
 clstr_update_fre: null
 part_vd: null
 db_name: 'vd_unsup_fx'

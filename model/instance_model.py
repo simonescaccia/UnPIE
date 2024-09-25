@@ -344,7 +344,7 @@ def build_output(
                 initializer=lbl_init_values,
                 trainable=False, dtype=tf.int64,
             )
-    
+
     output = temp_aggr_embedding(inputs['image'])
     output = tf.nn.l2_normalize(output, axis=1)
 
