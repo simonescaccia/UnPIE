@@ -29,9 +29,11 @@ class UnPIE(object):
 
         self.global_step = tf.Variable(0, trainable=False, dtype=tf.int64)     
 
-    def build_train_val_data(self):
+    def build_train(self):
         self.build_inputs()
-        self.build_network(self.inputs, train=True)
+        self.output = self.build_network(self.inputs, train=True)
+        self.build_train_op()
+        self.build_train_targets()
     
     def build_inputs(self):
         data_params = self.params['train_params']['data_params']
@@ -39,7 +41,6 @@ class UnPIE(object):
         self.inputs = func(**data_params)
 
     def build_network(self, inputs, train):
-        self.params['model_params']['model_func_params']['instance_data_len'] = self.train_img.shape[0]
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
         func = model_params.pop('func')
@@ -47,10 +48,11 @@ class UnPIE(object):
                 inputs=inputs,
                 train=train,
                 **model_func_params)
+        model_params['func'] = func
+
+        return self.outputs
 
     def build_train_op(self):
-        self.params['learning_rate_params']['num_batches_per_epoch'] = \
-            self.train_img.shape[0] // self.params['train_params']['data_params']['batch_size']
         loss_params = self.params['loss_params']
 
         input_targets = [self.inputs[key] \
@@ -82,6 +84,17 @@ class UnPIE(object):
             self.train_op = opt.minimize(
                     self.loss_retval, 
                     global_step=self.global_step)
+            
+    def build_train_targets(self):
+        extra_targets_params = self.params['train_params']['targets']
+        func = extra_targets_params.pop('func')
+        train_targets = func(self.inputs, self.outputs, **extra_targets_params)
+
+        train_targets['train_op'] = self.train_op
+        train_targets['loss'] = self.loss_retval
+        train_targets['learning_rate'] = self.learning_rate
+
+        self.train_targets = train_targets
 
     def load_from_ckpt(self, ckpt_path):
         print('Restore from %s' % ckpt_path)
@@ -138,9 +151,6 @@ class UnPIE(object):
                 _load_saver = tf.train.Saver(var_list=filtered_var_list)
                 _load_saver.restore(self.sess, ckpt_path)
 
-    def training_loop(self):
-        pass
-
     def run_train_loop(self):
         start_step = self.sess.run(self.global_step)
         train_loop = self.train_params.get('train_loop', None)
@@ -188,11 +198,38 @@ class UnPIE(object):
                 self.val_log_writer.close()
                 self.val_log_writer = open(self.val_log_file_path, 'a+')
 
+    def build_val_inputs(self, val_key):
+        data_params = self.params['validation_params'][val_key]['data_params']
+        func = data_params.pop('func')
+        val_inputs = func(**data_params)
+        return val_inputs
+
+    def build_val_network(self, val_key, val_inputs):
+        with tf.name_scope('validation/' + val_key):
+            val_outputs = self.build_network(val_inputs, False)
+        return val_outputs
+
+    def build_val_targets(self, val_key, val_inputs, val_outputs):
+        target_params = self.params['validation_params'][val_key]['targets']
+        func = target_params.pop('func')
+        val_targets = func(val_inputs, val_outputs, **target_params)
+        return val_targets
+
+    def build_val(self):
+        tf.get_variable_scope().reuse_variables()
+        self.all_val_targets = {}
+        for each_val_key in self.params['validation_params']:
+            val_inputs = self.build_val_inputs(each_val_key)
+            val_outputs = self.build_val_network(each_val_key, val_inputs)
+            val_targets = self.build_val_targets(
+                    each_val_key, val_inputs, val_outputs)
+            self.all_val_targets[each_val_key] = val_targets
+
     def train(self):
         print_separator('Starting UnPIE training')
 
-        self.build_train_val_data()
-        self.build_train_op()
+        self.build_train()
+        self.build_val()
 
         self.build_sess_and_saver()
         self.init_and_restore()
