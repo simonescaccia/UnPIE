@@ -72,9 +72,6 @@ class PIE(object):
 
         self.clips_path = join(self.pie_path, 'PIE_clips')
         self.images_path = join(self.pie_path, 'images')
-
-        # Create context model
-        self.pretrained_extractor = PretraineExtractor()
         
         self.data_opts = {'fstride': 1,
             'sample_type': 'all', 
@@ -461,8 +458,8 @@ class PIE(object):
         Extracts annotated images from clips, compute features and saves on hard drive
         :param extract_frame_type: Whether to extract 'all' frames or only the ones that are 'annotated'
                              Note: extracting 'all' features requires approx. TODO
-        """        
-
+        """  
+        self.pretrained_extractor = PretraineExtractor() # Create extractor model      
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
         images = sequence_data['image']

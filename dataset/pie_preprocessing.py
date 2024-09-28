@@ -31,7 +31,7 @@ class PIEPreprocessing(object):
         Build the inputs for the clustering computation
         '''
         # PIE preprocessing
-        print_separator('PIE preprocessing', top_new_line=False)
+        print_separator('PIE preprocessing',bottom_new_line=False)
 
         # Generate image sequences
         seq_train = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)

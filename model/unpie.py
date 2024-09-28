@@ -96,7 +96,7 @@ class UnPIE(object):
         self.train_targets = train_targets
 
     def load_from_ckpt(self, ckpt_path):
-        print('Restore from %s' % ckpt_path)
+        print('\nRestore from %s' % ckpt_path)
         self.saver.restore(self.sess, ckpt_path)
 
     def build_sess_and_saver(self):
@@ -129,12 +129,12 @@ class UnPIE(object):
             else:
                 ckpt_path = tf.train.latest_checkpoint(load_dir)
             if ckpt_path:
-                print('Restore from %s' % ckpt_path)
+                print('\nRestore from %s' % ckpt_path)
                 #self.load_from_ckpt(ckpt_path)
-                reader = tf.train.NewCheckpointReader(ckpt_path)
+                reader = tf.compat.v1.train.NewCheckpointReader(ckpt_path)
                 saved_var_shapes = reader.get_variable_to_shape_map()
 
-                all_vars = tf.global_variables()
+                all_vars = tf.compat.v1.global_variables()
                 all_var_list = {v.op.name: v for v in all_vars}
                 filtered_var_list = {}
                 for name, var in all_var_list.items():
@@ -147,7 +147,7 @@ class UnPIE(object):
                             print('Shape mismatch for %s: ' % name \
                                     + str(curr_shape) \
                                     + str(saved_shape))
-                _load_saver = tf.train.Saver(var_list=filtered_var_list)
+                _load_saver = tf.compat.v1.train.Saver(var_list=filtered_var_list)
                 _load_saver.restore(self.sess, ckpt_path)
 
     def run_each_validation(self, val_key):
