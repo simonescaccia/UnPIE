@@ -106,11 +106,11 @@ Run the following command to preprocess the image features without extracting al
 
   Training:
   ```bash
-  python train_test.py
+  sh  run_training.sh
   ```
 
   Testing:
   ```bash
-  python train_test.py 1
+  sh run_testing.sh
   ```
 
