@@ -25,6 +25,7 @@ def set_environment(config_file):
 
 def reg_loss(loss, weight_decay):
     # Add weight decay to the loss.
+    print("tf.compat.v1.trainable_variables(): ", tf.compat.v1.trainable_variables())
     def exclude_batch_norm(name):
         return 'batch_normalization' not in name
     l2_loss = weight_decay * tf.add_n(
@@ -140,7 +141,8 @@ def get_model_func_params(args, setting, dataset_len):
         "trn_use_mean": args['trn_use_mean'],
         "kmeans_k": args['kmeans_k'],
         "task": args[setting]['task'],
-        "instance_data_len": dataset_len
+        "instance_data_len": dataset_len,
+        "emb_dim": args['emb_dim']
     }
     return model_params
 
@@ -150,6 +152,7 @@ def get_pie_params(config, args):
     batch_size = args['batch_size']
     val_batch_size = args['val_batch_size']
     val_num_clips = args['val_num_clips']
+    emb_dim = args['emb_dim']
     data_opts = {
         'fstride': 1,
         'sample_type': 'all', 
@@ -173,7 +176,8 @@ def get_pie_params(config, args):
         'pie_path': pie_path,
         'batch_size': batch_size,
         'val_batch_size': val_batch_size,
-        'val_num_clips': val_num_clips
+        'val_num_clips': val_num_clips,
+        'emb_dim': emb_dim
     }
     return pie_params
 
@@ -287,7 +291,7 @@ def get_topn_val_data_param_from_arg(args):
             'func': data.get_placeholders,
             'batch_size': args['val_batch_size'],
             'num_frames': args['num_frames'] * args['val_num_clips'],
-            'img_emb_size': args['img_emb_size'],
+            'emb_dim': args['emb_dim'],
             'multi_frame': True,
             'multi_group': args['val_num_clips'],
             'name_prefix': 'VAL'}
@@ -360,7 +364,7 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
             'func': data.get_placeholders,
             'batch_size': args['batch_size'], 
             'num_frames': args['num_frames'],
-            'img_emb_size': args['img_emb_size'],
+            'emb_dim': args['emb_dim'],
             'multi_frame': True,
             'multi_group': None,
             'name_prefix': 'TRAIN'}
