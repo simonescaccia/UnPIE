@@ -274,7 +274,7 @@ class InstanceModel(object):
         probs = self.__get_prob_from_equal(all_equal, exponents)
 
         assert_shape(probs, [self.batch_size])
-        loss = -tf.reduce_mean(tf.log(probs + 1e-7))
+        loss = -tf.reduce_mean(tf.math.log(probs + 1e-7))
         return loss, self.inputs['index']
 
     def compute_data_prob(self, selfloss):
@@ -338,7 +338,7 @@ def build_output(
             lbl_init_values = tf.tile(
                     tf.expand_dims(lbl_init_values, axis=0),
                     [no_kmeans_k, 1])
-            cluster_labels = tf.get_variable(
+            cluster_labels = tf.compat.v1.get_variable(
                 'cluster_labels',
                 initializer=lbl_init_values,
                 trainable=False, dtype=tf.int64,

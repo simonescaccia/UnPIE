@@ -4,7 +4,7 @@ import yaml
 
 # (tensorflow 1)
 import tensorflow as tf
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 with open('config.yml', 'r') as file:
     config_file = yaml.safe_load(file)

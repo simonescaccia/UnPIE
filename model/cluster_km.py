@@ -43,9 +43,9 @@ class Kmeans:
         self.memory_bank = memory_bank
         self.cluster_labels = cluster_labels
 
-        self.new_cluster_feed = tf.placeholder(
+        self.new_cluster_feed = tf.compat.v1.placeholder(
             tf.int64, shape=self.cluster_labels.get_shape().as_list())
-        self.update_clusters_op = tf.assign(
+        self.update_clusters_op = tf.compat.v1.assign(
                 self.cluster_labels, self.new_cluster_feed)
 
     def recompute_clusters(self, sess, verbose=True):

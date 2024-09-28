@@ -57,7 +57,7 @@ def get_lr_from_boundary_and_ramp_up(
                 curr_lr * (0.1 ** drop_level) \
                 for drop_level in range(len(boundaries) + 1)]
 
-        curr_lr = tf.train.piecewise_constant(
+        curr_lr = tf.compat.v1.train.piecewise_constant(
                 x=global_step,
                 boundaries=boundaries, values=all_lrs)
     return curr_lr
@@ -301,11 +301,7 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
     save_params, load_params = get_save_load_params_from_arg(args, setting)
     pie_params = get_pie_params(config, args)
 
-    kmeans_k = args['kmeans_k']
-    if kmeans_k.isdigit():
-        args['kmeans_k'] = [int(kmeans_k)]
-    else:
-        args['kmeans_k'] = [int(each_k) for each_k in kmeans_k.split(',')]
+    args['kmeans_k'] = [args['num_classes']]
 
     # model_params: a function that will build the model
     nn_clusterings = []
@@ -392,7 +388,7 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
                 'k': args['kNN_val'],
                 'instance_t': args['instance_t'],
                 'val_num_clips': args['val_num_clips'],
-                'num_classes': args['kmeans_k']}
+                'num_classes': args['num_classes']}
     else:
         val_targets = {
                 'func': valid_sup_func,
@@ -430,29 +426,23 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
 
 
 if __name__ == '__main__':
-    
+
     # Setup environment
-    print_separator('Setting up the environment', space=False)
+    print_separator('Setting up the environment', top_new_line=False)
     config_file = get_yml_file('config.yml')
     args_file = get_yml_file('args.yml')
+    set_environment(config_file)
     pie_params = get_pie_params(config_file, args_file)
     pie_preprocessing = PIEPreprocessing(pie_params)
-    set_environment(config_file)
 
-    # Train and/or test
-    if len(sys.argv) == 1:
-        train_test = 0 # empty param means train and test
-    else:
-        train_test = int(sys.argv[1]) # 0: train and test, 1: test only
-    
-    training_steps = ['vd_3dresnet_IR', 'vd_3dresnet']
-    if train_test == 0:
-        for step in training_steps:
-            train_data_loader, val_data_loader = pie_preprocessing.get_dataloaders()
-            params = get_params(config_file, args_file, step, train_data_loader, val_data_loader)
-            unpie = UnPIE(params)
-            unpie.train()
-    if train_test >= 0:
+    train_test = int(sys.argv[1]) # 0: train only, 1: train and test, 2: test only
+    training_step = sys.argv[2]
+
+    if train_test < 2:
+        train_data_loader, val_data_loader = pie_preprocessing.get_dataloaders()
+        params = get_params(config_file, args_file, training_step, train_data_loader, val_data_loader)
+        unpie = UnPIE(params)
+        unpie.train()
+    if train_test > 0:
         unpie.test()
-
-    print_separator('UnPIE finished', bottom_new_line=False)
+        print_separator('UnPIE finished', bottom_new_line=False)
