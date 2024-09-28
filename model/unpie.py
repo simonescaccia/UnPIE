@@ -13,8 +13,6 @@ class UnPIE(object):
     def __init__(self, params):
         self.params = params
 
-        self.temporal_aggregator = TemporalAggregator()
-
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
         self.log_file_path = os.path.join(self.cache_dir, 'log.txt')
         self.val_log_file_path = os.path.join(self.cache_dir, 'val_log.txt')

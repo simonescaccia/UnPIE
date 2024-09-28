@@ -47,7 +47,7 @@ from pathlib import PurePath
 from tensorflow.keras.applications import vgg16
 # from keras.utils import img_to_array (tensorflow 2)
 from tensorflow.keras.preprocessing.image import img_to_array
-from dataset.pretrained_extractor import PretraineExtractor
+from dataset.pretrained_extractor import PretrainedExtractor
 from PIL import Image
 from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress
 from utils.print_utils import print_separator
@@ -446,7 +446,6 @@ class PIE(object):
             preprocessed_img = vgg16.preprocess_input(image_array)
             expanded_img = np.expand_dims(preprocessed_img, axis=0)
             img_features = self.pretrained_extractor(expanded_img)
-            img_features = img_features.numpy()
             if not os.path.exists(img_save_folder):
                 os.makedirs(img_save_folder)
             with open(img_save_path, 'wb') as fid:
@@ -459,7 +458,7 @@ class PIE(object):
         :param extract_frame_type: Whether to extract 'all' frames or only the ones that are 'annotated'
                              Note: extracting 'all' features requires approx. TODO
         """  
-        self.pretrained_extractor = PretraineExtractor() # Create extractor model      
+        self.pretrained_extractor = PretrainedExtractor() # Create extractor model      
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
         images = sequence_data['image']

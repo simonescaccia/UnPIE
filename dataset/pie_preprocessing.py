@@ -8,6 +8,7 @@ from pathlib import PurePath
 import torch
 from dataset.pie_data import PIE
 from dataset.pie_dataset import PIEDataset
+from model.feature_extractor import FeatureExtractor
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
 
@@ -25,6 +26,7 @@ class PIEPreprocessing(object):
         self.val_num_clips = params['val_num_clips']
 
         self.pie = PIE(data_path=self.pie_path)
+        self.feature_extractor = FeatureExtractor(params['emb_dim'])
 
     def get_dataloaders(self):
         '''
@@ -61,9 +63,7 @@ class PIEPreprocessing(object):
                                       load_path=self._get_path(type_save='data',
                                                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
                                                                model_name='vgg16_'+'none',
-                                                               data_subset='val'))        
-        # Compute image features: TODO implement Spatial Aggregator
-
+                                                               data_subset='val'))  
         # Create dataloaders
         train_loader = self._get_dataloader(train_img, train_d['output'], True) # train_d['output'] shape: (num_seqs, 1)
         val_loader = self._get_dataloader(val_img, val_d['output'], False)
