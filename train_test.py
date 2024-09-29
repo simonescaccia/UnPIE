@@ -25,13 +25,9 @@ def set_environment(config_file):
 
 def reg_loss(loss, weight_decay):
     # Add weight decay to the loss.
-    print("tf.compat.v1.trainable_variables(): ", tf.compat.v1.trainable_variables())
-    def exclude_batch_norm(name):
-        return 'batch_normalization' not in name
     l2_loss = weight_decay * tf.add_n(
             [tf.nn.l2_loss(tf.cast(v, tf.float32))
-                for v in tf.compat.v1.trainable_variables()
-                if exclude_batch_norm(v.name)])
+                for v in tf.compat.v1.trainable_variables()])
     loss_all = tf.add(loss, l2_loss)
     return loss_all
 
@@ -444,9 +440,11 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
 
 
 if __name__ == '__main__':
+    train_test = int(sys.argv[1]) # 0: train only, 1: train and test, 2: test only
+    training_step = sys.argv[2]
+    print_separator('UnPIE started, step: ' + training_step, top_new_line=False)
 
     # Setup environment
-    print_separator('Setting up the environment', top_new_line=False)
     config_file = get_yml_file('config.yml')
     args_file = get_yml_file('args.yml')
     set_environment(config_file)
@@ -463,4 +461,4 @@ if __name__ == '__main__':
         unpie.train()
     if train_test > 0:
         unpie.test()
-        print_separator('UnPIE finished', bottom_new_line=False)
+        print_separator('UnPIE ended', bottom_new_line=False)

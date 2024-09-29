@@ -245,3 +245,6 @@ class UnPIE(object):
         self.init_and_restore()
 
         self.run_train_loop()
+
+    def test(self):
+        print_separator('Starting UnPIE testing')
