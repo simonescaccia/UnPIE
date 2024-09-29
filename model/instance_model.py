@@ -1,13 +1,13 @@
 from __future__ import division, print_function, absolute_import
 import tensorflow as tf
-from model.unpie_framework import UnPIEFramework
+from model.unpie_network import UnPIENetwork
 
 from .memory_bank import MemoryBank
 from .self_loss import get_selfloss, assert_shape
 
 def _run_unpie_nn(images, emb_size):
     images = tf.cast(images, tf.float32)
-    unpie_framework = UnPIEFramework(emb_size)
+    unpie_framework = UnPIENetwork(emb_size)
     return unpie_framework(images)
 
 def repeat_1d_tensor(t, num_reps):
@@ -19,7 +19,7 @@ class InstanceModel(object):
     def __init__(self,
                  inputs, output,
                  memory_bank,
-                 instance_k=4096,
+                 instance_k,
                  instance_t=0.07,
                  instance_m=0.5,
                  **kwargs):

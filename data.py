@@ -23,11 +23,11 @@ def get_feeddict(image, label, index, name_prefix='TRAIN'):
 
 def get_placeholders(
         batch_size, num_frames, 
-        emb_dim,
+        crop_size, num_channels,
         name_prefix, multi_frame, multi_group):
     image_placeholder = tf.compat.v1.placeholder(
             tf.uint8,
-            (batch_size, num_frames, emb_dim),
+            (batch_size, num_frames, crop_size, crop_size, num_channels),
             name='%s_IMAGE_PLACEHOLDER' % name_prefix)
     label_placeholder = tf.compat.v1.placeholder(
             tf.int64,
@@ -43,13 +43,13 @@ def get_placeholders(
         else:
             image_placeholder = tf.reshape(
                     image_placeholder, 
-                    [-1, emb_dim])
+                    [-1, crop_size, crop_size, num_channels])
     else:
         if multi_group is not None:
             image_placeholder = tf.reshape(
                     image_placeholder, 
                     [batch_size*multi_group, num_frames // multi_group, \
-                            emb_dim])
+                            crop_size, crop_size, num_channels])
     inputs = {
             'image': image_placeholder,
             'label': label_placeholder,
