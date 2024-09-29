@@ -291,11 +291,23 @@ def get_topn_val_data_param_from_arg(args):
             'func': data.get_placeholders,
             'batch_size': args['val_batch_size'],
             'num_frames': args['num_frames'] * args['val_num_clips'],
-            'emb_dim': args['emb_dim'],
+            'crop_size': args['input_shape']['crop_size'],
+            'num_channels': args['input_shape']['num_channels'],
             'multi_frame': True,
             'multi_group': args['val_num_clips'],
             'name_prefix': 'VAL'}
     return topn_val_data_param
+
+
+def get_input_shape(args):
+    vgg_out_shape = args['vgg_out_shape'].split(',')
+    crop_size = int(vgg_out_shape[0])
+    num_channels = int(vgg_out_shape[2])
+    input_shape = {
+        'crop_size': crop_size,
+        'num_channels': num_channels,
+    }
+    return input_shape
 
 
 def get_params(config, args, setting, train_data_loader, val_data_loader):
@@ -306,6 +318,7 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
     pie_params = get_pie_params(config, args)
 
     args['kmeans_k'] = [args['num_classes']]
+    args['input_shape'] = get_input_shape(args)
 
     # model_params: a function that will build the model
     nn_clusterings = []
@@ -364,7 +377,8 @@ def get_params(config, args, setting, train_data_loader, val_data_loader):
             'func': data.get_placeholders,
             'batch_size': args['batch_size'], 
             'num_frames': args['num_frames'],
-            'emb_dim': args['emb_dim'],
+            'crop_size': args['input_shape']['crop_size'],
+            'num_channels': args['input_shape']['num_channels'],
             'multi_frame': True,
             'multi_group': None,
             'name_prefix': 'TRAIN'}

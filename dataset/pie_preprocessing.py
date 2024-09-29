@@ -63,7 +63,8 @@ class PIEPreprocessing(object):
                                       load_path=self._get_path(type_save='data',
                                                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
                                                                model_name='vgg16_'+'none',
-                                                               data_subset='val'))  
+                                                               data_subset='val'))
+
         # Create dataloaders
         train_loader = self._get_dataloader(train_img, train_d['output'], True) # train_d['output'] shape: (num_seqs, 1)
         val_loader = self._get_dataloader(val_img, val_d['output'], False)

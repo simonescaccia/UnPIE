@@ -1,3 +1,4 @@
+vgg_out_shape: '7,7,512'
 weight_decay: 0.0001
 init_lr: 0.03
 target_lr: null
