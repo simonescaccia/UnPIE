@@ -1,13 +1,12 @@
 from dataset.pie_data import PIE
 import os
 import yaml
-
-# (tensorflow 1)
 import tensorflow as tf
-tf.compat.v1.enable_eager_execution()
 
 with open('config.yml', 'r') as file:
     config_file = yaml.safe_load(file)
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 pie_path = config_file['PIE_PATH']
 
