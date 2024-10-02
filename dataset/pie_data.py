@@ -43,10 +43,6 @@ from os.path import join, abspath, isfile, isdir
 from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
 from pathlib import PurePath
-# from keras.applications import VGG16 (tensorflow 2)
-from tensorflow.keras.applications import vgg16
-# from keras.utils import img_to_array (tensorflow 2)
-from tensorflow.keras.preprocessing.image import img_to_array
 from dataset.pretrained_extractor import PretrainedExtractor
 from PIL import Image
 from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress
@@ -440,11 +436,8 @@ class PIE(object):
             bbox = squarify(bbox, 1, image.size[0])
             bbox = list(map(int,bbox[0:4]))
             cropped_image = image.crop(bbox)
-            img_data = img_pad(cropped_image, mode='pad_resize', size=224)                        
-            image_array = img_to_array(img_data)
-            # preprocessed_img = VGG16.preprocess_input(image_array) (tensorflow 2)
-            preprocessed_img = vgg16.preprocess_input(image_array)
-            expanded_img = np.expand_dims(preprocessed_img, axis=0)
+            img_data = img_pad(cropped_image, mode='pad_resize', size=224)                    
+            expanded_img = self.pretrained_extractor.preprocess(img_data)
             img_features = self.pretrained_extractor(expanded_img)
             if not os.path.exists(img_save_folder):
                 os.makedirs(img_save_folder)
@@ -458,7 +451,7 @@ class PIE(object):
         :param extract_frame_type: Whether to extract 'all' frames or only the ones that are 'annotated'
                              Note: extracting 'all' features requires approx. TODO
         """  
-        self.pretrained_extractor = PretrainedExtractor() # Create extractor model      
+        self.pretrained_extractor = PretrainedExtractor() # Create extractor model  
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
         images = sequence_data['image']
@@ -468,11 +461,9 @@ class PIE(object):
                                 data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                 model_name='vgg16_'+'none',
                                 data_subset = 'all')
-
         ped_dataframe = self._get_ped_info_per_image(images, bboxes, ped_ids)
         
         print_separator("Extracting features and saving on hard drive")
-
         # Extract images and features
         set_folders = sets_to_extract
         for set_id in set_folders:
