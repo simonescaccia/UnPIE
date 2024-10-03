@@ -111,6 +111,8 @@ class ParamsLoader:
                 'save_filters_freq': self.args['fre_filter'],
                 'cache_filters_freq': fre_cache_filter,
                 'cache_dir': cache_dir,
+                'train_log_file': self.args['train_log_file'],
+                'val_log_file': self.args['val_log_file'],
                 }
 
         load_exp = self.args[self.setting]['load_exp']
@@ -124,7 +126,6 @@ class ParamsLoader:
                 load_query = {'exp_id': load_exp_id,
                             'saved_filters': True,
                             'step': load_step}
-                print('Load query', load_query)
 
         load_params = {
                 'dbname': load_dbname,
@@ -146,41 +147,6 @@ class ParamsLoader:
             "emb_dim": self.args['emb_dim']
         }
         return model_params
-
-
-    def get_pie_params(self):
-        pie_path = self.config['PIE_PATH']
-        batch_size = self.args['batch_size']
-        val_batch_size = self.args['val_batch_size']
-        val_num_clips = self.args['val_num_clips']
-        emb_dim = self.args['emb_dim']
-        data_opts = {
-            'fstride': 1,
-            'sample_type': 'all', 
-            'height_rng': [0, float('inf')],
-            'squarify_ratio': 0,
-            'data_split_type': 'default',  #  kfold, random, default
-            'seq_type': 'intention', #  crossing , intention
-            'min_track_size': 0, #  discard tracks that are shorter
-            'max_size_observe': self.args['num_frames'],  # number of observation frames
-            'max_size_predict': 5,  # number of prediction frames
-            'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
-            'balance': True,  # balance the training and testing samples
-            'crop_type': 'context',  # crop 2x size of bbox around the pedestrian
-            'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
-            'encoder_input_type': [],
-            'decoder_input_type': ['bbox'],
-            'output_type': ['intention_binary']
-        }
-        pie_params = {
-            'data_opts': data_opts,
-            'pie_path': pie_path,
-            'batch_size': batch_size,
-            'val_batch_size': val_batch_size,
-            'val_num_clips': val_num_clips,
-            'emb_dim': emb_dim
-        }
-        return pie_params
 
 
     def _rep_loss_func(
@@ -313,6 +279,50 @@ class ParamsLoader:
         }
         return input_shape
 
+    def get_plot_params(self):
+        save_params, _ = self._get_save_load_params_from_arg()
+        plot_params = {
+            'cache_dir': save_params['cache_dir'],
+            'train_log_file': save_params['train_log_file'],
+            'val_log_file': save_params['val_log_file'],
+        }
+        return plot_params
+
+
+    def get_pie_params(self):
+        pie_path = self.config['PIE_PATH']
+        batch_size = self.args['batch_size']
+        val_batch_size = self.args['val_batch_size']
+        val_num_clips = self.args['val_num_clips']
+        emb_dim = self.args['emb_dim']
+        data_opts = {
+            'fstride': 1,
+            'sample_type': 'all', 
+            'height_rng': [0, float('inf')],
+            'squarify_ratio': 0,
+            'data_split_type': 'default',  #  kfold, random, default
+            'seq_type': 'intention', #  crossing , intention
+            'min_track_size': 0, #  discard tracks that are shorter
+            'max_size_observe': self.args['num_frames'],  # number of observation frames
+            'max_size_predict': 5,  # number of prediction frames
+            'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
+            'balance': True,  # balance the training and testing samples
+            'crop_type': 'context',  # crop 2x size of bbox around the pedestrian
+            'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
+            'encoder_input_type': [],
+            'decoder_input_type': ['bbox'],
+            'output_type': ['intention_binary']
+        }
+        pie_params = {
+            'data_opts': data_opts,
+            'pie_path': pie_path,
+            'batch_size': batch_size,
+            'val_batch_size': val_batch_size,
+            'val_num_clips': val_num_clips,
+            'emb_dim': emb_dim
+        }
+        return pie_params
+    
 
     def get_params(self, train_data_loader, val_data_loader):
         dataset_len = train_data_loader.dataset.__len__()

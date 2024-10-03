@@ -24,6 +24,8 @@ fre_filter: 10
 fre_cache_filter: 10
 fre_valid: 10
 fre_metric: 10
+train_log_file: 'log.txt'
+val_log_file: 'val_log.txt'
 vd_3dresnet_IR:
   exp_id: 'vd_3dresnet_IR'
   task: 'IR'
