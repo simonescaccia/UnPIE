@@ -14,8 +14,8 @@ class UnPIE(object):
         self.params = params
 
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
-        self.log_file_path = os.path.join(self.cache_dir, 'log.txt')
-        self.val_log_file_path = os.path.join(self.cache_dir, 'val_log.txt')
+        self.log_file_path = os.path.join(self.cache_dir, self.params['save_params']['train_log_file'])
+        self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
         os.system('mkdir -p %s' % self.cache_dir)
         self.load_from_curr_exp = tf.train.latest_checkpoint(self.cache_dir)
         if not self.load_from_curr_exp: # if no checkpoint is found then create a new log file
