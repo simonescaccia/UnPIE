@@ -1,6 +1,5 @@
 venv
 venv2
 __pycache__
-data
-config.yml
+settings/config.yml
 video_pub_cache
