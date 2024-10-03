@@ -902,15 +902,14 @@ class PIE(object):
         :return: Balanced data sequence.
         """
         for lbl in seq_data[label_type]:
-            for i in lbl:
-                if i[0] not in [0, 1]:
-                    raise Exception("The label values used for balancing must be"
-                                    " either 0 or 1")
+            if lbl not in [0, 1]:
+                raise Exception("The label values used for balancing must be"
+                                " either 0 or 1")
 
         # balances the number of positive and negative samples
         print_separator("Balancing the number of positive and negative intention samples", space=False)
 
-        gt_labels = [gt[0] for gt in seq_data[label_type]]
+        gt_labels = seq_data[label_type]
         num_pos_samples = np.count_nonzero(np.array(gt_labels))
         num_neg_samples = len(gt_labels) - num_pos_samples
 
@@ -936,12 +935,12 @@ class PIE(object):
             # update the data
             for k in seq_data:
                 seq_data_k = seq_data[k]
-                if not isinstance(seq_data[k], list):
+                if not isinstance(seq_data[k], list) and not isinstance(seq_data[k], np.ndarray):
                     new_seq_data[k] = seq_data[k]
                 else:
                     new_seq_data[k] = [seq_data_k[i] for i in range(0, len(seq_data_k)) if i not in rm_index]
 
-            new_gt_labels = [gt[0] for gt in new_seq_data[label_type]]
+            new_gt_labels = new_seq_data[label_type]
             num_pos_samples = np.count_nonzero(np.array(new_gt_labels))
             print('Balanced:\t Positive: %d  \t Negative: %d\n'
                   % (num_pos_samples, len(new_seq_data[label_type]) - num_pos_samples))
