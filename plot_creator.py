@@ -36,7 +36,7 @@ for training_step in training_steps:
             top1 = float(list(topn_dict.values())[0])
             df_val = df_val.append({'step': val_step, 'top1': top1}, ignore_index=True)
             val_step += frequency
-    df_tot_val = df_tot_val.append(df_val)
+    df_tot_val = df_tot_val.append(df_val, ignore_index=True)
     
     # save the plot of df_train
     plt.figure()
@@ -58,8 +58,8 @@ for training_step in training_steps:
 tot_cache_dir = os.path.join(os.path.split(cache_dir)[0], 'tot_metrics')
 os.makedirs(tot_cache_dir, exist_ok=True)
 plt.figure()
-plt.plot(df_val['step'], df_val['top1'])
+plt.plot(df_tot_val['step'], df_tot_val['top1'])
 plt.title('Validation metric')
 plt.xlabel('Step')
 plt.ylabel('Top1')
-plt.savefig(os.path.join(tot_cache_dir, 'val_metric.png'))
+plt.savefig(os.path.join(tot_cache_dir, 'tot_val_metric.png'))

@@ -37,15 +37,15 @@ class PIEPreprocessing(object):
 
         # Generate image sequences
         seq_train = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
-        seq_train = self.pie.balance_samples_count(seq_train, label_type='intention_binary')
-
         seq_val = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
-        seq_val = self.pie.balance_samples_count(seq_val, label_type='intention_binary')
 
         seq_length = self.data_opts['max_size_observe']
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
         train_d = self._get_train_val_data(seq_train, seq_length, seq_ovelap_rate)
         val_d = self._get_train_val_data(seq_val, seq_length*self.val_num_clips, seq_ovelap_rate)
+
+        train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
+        val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         train_img = self._load_features(train_d['images'],
@@ -66,8 +66,8 @@ class PIEPreprocessing(object):
                                                                data_subset='val'))
 
         # Create dataloaders
-        train_loader = self._get_dataloader(train_img, train_d['output'], True) # train_d['output'] shape: (num_seqs, 1)
-        val_loader = self._get_dataloader(val_img, val_d['output'], False)
+        train_loader = self._get_dataloader(train_img, train_d['intention_binary'], True) # train_d['output'] shape: (num_seqs, 1)
+        val_loader = self._get_dataloader(val_img, val_d['intention_binary'], False)
 
         return train_loader, val_loader
 
@@ -115,7 +115,7 @@ class PIEPreprocessing(object):
         return {'images': images,
                 'bboxes': bboxes,
                 'ped_ids': ped_ids,
-                'output': int_bin}
+                'intention_binary': int_bin}
 
     def _get_path(self,
                  type_save='models', # model or data
