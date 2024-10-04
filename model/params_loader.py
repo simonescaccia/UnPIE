@@ -267,7 +267,18 @@ class ParamsLoader:
                 'multi_group': self.args['val_num_clips'],
                 'name_prefix': 'VAL'}
         return topn_val_data_param
-
+    
+    def _get_topn_test_data_param_from_arg(self):
+        topn_test_data_param = {
+                'func': data.get_placeholders,
+                'batch_size': self.args['test_batch_size'],
+                'num_frames': self.args['num_frames'],
+                'crop_size': self.args['input_shape']['crop_size'],
+                'num_channels': self.args['input_shape']['num_channels'],
+                'multi_frame': True,
+                'multi_group': None,
+                'name_prefix': 'TEST'}
+        return topn_test_data_param
 
     def _get_input_shape(self):
         vgg_out_shape = self.args['vgg_out_shape'].split(',')
@@ -413,6 +424,7 @@ class ParamsLoader:
 
         # validation_params: control the validation
         topn_val_data_param = self._get_topn_val_data_param_from_arg()
+        topn_test_data_param = self._get_topn_test_data_param_from_arg()
 
         if not self.args[self.setting]['task'] == 'SUP':
             val_targets = {
@@ -425,6 +437,10 @@ class ParamsLoader:
             val_targets = {
                     'func': self._valid_sup_func,
                     'val_num_clips': self.args['val_num_clips']}
+        test_targets = {
+                'func': self._test_sup_func,
+                'instance_t': self.args['instance_t'],
+                'num_classes': self.args['num_classes']}
 
         valid_loop, val_step_num = self._get_valid_loop_from_arg(val_data_loader)
 
@@ -437,9 +453,21 @@ class ParamsLoader:
             'online_agg_func': self._online_agg,
             'valid_loop': {'func': valid_loop}
             }
+        topn_test_param = {
+            'data_params': topn_test_data_param,
+            'queue_params': None,
+            'targets': test_targets,
+            'num_steps': test_step_num,
+            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
+            'online_agg_func': self._online_agg,
+            'test_loop': {'func': test_loop}
+        }
 
         validation_params = {
                 'topn': topn_val_param,
+                }
+        test_params = {
+                'topn': topn_test_param,
                 }
 
         params = {
@@ -452,6 +480,7 @@ class ParamsLoader:
             'model_params': model_params,
             'train_params': train_params,
             'validation_params': validation_params,
+            'test_params': test_params,
             'data_opts': pie_params['data_opts']
         }
         return params

@@ -11,7 +11,7 @@ trn_use_mean: True
 num_frames: 15
 emb_dim: 128
 resume: False
-batch_size: 32
+batch_size: 64
 val_batch_size: 32
 test_batch_size: 2
 val_num_clips: 5
@@ -19,11 +19,11 @@ clstr_update_fre: null
 part_vd: null
 db_name: 'vd_unsup_fx'
 col_name: 'dyn_clstr'
-kNN_val: 10
-fre_filter: 10
-fre_cache_filter: 10
-fre_valid: 10
-fre_metric: 10
+kNN_val: 50
+fre_filter: 50
+fre_cache_filter: 50
+fre_valid: 50
+fre_metric: 50
 train_log_file: 'log.txt'
 val_log_file: 'val_log.txt'
 vd_3dresnet_IR:
@@ -32,7 +32,7 @@ vd_3dresnet_IR:
   lr_boundaries: null
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 10000
+  train_num_steps: 1000
   load_exp: null
   load_step: null
 vd_3dresnet:
@@ -41,6 +41,6 @@ vd_3dresnet:
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 20000
+  train_num_steps: 2000
   load_exp: 'vd_unsup_fx/dyn_clstr/vd_3dresnet_IR'
-  load_step: 10000
+  load_step: 1000
