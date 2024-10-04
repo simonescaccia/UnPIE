@@ -235,6 +235,18 @@ class UnPIE(object):
                     each_val_key, val_inputs, val_outputs)
             self.all_val_targets[each_val_key] = val_targets
 
+    def build_test_inputs(self, test_key):
+        data_params = self.params['test_params'][test_key]['data_params']
+        func = data_params.pop('func')
+        test_inputs = func(**data_params)
+        return test_inputs
+
+    def build_test(self):
+        self.all_test_targets = {}
+        for each_val_key in self.params['test_params']:
+            test_inputs = self.build_test_inputs()
+            
+
     def train(self):
         print_separator('Starting UnPIE training')
 
@@ -247,4 +259,7 @@ class UnPIE(object):
         self.run_train_loop()
 
     def test(self):
+
+        self.build_test()
+
         print_separator('Starting UnPIE testing')
