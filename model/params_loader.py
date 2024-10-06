@@ -225,7 +225,32 @@ class ParamsLoader:
                     tf.equal(curr_pred, inputs['label']),
                     tf.float32))
         return {'top1_{k}NN'.format(k=k): imagenet_top1}
-
+    
+    def _test_perf_func_kNN(
+            self,
+            inputs, output, 
+            instance_t,
+            k, test_num_clips,
+            num_classes):
+        curr_dist, all_labels = output
+        all_labels = tuple_get_one(all_labels)
+        top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
+        top_labels = tf.gather(all_labels, top_indices)
+        top_labels_one_hot = tf.one_hot(top_labels, num_classes)
+        top_prob = tf.exp(top_dist / instance_t)
+        top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1)
+        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
+        top_labels_one_hot = tf.reshape(
+                top_labels_one_hot,
+                [-1, test_num_clips, num_classes])
+        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
+        _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
+        curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
+        imagenet_top1 = tf.reduce_mean(
+                tf.cast(
+                    tf.equal(curr_pred, inputs['label']),
+                    tf.float32))
+        return {'top1_{k}NN'.format(k=k): imagenet_top1}
 
     def _valid_sup_func(
             self,
@@ -240,7 +265,6 @@ class ParamsLoader:
         top5_accuracy = tf.nn.in_top_k(curr_output, inputs['label'], k=5)
         return {'top1': top1_accuracy, 'top5': top5_accuracy}
 
-
     def _get_valid_loop_from_arg(self, val_data_loader):
         val_counter = [0]
         val_step_num = val_data_loader.dataset.__len__() // self.args['val_batch_size']
@@ -253,8 +277,21 @@ class ParamsLoader:
             _, (image, label, index) = next(val_data_enumerator[0])
             feed_dict = data.get_feeddict(image, label, index, name_prefix='VAL')
             return sess.run(target, feed_dict=feed_dict)
-        return valid_loop, val_step_num
+        return valid_loop, val_step_num    
 
+    def _get_test_loop_from_arg(self, test_data_loader):
+        test_counter = [0]
+        test_step_num = test_data_loader.dataset.__len__() // self.args['test_batch_size']
+        test_data_enumerator = [enumerate(test_data_loader)]
+        def test_loop(sess, target):
+            test_counter[0] += 1
+            if test_counter[0] % test_step_num == 0:
+                test_data_enumerator.pop()
+                test_data_enumerator.append(enumerate(test_data_loader))
+            _, (image, label, index) = next(test_data_enumerator[0])
+            feed_dict = data.get_feeddict(image, label, index, name_prefix='TEST')
+            return sess.run(target, feed_dict=feed_dict)
+        return test_loop, test_step_num
 
     def _get_topn_val_data_param_from_arg(self):
         topn_val_data_param = {
@@ -334,32 +371,46 @@ class ParamsLoader:
         }
         return pie_params
     
+    def get_test_params(self, data_loaders):
+        test_data_loader = data_loaders['test']
 
-    def get_params(self, train_data_loader, val_data_loader):
-        dataset_len = train_data_loader.dataset.__len__()
+        topn_test_data_param = self._get_topn_test_data_param_from_arg()
 
-        loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(dataset_len)
-        save_params, load_params = self._get_save_load_params_from_arg()
-        pie_params = self.get_pie_params()
+        test_targets = {
+        'func': self._test_perf_func_kNN,
+        'k': self.args['kNN_test'],
+        'instance_t': self.args['instance_t'],
+        'num_classes': self.args['num_classes']}
 
-        self.args['kmeans_k'] = [self.args['num_classes']]
-        self.args['input_shape'] = self._get_input_shape()
+        test_loop, test_step_num = self._get_test_loop_from_arg(test_data_loader)
 
-        # model_params: a function that will build the model
-        nn_clusterings = []
-        def build_output(inputs, train, **kwargs):
-            res = instance_model.build_output(inputs, train, **kwargs)
-            if not train:
-                return res
-            outputs, logged_cfg, clustering = res
-            nn_clusterings.append(clustering)
-            return outputs, logged_cfg
-
-        model_func_params = self._get_model_func_params(dataset_len)
-        model_params = {
-            'func': build_output,
-            'model_func_params': model_func_params
+        topn_test_param = {
+            'data_params': topn_test_data_param,
+            'queue_params': None,
+            'targets': test_targets,
+            'num_steps': test_step_num,
+            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
+            'online_agg_func': self._online_agg,
+            'test_loop': {'func': test_loop}
         }
+
+        test_params = {
+            'topn': topn_test_param,
+        }
+
+        params = {
+            'test_params': test_params,
+        }
+
+        return params
+    
+    def get_train_params(self, data_loaders, nn_clusterings):
+        train_data_loader = data_loaders['train']
+        val_data_loader = data_loaders['val']
+
+        train_dataset_len = train_data_loader.dataset.__len__()
+        
+        loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)
 
         first_step = []
         data_enumerator = [enumerate(train_data_loader)]
@@ -372,7 +423,7 @@ class ParamsLoader:
             global_step = sess.run(global_step_vars[0])
 
             first_flag = len(first_step) == 0
-            update_fre = self.args['clstr_update_fre'] or dataset_len // self.args['batch_size']
+            update_fre = self.args['clstr_update_fre'] or train_dataset_len // self.args['batch_size']
             if (global_step % update_fre == 0 or first_flag) \
                     and (nn_clusterings[0] is not None):
                 if first_flag:
@@ -383,9 +434,9 @@ class ParamsLoader:
                     clustering.apply_clusters(sess, new_clust_labels)
 
             if self.args['part_vd'] is None:
-                data_en_update_fre = dataset_len // self.args['batch_size']
+                data_en_update_fre = train_dataset_len // self.args['batch_size']
             else:
-                new_length = int(dataset_len * self.args['part_vd'])
+                new_length = int(train_dataset_len * self.args['part_vd'])
                 data_en_update_fre = new_length // self.args['batch_size']
 
             # TODO: make this smart
@@ -419,12 +470,11 @@ class ParamsLoader:
         if not self.args[self.setting]['task'] == 'SUP':
             ## Add other loss reports (loss_model, loss_noise)
             train_params['targets'] = {
-                    'func': self._rep_loss_func
-                    }
+                'func': self._rep_loss_func
+            }
 
         # validation_params: control the validation
         topn_val_data_param = self._get_topn_val_data_param_from_arg()
-        topn_test_data_param = self._get_topn_test_data_param_from_arg()
 
         if not self.args[self.setting]['task'] == 'SUP':
             val_targets = {
@@ -437,10 +487,6 @@ class ParamsLoader:
             val_targets = {
                     'func': self._valid_sup_func,
                     'val_num_clips': self.args['val_num_clips']}
-        test_targets = {
-                'func': self._test_sup_func,
-                'instance_t': self.args['instance_t'],
-                'num_classes': self.args['num_classes']}
 
         valid_loop, val_step_num = self._get_valid_loop_from_arg(val_data_loader)
 
@@ -453,34 +499,57 @@ class ParamsLoader:
             'online_agg_func': self._online_agg,
             'valid_loop': {'func': valid_loop}
             }
-        topn_test_param = {
-            'data_params': topn_test_data_param,
-            'queue_params': None,
-            'targets': test_targets,
-            'num_steps': test_step_num,
-            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
-            'online_agg_func': self._online_agg,
-            'test_loop': {'func': test_loop}
-        }
 
         validation_params = {
-                'topn': topn_val_param,
-                }
-        test_params = {
-                'topn': topn_test_param,
-                }
+            'topn': topn_val_param,
+        }
 
         params = {
-            'pie_path': pie_params['pie_path'],
             'loss_params': loss_params,
             'learning_rate_params': learning_rate_params,
             'optimizer_params': optimizer_params,
-            'save_params': save_params,
-            'load_params': load_params,
-            'model_params': model_params,
             'train_params': train_params,
             'validation_params': validation_params,
-            'test_params': test_params,
-            'data_opts': pie_params['data_opts']
         }
+
         return params
+
+    def get_params(self, data_loaders, phase):
+        save_params, load_params = self._get_save_load_params_from_arg()
+        pie_params = self.get_pie_params()
+
+        self.args['kmeans_k'] = [self.args['num_classes']]
+        self.args['input_shape'] = self._get_input_shape()
+
+        # model_params: a function that will build the model
+        nn_clusterings = []
+        def build_output(inputs, train, **kwargs):
+            res = instance_model.build_output(inputs, train, **kwargs)
+            if not train:
+                return res
+            outputs, logged_cfg, clustering = res
+            nn_clusterings.append(clustering)
+            return outputs, logged_cfg
+
+        model_func_params = self._get_model_func_params(train_dataset_len)
+        model_params = {
+            'func': build_output,
+            'model_func_params': model_func_params
+        }
+
+        gen_params = {
+            'phase': phase,
+            'pie_path': pie_params['pie_path'],
+            'save_params': save_params,
+            'load_params': load_params,
+            'data_opts': pie_params['data_opts'],
+            'model_params': model_params,
+        }
+
+        if phase=='train':
+            params = self.get_train_params(data_loaders, nn_clusterings)
+        else:
+            params = self.get_test_params(data_loaders)
+
+        all_params = {**params, **gen_params} 
+        return all_params

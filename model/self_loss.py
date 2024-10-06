@@ -2,8 +2,6 @@ from __future__ import division, print_function, absolute_import
 import numpy as np
 import tensorflow as tf
 
-DATA_LEN_IMAGENET_FULL = 1281167
-
 
 def assert_shape(t, shape):
     assert t.get_shape().as_list() == shape, \
