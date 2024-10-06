@@ -531,7 +531,7 @@ class ParamsLoader:
             nn_clusterings.append(clustering)
             return outputs, logged_cfg
 
-        model_func_params = self._get_model_func_params(train_dataset_len)
+        model_func_params = self._get_model_func_params(data_loaders['train'].dataset.__len__())
         model_params = {
             'func': build_output,
             'model_func_params': model_func_params
@@ -546,6 +546,7 @@ class ParamsLoader:
             'model_params': model_params,
         }
 
+        params = {}
         if phase=='train':
             params = self.get_train_params(data_loaders, nn_clusterings)
         else:
