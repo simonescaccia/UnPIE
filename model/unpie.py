@@ -114,6 +114,8 @@ class UnPIE(object):
 
         if self.load_from_curr_exp:
             self.load_from_ckpt(self.load_from_curr_exp)
+        elif self.params['phase'] == 'test':
+            print('No checkpoint found for testing')
         else:
             split_cache_path = self.cache_dir.split('/')
             split_cache_path[-1] = self.params['load_params']['exp_id']
@@ -214,16 +216,33 @@ class UnPIE(object):
         val_inputs = func(**data_params)
         return val_inputs
 
+    def build_test_inputs(self, test_key):
+        data_params = self.params['test_params'][test_key]['data_params']
+        func = data_params.pop('func')
+        test_inputs = func(**data_params)
+        return test_inputs
+
     def build_val_network(self, val_key, val_inputs):
         with tf.name_scope('validation/' + val_key):
             val_outputs = self.build_network(val_inputs, False)
         return val_outputs
+    
+    def build_test_network(self, test_key, test_inputs):
+        with tf.name_scope('test/' + test_key):
+            test_outputs = self.build_network(test_inputs, False)
+        return test_outputs
 
     def build_val_targets(self, val_key, val_inputs, val_outputs):
         target_params = self.params['validation_params'][val_key]['targets']
         func = target_params.pop('func')
         val_targets = func(val_inputs, val_outputs, **target_params)
         return val_targets
+    
+    def build_test_targets(self, test_key, test_inputs, test_outputs):
+        target_params = self.params['test_params'][test_key]['targets']
+        func = target_params.pop('func')
+        test_targets = func(test_inputs, test_outputs, **target_params)
+        return test_targets
 
     def build_val(self):
         tf.compat.v1.get_variable_scope().reuse_variables()
@@ -235,17 +254,15 @@ class UnPIE(object):
                     each_val_key, val_inputs, val_outputs)
             self.all_val_targets[each_val_key] = val_targets
 
-    def build_test_inputs(self, test_key):
-        data_params = self.params['test_params'][test_key]['data_params']
-        func = data_params.pop('func')
-        test_inputs = func(**data_params)
-        return test_inputs
-
     def build_test(self):
+        tf.compat.v1.get_variable_scope().reuse_variables()
         self.all_test_targets = {}
         for each_val_key in self.params['test_params']:
-            test_inputs = self.build_test_inputs()
-            
+            test_inputs = self.build_test_inputs(each_val_key)
+            test_outputs = self.build_test_network(each_val_key, test_inputs)
+            test_targets = self.build_test_targets(
+                    each_val_key, test_inputs, test_outputs)
+            self.all_test_targets[each_val_key] = test_targets           
 
     def train(self):
         print_separator('Starting UnPIE training')
@@ -259,7 +276,8 @@ class UnPIE(object):
         self.run_train_loop()
 
     def test(self):
-
+        print_separator('Starting UnPIE testing')
         self.build_test()
 
-        print_separator('Starting UnPIE testing')
+        self.build_sess_and_saver()
+        self.init_and_restore()
