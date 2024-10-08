@@ -343,6 +343,8 @@ class ParamsLoader:
         batch_size = self.args['batch_size']
         val_batch_size = self.args['val_batch_size']
         val_num_clips = self.args['val_num_clips']
+        test_batch_size = self.args['test_batch_size']
+        test_num_clips = self.args['test_num_clips']
         emb_dim = self.args['emb_dim']
         data_opts = {
             'fstride': 1,
@@ -368,6 +370,8 @@ class ParamsLoader:
             'batch_size': batch_size,
             'val_batch_size': val_batch_size,
             'val_num_clips': val_num_clips,
+            'test_batch_size': test_batch_size,
+            'test_num_clips': test_num_clips,
             'emb_dim': emb_dim
         }
         return pie_params

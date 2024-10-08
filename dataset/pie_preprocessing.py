@@ -24,6 +24,8 @@ class PIEPreprocessing(object):
         self.batch_size = params['batch_size']
         self.val_batch_size = params['val_batch_size']
         self.val_num_clips = params['val_num_clips']
+        self.test_batch_size = params['test_batch_size']
+        self.test_num_clips = params['test_num_clips']
 
         self.pie = PIE(data_path=self.pie_path)
         self.feature_extractor = FeatureExtractor(params['emb_dim'])
@@ -61,19 +63,19 @@ class PIEPreprocessing(object):
                                                                 model_name='vgg16_'+'none',
                                                                 data_subset = 'train'))
         val_img = self._load_features(val_d['images'],
-                                    val_d['bboxes'],
-                                    val_d['ped_ids'],
-                                    data_type='val',
-                                    load_path=self._get_path(type_save='data',
-                                                            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
-                                                            model_name='vgg16_'+'none',
-                                                            data_subset='val'))
+                                      val_d['bboxes'],
+                                      val_d['ped_ids'],
+                                      data_type='val',
+                                      load_path=self._get_path(type_save='data',
+                                                               data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
+                                                               model_name='vgg16_'+'none',
+                                                               data_subset='val'))
         if is_test:
             test_img = self._load_features(test_d['images'],
-                                        test_d['bboxes'],
-                                        test_d['ped_ids'],
-                                        data_type='test',
-                                        load_path=self._get_path(type_save='data',
+                                           test_d['bboxes'],
+                                           test_d['ped_ids'],
+                                           data_type='test',
+                                           load_path=self._get_path(type_save='data',
                                                                     data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
                                                                     model_name='vgg16_'+'none',
                                                                     data_subset='test'))
@@ -81,10 +83,10 @@ class PIEPreprocessing(object):
         # Create dataloaders
         test_loader = None
 
-        train_loader = self._get_dataloader(train_img, train_d['intention_binary'], True) # train_d['output'] shape: (num_seqs, 1)
-        val_loader = self._get_dataloader(val_img, val_d['intention_binary'], False)
+        train_loader = self._get_dataloader(train_img, train_d['intention_binary'], 'train') # train_d['output'] shape: (num_seqs, 1)
+        val_loader = self._get_dataloader(val_img, val_d['intention_binary'], 'val')
         if is_test:
-            test_loader = self._get_dataloader(test_img, test_d['intention_binary'], False)
+            test_loader = self._get_dataloader(test_img, test_d['intention_binary'], 'test')
 
         return {
             'train': train_loader,
@@ -92,19 +94,23 @@ class PIEPreprocessing(object):
             'test': test_loader
         }
 
-    def _get_dataloader(self, img_features, labels, is_train):
+    def _get_dataloader(self, img_features, labels, type):
         '''
         Create a dataloader for the clustering computation
         '''
         dataset = PIEDataset(img_features, labels)
-        if is_train:
-            dataloader = torch.utils.data.DataLoader(
-                dataset, batch_size=self.batch_size, shuffle=True, pin_memory=False)
-        else:
-            dataloader = torch.utils.data.DataLoader(
-                dataset, batch_size=self.val_batch_size, shuffle=False, pin_memory=False)
+        return { # switch statement, python < 3.10 support
+            'train':
+                torch.utils.data.DataLoader(
+                    dataset, batch_size=self.batch_size, shuffle=True, pin_memory=False),
+            'val':
+                torch.utils.data.DataLoader(
+                    dataset, batch_size=self.val_batch_size*self.val_num_clips, shuffle=False, pin_memory=False),
+            'test':
+                torch.utils.data.DataLoader(
+                    dataset, batch_size=self.test_batch_size*self.test_num_clips, shuffle=False, pin_memory=False)
+        }[type]
 
-        return dataloader
         
     def _get_data(self, dataset, seq_length, overlap):
         """
