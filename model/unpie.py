@@ -24,6 +24,9 @@ class UnPIE(object):
         else: # if checkpoint is found then append to the existing log file
             self.log_writer = open(self.log_file_path, 'a+')
             self.val_log_writer = open(self.val_log_file_path, 'a+')
+        if self.params['is_test']:
+            self.test_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['test_log_file'])
+            self.test_log_writer = open(self.test_log_file_path, 'w')
 
         self.global_step = tf.Variable(0, trainable=False, dtype=tf.int64)     
 
@@ -114,8 +117,6 @@ class UnPIE(object):
 
         if self.load_from_curr_exp:
             self.load_from_ckpt(self.load_from_curr_exp)
-        elif self.params['phase'] == 'test':
-            print('No checkpoint found for testing')
         else:
             split_cache_path = self.cache_dir.split('/')
             split_cache_path[-1] = self.params['load_params']['exp_id']
@@ -164,6 +165,21 @@ class UnPIE(object):
         agg_func = self.params['validation_params'][val_key]['agg_func']
         val_result = agg_func(agg_res)
         return val_result
+    
+    def run_testing(self, test_key):
+        agg_res = None
+        num_steps = self.params['test_params'][test_key]['num_steps']
+        for _ in tqdm.trange(num_steps, desc=test_key):
+            if self.params['test_params'][test_key].get('test_loop', None) is None:
+                res = self.sess.run(self.all_test_targets[test_key])
+            else:
+                res = self.params['test_params'][test_key]['test_loop']['func'](
+                        self.sess, self.all_test_targets[test_key])
+            online_func = self.params['test_params'][test_key]['online_agg_func']
+            agg_res = online_func(agg_res, res)
+        agg_func = self.params['test_params'][test_key]['agg_func']
+        test_result = agg_func(agg_res)
+        return test_result
 
     def run_train_loop(self):
         start_step = self.sess.run(self.global_step)
@@ -209,6 +225,14 @@ class UnPIE(object):
                     print(val_result)
                 self.val_log_writer.close()
                 self.val_log_writer = open(self.val_log_file_path, 'a+')
+
+    def run_test_loop(self):
+        for each_val_key in self.params['test_params']:
+            test_result = self.run_testing(each_val_key)
+            self.test_log_writer.write(
+                    '%s: %s\n' % (each_val_key, str(test_result)))
+            print(test_result)
+        self.test_log_writer.close()
 
     def build_val_inputs(self, val_key):
         data_params = self.params['validation_params'][val_key]['data_params']
@@ -278,6 +302,4 @@ class UnPIE(object):
     def test(self):
         print_separator('Starting UnPIE testing')
         self.build_test()
-
-        self.build_sess_and_saver()
-        self.init_and_restore()
+        self.run_test_loop()
