@@ -15,6 +15,7 @@ batch_size: 64
 val_batch_size: 32
 test_batch_size: 2
 val_num_clips: 1
+test_num_clips: 1
 clstr_update_fre: null
 part_vd: null
 db_name: 'vd_unsup_fx'

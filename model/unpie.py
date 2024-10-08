@@ -169,14 +169,14 @@ class UnPIE(object):
     def run_testing(self, test_key):
         agg_res = None
         num_steps = self.params['test_params'][test_key]['num_steps']
-        for _ in tqdm.trange(num_steps, desc=test_key):
+        for _step in tqdm.trange(num_steps, desc=test_key):
             if self.params['test_params'][test_key].get('test_loop', None) is None:
                 res = self.sess.run(self.all_test_targets[test_key])
             else:
                 res = self.params['test_params'][test_key]['test_loop']['func'](
                         self.sess, self.all_test_targets[test_key])
             online_func = self.params['test_params'][test_key]['online_agg_func']
-            agg_res = online_func(agg_res, res)
+            agg_res = online_func(agg_res, res, _step)
         agg_func = self.params['test_params'][test_key]['agg_func']
         test_result = agg_func(agg_res)
         return test_result
@@ -288,18 +288,19 @@ class UnPIE(object):
                     each_val_key, test_inputs, test_outputs)
             self.all_test_targets[each_val_key] = test_targets           
 
-    def train(self):
-        print_separator('Starting UnPIE training')
-
+    def build_model(self):
         self.build_train()
         self.build_val()
+        if self.params['is_test']:
+            self.build_test()
 
         self.build_sess_and_saver()
         self.init_and_restore()
 
+    def train(self):
+        print_separator('Starting UnPIE training')
         self.run_train_loop()
 
     def test(self):
         print_separator('Starting UnPIE testing')
-        self.build_test()
         self.run_test_loop()
