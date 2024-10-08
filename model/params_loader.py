@@ -113,6 +113,7 @@ class ParamsLoader:
                 'cache_dir': cache_dir,
                 'train_log_file': self.args['train_log_file'],
                 'val_log_file': self.args['val_log_file'],
+                'test_log_file': self.args['test_log_file'],
                 }
 
         load_exp = self.args[self.setting]['load_exp']
@@ -230,8 +231,8 @@ class ParamsLoader:
             self,
             inputs, output, 
             instance_t,
-            k, test_num_clips,
-            num_classes):
+            k, num_classes,
+            test_num_clips=1):
         curr_dist, all_labels = output
         all_labels = tuple_get_one(all_labels)
         top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
@@ -514,7 +515,7 @@ class ParamsLoader:
 
         return params
 
-    def get_params(self, data_loaders, phase):
+    def get_params(self, data_loaders, is_test):
         save_params, load_params = self._get_save_load_params_from_arg()
         pie_params = self.get_pie_params()
 
@@ -538,19 +539,18 @@ class ParamsLoader:
         }
 
         gen_params = {
-            'phase': phase,
+            'is_test': is_test,
             'pie_path': pie_params['pie_path'],
             'save_params': save_params,
             'load_params': load_params,
             'data_opts': pie_params['data_opts'],
             'model_params': model_params,
         }
+        train_params = self.get_train_params(data_loaders, nn_clusterings)
 
-        params = {}
-        if phase=='train':
-            params = self.get_train_params(data_loaders, nn_clusterings)
-        else:
-            params = self.get_test_params(data_loaders)
+        test_params = {}
+        if is_test:
+            test_params = self.get_test_params(data_loaders)
 
-        all_params = {**params, **gen_params} 
+        all_params = {**gen_params, **train_params, **test_params}
         return all_params

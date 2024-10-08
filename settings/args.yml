@@ -14,7 +14,7 @@ resume: False
 batch_size: 64
 val_batch_size: 32
 test_batch_size: 2
-val_num_clips: 5
+val_num_clips: 1
 clstr_update_fre: null
 part_vd: null
 db_name: 'vd_unsup_fx'
@@ -27,6 +27,7 @@ fre_valid: 50
 fre_metric: 50
 train_log_file: 'log.txt'
 val_log_file: 'val_log.txt'
+test_log_file: 'test_log.txt'
 vd_3dresnet_IR:
   exp_id: 'vd_3dresnet_IR'
   task: 'IR'

@@ -28,7 +28,7 @@ class PIEPreprocessing(object):
         self.pie = PIE(data_path=self.pie_path)
         self.feature_extractor = FeatureExtractor(params['emb_dim'])
 
-    def get_data_loaders(self, phase):
+    def get_data_loaders(self, is_test):
         '''
         Build the inputs for the clustering computation
         '''
@@ -36,42 +36,39 @@ class PIEPreprocessing(object):
         print_separator('PIE preprocessing',bottom_new_line=False)
 
         # Generate image sequences
-        if phase == 'train':
-            seq_train = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
-            seq_val = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
-        else:
+        seq_train = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
+        seq_val = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
+        if is_test:
             seq_test = self.pie.generate_data_trajectory_sequence('test', **self.data_opts)
 
         seq_length = self.data_opts['max_size_observe']
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
-        if phase == 'train':
-            train_d = self._get_data(seq_train, seq_length, seq_ovelap_rate)
-            val_d = self._get_data(seq_val, seq_length*self.val_num_clips, seq_ovelap_rate)
+        train_d = self._get_data(seq_train, seq_length, seq_ovelap_rate)
+        val_d = self._get_data(seq_val, seq_length*self.val_num_clips, seq_ovelap_rate)
 
-            train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
-            val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
-        else:
+        train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
+        val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
+        if is_test:
             test_d = self._get_data(seq_test, seq_length, seq_ovelap_rate)
 
-        if phase == 'train':
-            # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
-            train_img = self._load_features(train_d['images'],
-                                            train_d['bboxes'],
-                                            train_d['ped_ids'],
-                                            data_type='train',
-                                            load_path=self._get_path(type_save='data',
-                                                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                                                    model_name='vgg16_'+'none',
-                                                                    data_subset = 'train'))
-            val_img = self._load_features(val_d['images'],
-                                        val_d['bboxes'],
-                                        val_d['ped_ids'],
-                                        data_type='val',
+        # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
+        train_img = self._load_features(train_d['images'],
+                                        train_d['bboxes'],
+                                        train_d['ped_ids'],
+                                        data_type='train',
                                         load_path=self._get_path(type_save='data',
-                                                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
+                                                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                                                 model_name='vgg16_'+'none',
-                                                                data_subset='val'))
-        else:
+                                                                data_subset = 'train'))
+        val_img = self._load_features(val_d['images'],
+                                    val_d['bboxes'],
+                                    val_d['ped_ids'],
+                                    data_type='val',
+                                    load_path=self._get_path(type_save='data',
+                                                            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
+                                                            model_name='vgg16_'+'none',
+                                                            data_subset='val'))
+        if is_test:
             test_img = self._load_features(test_d['images'],
                                         test_d['bboxes'],
                                         test_d['ped_ids'],
@@ -82,12 +79,11 @@ class PIEPreprocessing(object):
                                                                     data_subset='test'))
 
         # Create dataloaders
-        train_loader, val_loader, test_loader = None, None, None
+        test_loader = None
 
-        if phase == 'train':
-            train_loader = self._get_dataloader(train_img, train_d['intention_binary'], True) # train_d['output'] shape: (num_seqs, 1)
-            val_loader = self._get_dataloader(val_img, val_d['intention_binary'], False)
-        else:
+        train_loader = self._get_dataloader(train_img, train_d['intention_binary'], True) # train_d['output'] shape: (num_seqs, 1)
+        val_loader = self._get_dataloader(val_img, val_d['intention_binary'], False)
+        if is_test:
             test_loader = self._get_dataloader(test_img, test_d['intention_binary'], False)
 
         return {
