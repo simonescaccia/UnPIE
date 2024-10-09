@@ -11,9 +11,9 @@ trn_use_mean: True
 num_frames: 15
 emb_dim: 128
 resume: False
-batch_size: 64
+batch_size: 32
 val_batch_size: 32
-test_batch_size: 2
+test_batch_size: 32
 val_num_clips: 1
 test_num_clips: 1
 clstr_update_fre: null
@@ -31,19 +31,20 @@ val_log_file: 'val_log.txt'
 test_log_file: 'test_log.txt'
 vd_3dresnet_IR:
   exp_id: 'vd_3dresnet_IR'
+  previous_exp_id: null
   task: 'IR'
   lr_boundaries: null
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 1000
+  train_num_steps: 100
   load_exp: null
   load_step: null
 vd_3dresnet:
   exp_id: 'vd_3dresnet'
+  previous_exp_id: 'vd_3dresnet_IR'
   task: 'LA'
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 2000
+  train_num_steps: 200
   load_exp: 'vd_unsup_fx/dyn_clstr/vd_3dresnet_IR'
-  load_step: 1000

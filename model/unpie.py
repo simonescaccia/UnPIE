@@ -117,6 +117,8 @@ class UnPIE(object):
 
         if self.load_from_curr_exp:
             self.load_from_ckpt(self.load_from_curr_exp)
+        elif self.params['is_test']:
+            print('No checkpoint found during testing')
         else:
             split_cache_path = self.cache_dir.split('/')
             split_cache_path[-1] = self.params['load_params']['exp_id']
