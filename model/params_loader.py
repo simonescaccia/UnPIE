@@ -99,12 +99,13 @@ class ParamsLoader:
         load_dbname = self.args['db_name']
         load_collname = self.args['col_name']
         load_exp_id = self.args[self.setting]['exp_id']
+        train_num_steps = self.args[self.setting]['train_num_steps']
 
         # save_params: defining where to save the models
         fre_cache_filter = self.args['fre_cache_filter'] or self.args[self.setting]['fre_filter']
         cache_dir = os.path.join(
                 self.args['cache_dir'], 'models',
-                load_dbname, load_collname, load_exp_id)
+                load_dbname, load_collname, load_exp_id, str(train_num_steps))
         save_params = {
                 'save_metrics_freq': self.args['fre_metric'],
                 'save_valid_freq': self.args['fre_valid'],
@@ -117,7 +118,10 @@ class ParamsLoader:
                 }
 
         load_exp = self.args[self.setting]['load_exp']
-        load_step = self.args[self.setting]['load_step']
+        load_prev_exp = self.args[self.setting]['previous_exp_id']
+        load_step = None
+        if load_prev_exp:
+            load_step = self.args[load_prev_exp]['train_num_steps']
         load_query = None
 
         if not self.args['resume']:
