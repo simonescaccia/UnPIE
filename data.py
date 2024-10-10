@@ -7,15 +7,18 @@ import tensorflow as tf
 sys.path.append(os.path.abspath('../'))
 
 
-def get_feeddict(image, label, index, name_prefix='TRAIN'):
+def get_feeddict(image, bbox, label, index, name_prefix):
     image_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
             '%s_IMAGE_PLACEHOLDER:0' % name_prefix)
+    bbox_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
+            '%s_BBOX_PLACEHOLDER:0' % name_prefix)
     label_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
             '%s_LABEL_PLACEHOLDER:0' % name_prefix)
     index_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
             '%s_INDEX_PLACEHOLDER:0' % name_prefix)
     feed_dict = {
             image_placeholder: image.numpy(),
+            bbox_placeholder: bbox.numpy(),
             label_placeholder: label.numpy(),
             index_placeholder: index.numpy()}
     return feed_dict
@@ -26,9 +29,13 @@ def get_placeholders(
         crop_size, num_channels,
         name_prefix, multi_frame, multi_group):
     image_placeholder = tf.compat.v1.placeholder(
-            tf.uint8,
+            tf.float32,
             (batch_size, num_frames, crop_size, crop_size, num_channels),
             name='%s_IMAGE_PLACEHOLDER' % name_prefix)
+    bbox_placeholder = tf.compat.v1.placeholder(
+            tf.float32,
+            (batch_size, num_frames, 4),
+            name='%s_BBOX_PLACEHOLDER' % name_prefix)
     label_placeholder = tf.compat.v1.placeholder(
             tf.int64,
             (batch_size),
@@ -52,6 +59,7 @@ def get_placeholders(
                             crop_size, crop_size, num_channels])
     inputs = {
             'image': image_placeholder,
+            'bbox': bbox_placeholder,
             'label': label_placeholder,
             'index': index_placeholder}
     return inputs

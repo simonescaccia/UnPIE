@@ -117,14 +117,10 @@ class UnPIE(object):
 
         if self.load_from_curr_exp:
             self.load_from_ckpt(self.load_from_curr_exp)
-        elif self.params['is_test']:
-            print('No checkpoint found during testing')
         else:
-            split_cache_path = self.cache_dir.split('/')
+            split_cache_path = self.cache_dir.split(os.sep)
             split_cache_path[-1] = self.params['load_params']['exp_id']
-            split_cache_path[-2] = self.params['load_params']['collname']
-            split_cache_path[-3] = self.params['load_params']['dbname']
-            load_dir = '/'.join(split_cache_path)
+            load_dir = os.sep.join(split_cache_path)
             if self.params['load_params']['query']:
                 ckpt_path = os.path.join(
                         load_dir, 

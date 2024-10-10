@@ -2,4 +2,4 @@ venv
 venv2
 __pycache__
 settings/config.yml
-video_pub_cache
+checkpoints/

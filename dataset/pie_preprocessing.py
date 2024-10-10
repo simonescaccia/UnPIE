@@ -8,7 +8,6 @@ from pathlib import PurePath
 import torch
 from dataset.pie_data import PIE
 from dataset.pie_dataset import PIEDataset
-from model.feature_extractor import FeatureExtractor
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
 
@@ -28,7 +27,6 @@ class PIEPreprocessing(object):
         self.test_num_clips = params['test_num_clips']
 
         self.pie = PIE(data_path=self.pie_path)
-        self.feature_extractor = FeatureExtractor(params['emb_dim'])
 
     def get_data_loaders(self, is_test):
         '''
@@ -47,15 +45,14 @@ class PIEPreprocessing(object):
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
         train_d = self._get_data(seq_train, seq_length, seq_ovelap_rate)
         val_d = self._get_data(seq_val, seq_length*self.val_num_clips, seq_ovelap_rate)
-
-        train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
-        val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
         if is_test:
             test_d = self._get_data(seq_test, seq_length, seq_ovelap_rate)
 
+        train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
+        val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
+
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         train_img = self._load_features(train_d['images'],
-                                        train_d['bboxes'],
                                         train_d['ped_ids'],
                                         data_type='train',
                                         load_path=self._get_path(type_save='data',
@@ -63,7 +60,6 @@ class PIEPreprocessing(object):
                                                                 model_name='vgg16_'+'none',
                                                                 data_subset = 'train'))
         val_img = self._load_features(val_d['images'],
-                                      val_d['bboxes'],
                                       val_d['ped_ids'],
                                       data_type='val',
                                       load_path=self._get_path(type_save='data',
@@ -72,7 +68,6 @@ class PIEPreprocessing(object):
                                                                data_subset='val'))
         if is_test:
             test_img = self._load_features(test_d['images'],
-                                           test_d['bboxes'],
                                            test_d['ped_ids'],
                                            data_type='test',
                                            load_path=self._get_path(type_save='data',
@@ -83,10 +78,10 @@ class PIEPreprocessing(object):
         # Create dataloaders
         test_loader = None
 
-        train_loader = self._get_dataloader(train_img, train_d['intention_binary'], 'train') # train_d['output'] shape: (num_seqs, 1)
-        val_loader = self._get_dataloader(val_img, val_d['intention_binary'], 'val')
+        train_loader = self._get_dataloader(train_img, train_d['bboxes'], train_d['intention_binary'], 'train') # train_d['output'] shape: (num_seqs, 1)
+        val_loader = self._get_dataloader(val_img, val_d['bboxes'], val_d['intention_binary'], 'val')
         if is_test:
-            test_loader = self._get_dataloader(test_img, test_d['intention_binary'], 'test')
+            test_loader = self._get_dataloader(test_img, test_d['bboxes'], test_d['intention_binary'], 'test')
 
         return {
             'train': train_loader,
@@ -94,11 +89,11 @@ class PIEPreprocessing(object):
             'test': test_loader
         }
 
-    def _get_dataloader(self, img_features, labels, type):
+    def _get_dataloader(self, img_features, bboxes, labels, type):
         '''
         Create a dataloader for the clustering computation
         '''
-        dataset = PIEDataset(img_features, labels)
+        dataset = PIEDataset(img_features, bboxes, labels)
         return { # switch statement, python < 3.10 support
             'train':
                 torch.utils.data.DataLoader(
@@ -136,6 +131,7 @@ class PIEPreprocessing(object):
         ped_ids = self._get_tracks(ped_ids, seq_length, overlap_stride)
         int_bin = self._get_tracks(int_bin, seq_length, overlap_stride)
 
+        bboxes = np.array(bboxes) # shape: (num_seqs, seq_length, 4)
         int_bin = np.array(int_bin)[:, 0] # every frame has the same intention label
         int_bin = np.squeeze(int_bin, axis=1) # shape: (num_seqs, 1)
 
@@ -184,7 +180,6 @@ class PIEPreprocessing(object):
 
     def _load_features(self,
                       img_sequences,
-                      bbox_sequences,
                       ped_ids,
                       load_path,
                       data_type='train'):
@@ -209,7 +204,7 @@ class PIEPreprocessing(object):
             i += 1
             update_progress(i / len(img_sequences))
             img_seq = []
-            for imp, b, p in zip(seq, bbox_sequences[i], pid):
+            for imp, p in zip(seq, pid):
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]

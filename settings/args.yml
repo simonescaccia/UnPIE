@@ -3,7 +3,7 @@ weight_decay: 0.0001
 init_lr: 0.03
 target_lr: null
 ramp_up_epoch: 1
-cache_dir: 'video_pub_cache'
+cache_dir: 'checkpoints'
 instance_t: 0.07
 instance_k: 4096 # number of neighbor embeddings to evaluate
 num_classes: 2 # number of different clusters
@@ -18,8 +18,6 @@ val_num_clips: 1
 test_num_clips: 1
 clstr_update_fre: null
 part_vd: null
-db_name: 'vd_unsup_fx'
-col_name: 'dyn_clstr'
 kNN_val: 50
 kNN_test: 50
 fre_filter: 50
@@ -29,22 +27,21 @@ fre_metric: 50
 train_log_file: 'log.txt'
 val_log_file: 'val_log.txt'
 test_log_file: 'test_log.txt'
+train_steps: 'vd_3dresnet_IR,vd_3dresnet'
 vd_3dresnet_IR:
   exp_id: 'vd_3dresnet_IR'
-  previous_exp_id: null
   task: 'IR'
   lr_boundaries: null
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 100
+  train_num_steps: 1000
   load_exp: null
   load_step: null
 vd_3dresnet:
   exp_id: 'vd_3dresnet'
-  previous_exp_id: 'vd_3dresnet_IR'
   task: 'LA'
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 200
-  load_exp: 'vd_unsup_fx/dyn_clstr/vd_3dresnet_IR'
+  train_num_steps: 2000
+  load_exp: 'vd_3dresnet_IR'
