@@ -96,16 +96,18 @@ class ParamsLoader:
 
     def _get_save_load_params_from_arg(self):
         # load_params: defining where to load, if needed
-        load_dbname = self.args['db_name']
-        load_collname = self.args['col_name']
         load_exp_id = self.args[self.setting]['exp_id']
-        train_num_steps = self.args[self.setting]['train_num_steps']
+        train_steps = self.args['train_steps']
+        
+        dir_num_steps = ''
+        for step in train_steps.split(','):
+            dir_num_steps += str(self.args[step]['train_num_steps']) + '_'
+        dir_num_steps = dir_num_steps[:-1]
 
         # save_params: defining where to save the models
         fre_cache_filter = self.args['fre_cache_filter'] or self.args[self.setting]['fre_filter']
         cache_dir = os.path.join(
-                self.args['cache_dir'], 'models',
-                load_dbname, load_collname, load_exp_id, str(train_num_steps))
+                self.args['cache_dir'], dir_num_steps, load_exp_id)
         save_params = {
                 'save_metrics_freq': self.args['fre_metric'],
                 'save_valid_freq': self.args['fre_valid'],
@@ -118,24 +120,19 @@ class ParamsLoader:
                 }
 
         load_exp = self.args[self.setting]['load_exp']
-        load_prev_exp = self.args[self.setting]['previous_exp_id']
         load_step = None
-        if load_prev_exp:
-            load_step = self.args[load_prev_exp]['train_num_steps']
+        if load_exp:
+            load_step = self.args[load_exp]['train_num_steps']
         load_query = None
 
         if not self.args['resume']:
-            if load_exp is not None:
-                load_dbname, load_collname, load_exp_id = load_exp.split('/')
             if load_step:
-                load_query = {'exp_id': load_exp_id,
-                            'saved_filters': True,
-                            'step': load_step}
+                load_query = {'exp_id': load_exp,
+                              'saved_filters': True,
+                              'step': load_step}
 
         load_params = {
-                'dbname': load_dbname,
-                'collname': load_collname,
-                'exp_id': load_exp_id,
+                'exp_id': load_exp,
                 'query': load_query,
                 }
         return save_params, load_params
@@ -149,7 +146,8 @@ class ParamsLoader:
             "kmeans_k": self.args['kmeans_k'],
             "task": self.args[self.setting]['task'],
             "instance_data_len": dataset_len,
-            "emb_dim": self.args['emb_dim']
+            "emb_dim": self.args['emb_dim'],
+            "middle_dim": self.args['vgg_out_shape'].split(',')[2]
         }
         return model_params
 
@@ -279,8 +277,8 @@ class ParamsLoader:
             if val_counter[0] % val_step_num == 0:
                 val_data_enumerator.pop()
                 val_data_enumerator.append(enumerate(val_data_loader))
-            _, (image, label, index) = next(val_data_enumerator[0])
-            feed_dict = data.get_feeddict(image, label, index, name_prefix='VAL')
+            _, (image, bbox, label, index) = next(val_data_enumerator[0])
+            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='VAL')
             return sess.run(target, feed_dict=feed_dict)
         return valid_loop, val_step_num    
 
@@ -293,8 +291,8 @@ class ParamsLoader:
             if test_counter[0] % test_step_num == 0:
                 test_data_enumerator.pop()
                 test_data_enumerator.append(enumerate(test_data_loader))
-            _, (image, label, index) = next(test_data_enumerator[0])
-            feed_dict = data.get_feeddict(image, label, index, name_prefix='TEST')
+            _, (image, bbox, label, index) = next(test_data_enumerator[0])
+            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='TEST')
             return sess.run(target, feed_dict=feed_dict)
         return test_loop, test_step_num
 
@@ -452,8 +450,8 @@ class ParamsLoader:
             if global_step % data_en_update_fre == 0:
                 data_enumerator.pop()
                 data_enumerator.append(enumerate(train_data_loader))
-            _, (image, label, index) = next(data_enumerator[0])
-            feed_dict = data.get_feeddict(image, label, index)
+            _, (image, bbox, label, index) = next(data_enumerator[0])
+            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='TRAIN')
             sess_res = sess.run(train_targets, feed_dict=feed_dict)
             return sess_res
 

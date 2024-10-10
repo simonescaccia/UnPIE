@@ -5,11 +5,6 @@ from model.unpie_network import UnPIENetwork
 from .memory_bank import MemoryBank
 from .self_loss import get_selfloss, assert_shape
 
-def _run_unpie_nn(images, emb_size):
-    images = tf.cast(images, tf.float32)
-    unpie_framework = UnPIENetwork(emb_size)
-    return unpie_framework(images)
-
 def repeat_1d_tensor(t, num_reps):
     ret = tf.tile(tf.expand_dims(t, axis=1), (1, num_reps))
     return ret
@@ -164,8 +159,9 @@ def build_output(
                 initializer=lbl_init_values,
                 trainable=False, dtype=tf.int64,
             )
-
-    output = _run_unpie_nn(inputs['image'], kwargs.get('emb_dim'))
+    
+    unpie_framework = UnPIENetwork(kwargs.get('middle_dim'), kwargs.get('emb_dim'))
+    output = unpie_framework(inputs['image'], inputs['bbox'])
     output = tf.nn.l2_normalize(output, axis=1)
 
     if not train:
