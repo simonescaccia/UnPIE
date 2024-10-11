@@ -99,13 +99,12 @@ class ParamsLoader:
         load_exp_id = self.args[self.setting]['exp_id']
         train_steps = self.args['train_steps']
         
+        # save_params: defining where to save the models
+        fre_cache_filter = self.args['fre_cache_filter'] or self.args[self.setting]['fre_filter']
         dir_num_steps = ''
         for step in train_steps.split(','):
             dir_num_steps += str(self.args[step]['train_num_steps']) + '_'
         dir_num_steps = dir_num_steps[:-1]
-
-        # save_params: defining where to save the models
-        fre_cache_filter = self.args['fre_cache_filter'] or self.args[self.setting]['fre_filter']
         cache_dir = os.path.join(
                 self.args['cache_dir'], dir_num_steps, load_exp_id)
         save_params = {
@@ -118,7 +117,7 @@ class ParamsLoader:
                 'val_log_file': self.args['val_log_file'],
                 'test_log_file': self.args['test_log_file'],
                 }
-
+        
         load_exp = self.args[self.setting]['load_exp']
         load_step = None
         if load_exp:
@@ -126,15 +125,16 @@ class ParamsLoader:
         load_query = None
 
         if not self.args['resume']:
+            if load_exp is not None:
+                load_exp_id = load_exp
             if load_step:
                 load_query = {'exp_id': load_exp,
                               'saved_filters': True,
                               'step': load_step}
 
         load_params = {
-                'exp_id': load_exp,
-                'query': load_query,
-                }
+                'exp_id': load_exp_id,
+                'query': load_query}
         return save_params, load_params
 
 
@@ -147,7 +147,9 @@ class ParamsLoader:
             "task": self.args[self.setting]['task'],
             "instance_data_len": dataset_len,
             "emb_dim": self.args['emb_dim'],
-            "middle_dim": self.args['vgg_out_shape'].split(',')[2]
+            "middle_dim": self.args['vgg_out_shape'].split(',')[2],
+            "dropout_rate1": self.args['dropout_rate1'],
+            "dropout_rate2": self.args['dropout_rate2'],
         }
         return model_params
 

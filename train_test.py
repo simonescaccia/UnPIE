@@ -19,6 +19,7 @@ if __name__ == '__main__':
     train_test = int(sys.argv[1]) 
     training_step = sys.argv[2]
     print_separator('UnPIE started, step: ' + training_step, top_new_line=False)
+    
     unpie = get_unpie(training_step, train_test)
     unpie.build_model()
 

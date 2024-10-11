@@ -18,6 +18,8 @@ val_num_clips: 1
 test_num_clips: 1
 clstr_update_fre: null
 part_vd: null
+dropout_rate1: 0.3
+dropout_rate2: 0.15
 kNN_val: 50
 kNN_test: 50
 fre_filter: 50
