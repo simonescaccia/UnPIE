@@ -1,9 +1,9 @@
 import tensorflow as tf
 
 class TemporalAggregator(object):
-    def __init__(self):
-        self.global_pool = tf.keras.layers.GlobalAveragePooling1D()
+    def __init__(self, emb_dim):
+        self.lstm = tf.keras.layers.LSTM(emb_dim)
     
-    def __call__(self, inputs): # inputs shape: (batch_size, seq_length, final_size)
-        x = self.global_pool(inputs) # shape: (batch_size, final_size)
+    def __call__(self, x): # inputs shape: (batch_size, seq_length, emb_dim)
+        x = self.lstm(x) # shape: (batch_size, emb_dim)
         return x

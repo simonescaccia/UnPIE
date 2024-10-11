@@ -5,9 +5,9 @@ from model.temporal_aggregator import TemporalAggregator
 
 
 class UnPIENetwork(object):
-    def __init__(self, middle_size, emb_size):
-        self.feature_extractor = FeatureExtractor(middle_size, emb_size)
-        self.temporal_aggregator = TemporalAggregator()
+    def __init__(self, middle_size, emb_size, dropout_rate1, dropout_rate2):
+        self.feature_extractor = FeatureExtractor(middle_size, emb_size, dropout_rate1, dropout_rate2)
+        self.temporal_aggregator = TemporalAggregator(emb_size)
     
     def __call__(self, x, b): 
         '''

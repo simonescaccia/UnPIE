@@ -4,8 +4,6 @@ import tqdm
 import numpy as np
 import tensorflow as tf
 
-from dataset.pie_data import PIE
-from model.temporal_aggregator import TemporalAggregator
 from utils.print_utils import print_separator
 
 
