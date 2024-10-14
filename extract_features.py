@@ -3,7 +3,7 @@ import os
 import yaml
 import tensorflow as tf
 
-with open('config.yml', 'r') as file:
+with open('settings/config.yml', 'r') as file:
     config_file = yaml.safe_load(file)
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'

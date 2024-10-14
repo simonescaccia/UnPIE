@@ -47,16 +47,23 @@ def get_placeholders(
     if not multi_frame:
         if num_frames == 1:
             image_placeholder = tf.squeeze(image_placeholder, axis=1)
+            bbox_placeholder = tf.squeeze(bbox_placeholder, axis=1)
         else:
             image_placeholder = tf.reshape(
                     image_placeholder, 
                     [-1, crop_size, crop_size, num_channels])
+            bbox_placeholder = tf.reshape(
+                    bbox_placeholder, 
+                    [-1, 4])
     else:
         if multi_group is not None:
             image_placeholder = tf.reshape(
                     image_placeholder, 
                     [batch_size*multi_group, num_frames // multi_group, \
                             crop_size, crop_size, num_channels])
+            bbox_placeholder = tf.reshape(
+                    bbox_placeholder, 
+                    [batch_size*multi_group, num_frames // multi_group, 4])
     inputs = {
             'image': image_placeholder,
             'bbox': bbox_placeholder,

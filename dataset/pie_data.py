@@ -86,6 +86,9 @@ class PIE(object):
             'decoder_input_type': ['bbox'],
             'output_type': ['intention_binary']
             }
+        
+        self.ped_type = 'ped'
+        self.traffic_type = 'traffic'
 
     # Path generators
     @property
@@ -292,7 +295,8 @@ class PIE(object):
                  file_name='',
                  data_subset='',
                  data_type='',
-                 save_root_folder=''):
+                 save_root_folder='',
+                 feature_type=''):
         """
         A path generator method for saving model and config data. Creates directories
         as needed.
@@ -319,7 +323,7 @@ class PIE(object):
                 os.makedirs(save_path)
             return os.path.join(save_path, file_name), save_path
         else:
-            save_path = os.path.join(root, 'pie', data_subset, data_type, model_name)
+            save_path = os.path.join(root, 'pie', feature_type, data_subset, data_type, model_name)
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
             return save_path
@@ -385,7 +389,7 @@ class PIE(object):
         bboxes = bb
         return d, images, bboxes, ped_ids
 
-    def _get_ped_info_per_image(self, images, bboxes, ped_ids):
+    def _get_ped_info_per_image(self, images, bboxes, ped_ids, trff):
         """
         @author: Simone Scaccia
         Collects annotations for each image
@@ -397,26 +401,59 @@ class PIE(object):
 
         print_separator("Preparing annotations for each images")
 
+        print('Number of images:', len(images))
+        print('Number of bboxes:', len(bboxes))
+        print('NUmber of traffic:', len(trff))
+        print('Number of images[0]:', len(images[0]))
+        print('Number of bboxes[0]:', len(bboxes[0]))
+        print('Number of traffic[0]:', len(trff[0]))
+        print('Number of images[0][0]:', len(images[0][0]))
+        print('Number of bboxes[0][0]:', len(bboxes[0][0]))
+        print('Number of traffic[0][0]:', len(trff[0][0]))
+        print('images[0][0]:', images[0][0])
+        print('bboxes[0][0]:', bboxes[0][0])
+        print('trff[0][0]:', trff[0][0])
+
+        sys.exit()
+
         # Store the annotations in a dataframe wit the following columns: set_id, vid_id, image_name, img_path, bbox, ped_id
-        df = pd.DataFrame(columns=['set_id', 'vid_id', 'image_name', 'img_path', 'bbox', 'ped_id'])
+        df = pd.DataFrame(columns=['set_id', 'vid_id', 'image_name', 'img_path', 'bbox', 'id', 'type', 'class'])
         i = -1
         for seq, pid in zip(images, ped_ids):
             i += 1
             update_progress(i / len(images))
-            for imp, b, p in zip(seq, bboxes[i], pid):
+            for imp, b, p, os in zip(seq, bboxes[i], pid, trff[i]):
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]
                 # Print the img_path, bbox, ped_id types
                 # Add the image to the dataframe using concat method
-                df = pd.concat([df, pd.DataFrame({'set_id': [set_id], 'vid_id': [vid_id], 'image_name': [img_name], 'img_path': [imp], 'bbox': [tuple(b)], 'ped_id': [p[0]]})])
- 
+                df = pd.concat([df, 
+                                pd.DataFrame({
+                                    'set_id': [set_id], 
+                                    'vid_id': [vid_id], 
+                                    'image_name': [img_name], 
+                                    'img_path': [imp], 
+                                    'bbox': [tuple(b)], 
+                                    'id': [p[0]],
+                                    'type': self.ped_type,})])
+                for o in os:
+                    df = pd.concat([df, 
+                                    pd.DataFrame({
+                                        'set_id': [set_id], 
+                                        'vid_id': [vid_id], 
+                                        'image_name': [img_name], 
+                                        'img_path': [imp], 
+                                        'bbox': [tuple(o['bbox'])], 
+                                        'id': [o['obj_id']],
+                                        'type': self.traffic_type,})])                        
+
         # Remove duplicates
         df = df.drop_duplicates()
         print('')
         return df
     
-    def _extract_and_save(self, b, ped_id, set_id, vid_id, img_name, image, save_path):
+    def _extract_and_save(self, b, ped_id, set_id, vid_id, img_name, image, type ,ped_save_path, trff_save_path):
         """
         @author: Simone Scaccia
         Extracts features from images and saves them on hard drive
@@ -429,6 +466,10 @@ class PIE(object):
         :param image: The image
         :param save_path: The path to save the features
         """
+        if type == self.ped_type:
+            save_path = ped_save_path
+        else:
+            save_path = trff_save_path
         img_save_folder = os.path.join(save_path, set_id, vid_id)
         img_save_path = os.path.join(img_save_folder, img_name+'_'+ped_id+'.pkl')
         if not os.path.exists(img_save_path):
@@ -457,11 +498,18 @@ class PIE(object):
         images = sequence_data['image']
         bboxes = sequence_data['bbox']
         ped_ids = sequence_data['ped_id']
-        save_path=self.get_path(type_save='data',
+        trff = sequence_data['objs']
+        peds_save_path=self.get_path(type_save='data',
                                 data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                 model_name='vgg16_'+'none',
-                                data_subset = 'all')
-        ped_dataframe = self._get_ped_info_per_image(images, bboxes, ped_ids)
+                                data_subset = 'all',
+                                feature_type='peds')
+        objs_save_path=self.get_path(type_save='data',
+                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                                model_name='vgg16_'+'none',
+                                data_subset = 'all',
+                                feature_type='objs')
+        ped_dataframe = self._get_ped_info_per_image(images, bboxes, ped_ids, trff)
         
         print_separator("Extracting features and saving on hard drive")
         # Extract images and features
@@ -488,19 +536,21 @@ class PIE(object):
                         # CV image to PIL image
                         image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
                         image = Image.fromarray(image)
-                        # Retrieve the image path, bbox, ped_id from the annotation dataframe
+                        # Retrieve the image path, bbox, id from the annotation dataframe
                         df = ped_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))
                         # Apply the function extract_features to each row of the dataframe
                         df.apply(
                             lambda row, image=image, set_id=set_id, vid=vid, frame_num=frame_num: 
                                 self._extract_and_save(
                                     list(row['bbox']), 
-                                    row['ped_id'], 
+                                    row['id'], 
                                     set_id, 
                                     vid, 
                                     '{:05d}'.format(frame_num), 
-                                    image, 
-                                    save_path
+                                    image,
+                                    row['type'], 
+                                    peds_save_path,
+                                    objs_save_path,
                                 ), 
                             axis=1
                         )
@@ -1425,12 +1475,14 @@ class PIE(object):
         image_seq, pids_seq = [], []
         box_seq, center_seq, occ_seq = [], [], []
         set_ids, _pids = self._get_data_ids(image_set, params) if type(image_set) == str else (image_set, None)
+        objs = []
 
         print("set_ids", set_ids)
         for sid in set_ids:
             for vid in sorted(annotations[sid]):
                 img_width = annotations[sid][vid]['width']
                 pid_annots = annotations[sid][vid]['ped_annotations']
+                trff_annots = annotations[sid][vid]['traffic_annotations']
                 for pid in sorted(pid_annots):
                     if params['data_split_type'] != 'default' and pid not in _pids:
                         continue
@@ -1460,6 +1512,17 @@ class PIE(object):
                     int_prob = [[pid_annots[pid]['attributes']['intention_prob']]] * len(boxes)
                     int_bin = [[int(pid_annots[pid]['attributes']['intention_prob'] > 0.5)]] * len(boxes)
 
+                    frame_objs = [[]] * len(boxes)
+                    for obj in trff_annots:
+                        for idx, f in enumerate(frame_ids):
+                            obj_frames = trff_annots[obj]['frames']
+                            obj_idx = obj_frames.index(f) if f in obj_frames else -1
+                            if obj_idx != -1:
+                                frame_objs[idx].append(
+                                    {'obj_class': trff_annots[obj]['obj_class'],
+                                     'bbox': trff_annots[obj]['bbox'][obj_idx],
+                                     'obj_id': obj,})
+
                     image_seq.append(images[::seq_stride])
                     box_seq.append(boxes[::seq_stride])
                     occ_seq.append(occlusions[::seq_stride])
@@ -1470,12 +1533,15 @@ class PIE(object):
                     ped_ids = [[pid]] * len(boxes)
                     pids_seq.append(ped_ids[::seq_stride])
 
+                    objs.append(frame_objs[::seq_stride])                       
+
         print('Subset: %s' % image_set)
         print('Number of pedestrians: %d ' % num_pedestrians)
         print('Total number of samples: %d ' % len(image_seq))
 
         return {'image': image_seq,
                 'bbox': box_seq,
+                'objs': objs,
                 'occlusion': occ_seq,
                 'intention_prob': intention_prob,
                 'intention_binary': intention_binary,

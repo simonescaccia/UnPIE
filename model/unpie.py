@@ -296,7 +296,9 @@ class UnPIE(object):
     def train(self):
         print_separator('Starting UnPIE training')
         self.run_train_loop()
+        print_separator('UnPIE training ended')
 
     def test(self):
         print_separator('Starting UnPIE testing')
         self.run_test_loop()
+        print_separator('UnPIE testing ended')
