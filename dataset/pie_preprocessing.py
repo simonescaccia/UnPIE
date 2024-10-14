@@ -46,7 +46,7 @@ class PIEPreprocessing(object):
         train_d = self._get_data(seq_train, seq_length, seq_ovelap_rate)
         val_d = self._get_data(seq_val, seq_length*self.val_num_clips, seq_ovelap_rate)
         if is_test:
-            test_d = self._get_data(seq_test, seq_length, seq_ovelap_rate)
+            test_d = self._get_data(seq_test, seq_length*self.test_num_clips, seq_ovelap_rate)
 
         train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
         val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
@@ -77,7 +77,6 @@ class PIEPreprocessing(object):
 
         # Create dataloaders
         test_loader = None
-
         train_loader = self._get_dataloader(train_img, train_d['bboxes'], train_d['intention_binary'], 'train') # train_d['output'] shape: (num_seqs, 1)
         val_loader = self._get_dataloader(val_img, val_d['bboxes'], val_d['intention_binary'], 'val')
         if is_test:
@@ -100,10 +99,10 @@ class PIEPreprocessing(object):
                     dataset, batch_size=self.batch_size, shuffle=True, pin_memory=False),
             'val':
                 torch.utils.data.DataLoader(
-                    dataset, batch_size=self.val_batch_size*self.val_num_clips, shuffle=False, pin_memory=False),
+                    dataset, batch_size=self.val_batch_size, shuffle=False, pin_memory=False),
             'test':
                 torch.utils.data.DataLoader(
-                    dataset, batch_size=self.test_batch_size*self.test_num_clips, shuffle=False, pin_memory=False)
+                    dataset, batch_size=self.test_batch_size, shuffle=False, pin_memory=False)
         }[type]
 
         

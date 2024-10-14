@@ -236,7 +236,7 @@ class ParamsLoader:
             inputs, output, 
             instance_t,
             k, num_classes,
-            test_num_clips=1):
+            test_num_clips):
         curr_dist, all_labels = output
         all_labels = tuple_get_one(all_labels)
         top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
@@ -314,11 +314,11 @@ class ParamsLoader:
         topn_test_data_param = {
                 'func': data.get_placeholders,
                 'batch_size': self.args['test_batch_size'],
-                'num_frames': self.args['num_frames'],
+                'num_frames': self.args['num_frames'] * self.args['test_num_clips'],
                 'crop_size': self.args['input_shape']['crop_size'],
                 'num_channels': self.args['input_shape']['num_channels'],
                 'multi_frame': True,
-                'multi_group': None,
+                'multi_group': self.args['test_num_clips'],
                 'name_prefix': 'TEST'}
         return topn_test_data_param
 
@@ -386,10 +386,12 @@ class ParamsLoader:
         topn_test_data_param = self._get_topn_test_data_param_from_arg()
 
         test_targets = {
-        'func': self._test_perf_func_kNN,
-        'k': self.args['kNN_test'],
-        'instance_t': self.args['instance_t'],
-        'num_classes': self.args['num_classes']}
+            'func': self._test_perf_func_kNN,
+            'k': self.args['kNN_test'],
+            'instance_t': self.args['instance_t'],
+            'test_num_clips': self.args['test_num_clips'],
+            'num_classes': self.args['num_classes'],
+            }
 
         test_loop, test_step_num = self._get_test_loop_from_arg(test_data_loader)
 
