@@ -55,25 +55,17 @@ class PIEPreprocessing(object):
         train_img = self._load_features(train_d['images'],
                                         train_d['ped_ids'],
                                         data_type='train',
-                                        load_path=self._get_path(type_save='data',
-                                                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                                                model_name='vgg16_'+'none',
-                                                                data_subset = 'train'))
+                                        feature_type=self.pie.get_ped_type())
+                                        
         val_img = self._load_features(val_d['images'],
                                       val_d['ped_ids'],
                                       data_type='val',
-                                      load_path=self._get_path(type_save='data',
-                                                               data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
-                                                               model_name='vgg16_'+'none',
-                                                               data_subset='val'))
+                                      feature_type=self.pie.get_ped_type())
         if is_test:
             test_img = self._load_features(test_d['images'],
                                            test_d['ped_ids'],
                                            data_type='test',
-                                           load_path=self._get_path(type_save='data',
-                                                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'],
-                                                                    model_name='vgg16_'+'none',
-                                                                    data_subset='test'))
+                                           feature_type=self.pie.get_ped_type())
 
         # Create dataloaders
         test_loader = None
@@ -115,8 +107,12 @@ class PIEPreprocessing(object):
         :param overlap: defines the overlap between consecutive sequences (between 0 and 1)
         :return: A unified data representation as a list.
         """
-        bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, 4)
-        images = dataset['image'].copy() # shape: (num_ped, num_frames, 68)
+        images = dataset['image'].copy() # shape: (num_ped, num_frames, num_seq)
+        bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, num_seq, 4)
+        objs_imgs = dataset['objs_img'].copy() # shape: (num_ped, num_frames, num_seq, num_objs)
+        objs_bboxes = dataset['objs_bbox'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 4)
+        other_peds_imgs = dataset['other_peds_img'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds)
+        other_peds_bboxes = dataset['other_peds_bbox'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 4)
         ped_ids = dataset['ped_id'].copy() # shape: (num_ped, num_frames, 1)
         int_bin = dataset['intention_binary'].copy() # shape: (num_ped, num_frames, 1)
 
@@ -127,61 +123,33 @@ class PIEPreprocessing(object):
 
         bboxes = self._get_tracks(bboxes, seq_length, overlap_stride)
         images = self._get_tracks(images, seq_length, overlap_stride)
+        objs_imgs = self._get_tracks(objs_imgs, seq_length, overlap_stride)
+        objs_bboxes = self._get_tracks(objs_bboxes, seq_length, overlap_stride)
+        other_peds_imgs = self._get_tracks(other_peds_imgs, seq_length, overlap_stride)
+        other_peds_bboxes = self._get_tracks(other_peds_bboxes, seq_length, overlap_stride)
         ped_ids = self._get_tracks(ped_ids, seq_length, overlap_stride)
         int_bin = self._get_tracks(int_bin, seq_length, overlap_stride)
 
         bboxes = np.array(bboxes) # shape: (num_seqs, seq_length, 4)
+        objs_bboxes = np.array(objs_bboxes) # shape: (num_seqs, seq_length, num_objs, 4)
+        other_peds_bboxes = np.array(other_peds_bboxes) # shape: (num_seqs, seq_length, num_other_peds, 4)
         int_bin = np.array(int_bin)[:, 0] # every frame has the same intention label
         int_bin = np.squeeze(int_bin, axis=1) # shape: (num_seqs, 1)
 
         return {'images': images,
                 'bboxes': bboxes,
+                'objs_imgs': objs_imgs,
+                'objs_bboxes': objs_bboxes,
+                'other_peds_imgs': other_peds_imgs,
+                'other_peds_bboxes': other_peds_bboxes,
                 'ped_ids': ped_ids,
                 'intention_binary': int_bin}
-
-    def _get_path(self,
-                 type_save='models', # model or data
-                 models_save_folder='',
-                 model_name='convlstm_encdec',
-                 file_name='',
-                 data_subset='',
-                 data_type='',
-                 save_root_folder=''):
-        """
-        A path generator method for saving model and config data. Creates directories
-        as needed.
-        :param type_save: Specifies whether data or model is saved.
-        :param models_save_folder: model name (e.g. train function uses timestring "%d%b%Y-%Hh%Mm%Ss")
-        :param model_name: model name (either trained convlstm_encdec model or vgg16)
-        :param file_name: Actual file of the file (e.g. model.h5, history.h5, config.pkl)
-        :param data_subset: train, test or val
-        :param data_type: type of the data (e.g. features_context_pad_resize)
-        :param save_root_folder: The root folder for saved data.
-        :return: The full path for the save folder
-        """
-        if save_root_folder == '':
-            save_root_folder =  os.path.join(self.pie_path, 'data')
-        assert(type_save in ['models', 'data'])
-        if data_type != '':
-            assert(any([d in data_type for d in ['images', 'features']]))
-        root = os.path.join(save_root_folder, type_save)
-
-        if type_save == 'models':
-            save_path = os.path.join(save_root_folder, 'pie', 'intention', models_save_folder)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            return os.path.join(save_path, file_name), save_path
-        else:
-            save_path = os.path.join(root, 'pie', data_subset, data_type, model_name)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            return save_path
 
     def _load_features(self,
                       img_sequences,
                       ped_ids,
-                      load_path,
-                      data_type='train'):
+                      data_type,
+                      feature_type):
         """
         Load image features. The images are first
         cropped to 1.5x the size of the bounding box, padded and resized to
@@ -195,6 +163,11 @@ class PIEPreprocessing(object):
         :return: a list of image features
         """
         # load the feature files if exists
+        load_path = self.pie.get_path(type_save='data',
+                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                                    model_name='vgg16_'+'none',
+                                    data_subset = 'train',
+                                    feature_type=feature_type)
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, load_path))
 
         sequences = []

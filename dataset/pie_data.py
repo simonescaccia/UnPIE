@@ -87,8 +87,8 @@ class PIE(object):
             'output_type': ['intention_binary']
             }
         
-        self.ped_type = 'ped'
-        self.traffic_type = 'traffic'
+        self.ped_type = 'peds'
+        self.traffic_type = 'objs'
 
     # Path generators
     @property
@@ -101,6 +101,12 @@ class PIE(object):
         if not isdir(cache_path):
             makedirs(cache_path)
         return cache_path
+
+    def get_ped_type(self):
+        return self.ped_type
+    
+    def get_traffic_type(self):
+        return self.traffic_type
 
     def _get_default_path(self):
         """
@@ -389,7 +395,7 @@ class PIE(object):
         bboxes = bb
         return d, images, bboxes, ped_ids
 
-    def _get_ped_info_per_image(self, images, bboxes, ped_ids, trff):
+    def _get_ped_info_per_image(self, images, bboxes, ped_ids, trff, peds):
         """
         @author: Simone Scaccia
         Collects annotations for each image
@@ -401,59 +407,63 @@ class PIE(object):
 
         print_separator("Preparing annotations for each images")
 
-        print('Number of images:', len(images))
-        print('Number of bboxes:', len(bboxes))
-        print('NUmber of traffic:', len(trff))
-        print('Number of images[0]:', len(images[0]))
-        print('Number of bboxes[0]:', len(bboxes[0]))
-        print('Number of traffic[0]:', len(trff[0]))
-        print('Number of images[0][0]:', len(images[0][0]))
-        print('Number of bboxes[0][0]:', len(bboxes[0][0]))
-        print('Number of traffic[0][0]:', len(trff[0][0]))
-        print('images[0][0]:', images[0][0])
-        print('bboxes[0][0]:', bboxes[0][0])
-        print('trff[0][0]:', trff[0][0])
-
-        sys.exit()
-
         # Store the annotations in a dataframe wit the following columns: set_id, vid_id, image_name, img_path, bbox, ped_id
         df = pd.DataFrame(columns=['set_id', 'vid_id', 'image_name', 'img_path', 'bbox', 'id', 'type', 'class'])
         i = -1
+        data = []
         for seq, pid in zip(images, ped_ids):
             i += 1
             update_progress(i / len(images))
-            for imp, b, p, os in zip(seq, bboxes[i], pid, trff[i]):
+            for imp, b, p, os, ps in zip(seq, bboxes[i], pid, trff[i], peds[i]):
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]
-                # Print the img_path, bbox, ped_id types
-                # Add the image to the dataframe using concat method
-                df = pd.concat([df, 
-                                pd.DataFrame({
-                                    'set_id': [set_id], 
-                                    'vid_id': [vid_id], 
-                                    'image_name': [img_name], 
-                                    'img_path': [imp], 
-                                    'bbox': [tuple(b)], 
-                                    'id': [p[0]],
-                                    'type': self.ped_type,})])
+
+                # Collect pedestrian data
+                data.append({
+                    'set_id': set_id,
+                    'vid_id': vid_id,
+                    'image_name': img_name,
+                    'img_path': imp,
+                    'bbox': tuple(b),
+                    'id': p[0],
+                    'type': self.ped_type
+                })
+
+                # Collect traffic data
                 for o in os:
-                    df = pd.concat([df, 
-                                    pd.DataFrame({
-                                        'set_id': [set_id], 
-                                        'vid_id': [vid_id], 
-                                        'image_name': [img_name], 
-                                        'img_path': [imp], 
-                                        'bbox': [tuple(o['bbox'])], 
-                                        'id': [o['obj_id']],
-                                        'type': self.traffic_type,})])                        
+                    data.append({
+                        'set_id': set_id,
+                        'vid_id': vid_id,
+                        'image_name': img_name,
+                        'img_path': imp,
+                        'bbox': tuple(o['bbox']),
+                        'id': o['obj_id'],
+                        'type': self.traffic_type
+                    })
+                
+                # Collect other pedestrian data
+                for p in ps:
+                    data.append({
+                        'set_id': set_id,
+                        'vid_id': vid_id,
+                        'image_name': img_name,
+                        'img_path': imp,
+                        'bbox': tuple(p['bbox']),
+                        'id': p['ped_id'],
+                        'type': self.ped_type
+                    })
+
+        # Create dataframe once from the accumulated data
+        df = pd.DataFrame(data)
 
         # Remove duplicates
         df = df.drop_duplicates()
+        
         print('')
         return df
     
-    def _extract_and_save(self, b, ped_id, set_id, vid_id, img_name, image, type ,ped_save_path, trff_save_path):
+    def _extract_and_save(self, b, ped_id, set_id, vid_id, img_name, image, feature_type):
         """
         @author: Simone Scaccia
         Extracts features from images and saves them on hard drive
@@ -466,10 +476,11 @@ class PIE(object):
         :param image: The image
         :param save_path: The path to save the features
         """
-        if type == self.ped_type:
-            save_path = ped_save_path
-        else:
-            save_path = trff_save_path
+        save_path = self.get_path(type_save='data',
+                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                    model_name='vgg16_'+'none',
+                    data_subset='all',
+                    feature_type=feature_type)
         img_save_folder = os.path.join(save_path, set_id, vid_id)
         img_save_path = os.path.join(img_save_folder, img_name+'_'+ped_id+'.pkl')
         if not os.path.exists(img_save_path):
@@ -485,6 +496,58 @@ class PIE(object):
             with open(img_save_path, 'wb') as fid:
                 pickle.dump(img_features, fid, pickle.HIGHEST_PROTOCOL)        
 
+    def _process_set(self, set_id, set_folder_path, extract_frames, ped_dataframe):
+        print('Extracting frames from', set_id)
+
+        for vid, frames in sorted(extract_frames.items()):
+            print(vid)
+            num_frames = frames[0]
+            frames_list = set(frames[1:])
+            video_path = os.path.join(set_folder_path, vid + '.mp4')
+
+            vidcap = cv2.VideoCapture(video_path)
+            success, image = vidcap.read()
+
+            if not success:
+                print('Failed to open the video {}'.format(vid))
+
+            frame_num = 0
+            img_count = 0
+
+            while success:
+                if frame_num in frames_list:
+                    self.update_progress(img_count / num_frames)
+                    img_count += 1
+
+                    # Convert CV image to PIL image
+                    image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+                    image = Image.fromarray(image)
+
+                    # Retrieve the image path, bbox, id from the annotation dataframe
+                    df = ped_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))
+                    
+                    # Apply the function extract_features to each row of the dataframe
+                    df.apply(
+                        lambda row, image=image, set_id=set_id, vid=vid, frame_num=frame_num: 
+                            self._extract_and_save(
+                                list(row['bbox']), 
+                                row['id'], 
+                                set_id, 
+                                vid, 
+                                '{:05d}'.format(frame_num), 
+                                image,
+                                row['type']
+                            ), 
+                        axis=1
+                    )
+
+                success, image = vidcap.read()
+                frame_num += 1
+
+            if num_frames != img_count:
+                print('num images don\'t match {}/{}'.format(num_frames, img_count))
+            print('\n')
+
     def extract_images_and_save_features(self, sets_to_extract):
         """
         @author: Simone Scaccia
@@ -495,70 +558,21 @@ class PIE(object):
         self.pretrained_extractor = PretrainedExtractor() # Create extractor model  
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
-        images = sequence_data['image']
-        bboxes = sequence_data['bbox']
-        ped_ids = sequence_data['ped_id']
-        trff = sequence_data['objs']
-        peds_save_path=self.get_path(type_save='data',
-                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                model_name='vgg16_'+'none',
-                                data_subset = 'all',
-                                feature_type='peds')
-        objs_save_path=self.get_path(type_save='data',
-                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                model_name='vgg16_'+'none',
-                                data_subset = 'all',
-                                feature_type='objs')
-        ped_dataframe = self._get_ped_info_per_image(images, bboxes, ped_ids, trff)
+        ped_dataframe = self._get_ped_info_per_image(
+            images = sequence_data['image'],
+            bboxes = sequence_data['bbox'],
+            ped_ids = sequence_data['ped_id'],
+            trff = sequence_data['objs'],
+            peds = sequence_data['peds'])
         
         print_separator("Extracting features and saving on hard drive")
-        # Extract images and features
+        # Extract image features
         set_folders = sets_to_extract
         for set_id in set_folders:
-            print('Extracting frames from', set_id)
             set_folder_path = join(self.clips_path, set_id)
             extract_frames = self.get_annotated_frame_numbers(set_id)
 
-            for vid, frames in sorted(extract_frames.items()):
-                print(vid)
-                num_frames = frames[0]
-                frames_list = frames[1:]
-                vidcap = cv2.VideoCapture(join(set_folder_path, vid + '.mp4'))
-                success, image = vidcap.read()
-                frame_num = 0
-                img_count = 0
-                if not success:
-                    print('Failed to open the video {}'.format(vid))
-                while success:
-                    if frame_num in frames_list:
-                        self.update_progress(img_count / num_frames)
-                        img_count += 1
-                        # CV image to PIL image
-                        image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-                        image = Image.fromarray(image)
-                        # Retrieve the image path, bbox, id from the annotation dataframe
-                        df = ped_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))
-                        # Apply the function extract_features to each row of the dataframe
-                        df.apply(
-                            lambda row, image=image, set_id=set_id, vid=vid, frame_num=frame_num: 
-                                self._extract_and_save(
-                                    list(row['bbox']), 
-                                    row['id'], 
-                                    set_id, 
-                                    vid, 
-                                    '{:05d}'.format(frame_num), 
-                                    image,
-                                    row['type'], 
-                                    peds_save_path,
-                                    objs_save_path,
-                                ), 
-                            axis=1
-                        )
-                    success, image = vidcap.read()
-                    frame_num += 1
-                if num_frames != img_count:
-                    print('num images don\'t match {}/{}'.format(num_frames, img_count))
-                print('\n')
+            self._process_set(set_id, set_folder_path, extract_frames, ped_dataframe) # TODO: parallelize
 
     def organize_features(self):
         """
@@ -1475,7 +1489,7 @@ class PIE(object):
         image_seq, pids_seq = [], []
         box_seq, center_seq, occ_seq = [], [], []
         set_ids, _pids = self._get_data_ids(image_set, params) if type(image_set) == str else (image_set, None)
-        objs = []
+        objs, peds = [], []
 
         print("set_ids", set_ids)
         for sid in set_ids:
@@ -1512,16 +1526,32 @@ class PIE(object):
                     int_prob = [[pid_annots[pid]['attributes']['intention_prob']]] * len(boxes)
                     int_bin = [[int(pid_annots[pid]['attributes']['intention_prob'] > 0.5)]] * len(boxes)
 
-                    frame_objs = [[]] * len(boxes)
-                    for obj in trff_annots:
+                    # Get the objects in the frame
+                    frame_objs = [[] for _ in range(len(boxes))]
+                    for obj, obj_data in trff_annots.items():
+                        obj_frames = obj_data['frames']
+                        frame_to_idx = {f: idx for idx, f in enumerate(obj_frames)}  # Precompute frame-to-index mapping
                         for idx, f in enumerate(frame_ids):
-                            obj_frames = trff_annots[obj]['frames']
-                            obj_idx = obj_frames.index(f) if f in obj_frames else -1
-                            if obj_idx != -1:
-                                frame_objs[idx].append(
-                                    {'obj_class': trff_annots[obj]['obj_class'],
-                                     'bbox': trff_annots[obj]['bbox'][obj_idx],
-                                     'obj_id': obj,})
+                            if f in frame_to_idx:
+                                obj_idx = frame_to_idx[f]  # Get the index directly from precomputed mapping
+                                frame_objs[idx].append({
+                                    'obj_class': obj_data['obj_class'],
+                                    'bbox': obj_data['bbox'][obj_idx],
+                                    'obj_id': obj
+                                })
+                    # Get the other pedestrians in the frame
+                    frame_peds = [[] for _ in range(len(boxes))]
+                    for ped, ped_data in pid_annots.items():
+                        ped_frames = ped_data['frames']
+                        frame_to_idx = {f: idx for idx, f in enumerate(ped_frames)} # Precompute frame-to-index mapping
+                        for idx, f in enumerate(frame_ids):
+                            if f in frame_to_idx:
+                                ped_idx = frame_to_idx[f]
+                                if ped != pid:
+                                    frame_peds[idx].append({
+                                        'bbox': ped_data['bbox'][ped_idx],
+                                        'ped_id': ped
+                                    })                        
 
                     image_seq.append(images[::seq_stride])
                     box_seq.append(boxes[::seq_stride])
@@ -1533,7 +1563,8 @@ class PIE(object):
                     ped_ids = [[pid]] * len(boxes)
                     pids_seq.append(ped_ids[::seq_stride])
 
-                    objs.append(frame_objs[::seq_stride])                       
+                    objs.append(frame_objs[::seq_stride])
+                    peds.append(frame_peds[::seq_stride])                       
 
         print('Subset: %s' % image_set)
         print('Number of pedestrians: %d ' % num_pedestrians)
@@ -1542,6 +1573,7 @@ class PIE(object):
         return {'image': image_seq,
                 'bbox': box_seq,
                 'objs': objs,
+                'peds': peds,
                 'occlusion': occ_seq,
                 'intention_prob': intention_prob,
                 'intention_binary': intention_binary,
