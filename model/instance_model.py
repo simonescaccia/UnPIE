@@ -160,8 +160,20 @@ def build_output(
                 trainable=False, dtype=tf.int64,
             )
     
-    unpie_framework = UnPIENetwork(kwargs.get('middle_dim'), kwargs.get('emb_dim'), kwargs.get('dropout_rate1'), kwargs.get('dropout_rate2'))
-    output = unpie_framework(inputs['image'], inputs['bbox'])
+    unpie_framework = UnPIENetwork(
+        kwargs.get('middle_dim'), 
+        kwargs.get('emb_dim'), 
+        kwargs.get('dropout_rate1'), 
+        kwargs.get('dropout_rate2')
+    )
+    output = unpie_framework(
+        inputs['image'], 
+        inputs['bbox'], 
+        inputs['objs_img'], 
+        inputs['objs_bbox'], 
+        inputs['other_peds_img'], 
+        inputs['other_peds_bbox']
+    )
     output = tf.nn.l2_normalize(output, axis=1)
 
     if not train:

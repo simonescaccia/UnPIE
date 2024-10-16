@@ -9,12 +9,12 @@ class UnPIENetwork(object):
         self.feature_extractor = FeatureExtractor(middle_size, emb_size, dropout_rate1, dropout_rate2)
         self.temporal_aggregator = TemporalAggregator(emb_size)
     
-    def __call__(self, x, b): 
+    def __call__(self, ped_feat, ped_bbox, objs_feat, objs_bbox, other_peds_feat, other_peds_bbox): 
         '''
         Args:
             x: tf.Tensor, shape (batch_size, num_frames, crop_size, crop_size, num_channels)
             b: tf.Tensor, shape (batch_size, num_frames, 4)
         '''
-        x = self.feature_extractor(x, b)
-        x = self.temporal_aggregator(x)
-        return x
+        ped_feat = self.feature_extractor(ped_feat, ped_bbox)
+        ped_feat = self.temporal_aggregator(ped_feat)
+        return ped_feat
