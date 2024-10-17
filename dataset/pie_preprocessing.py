@@ -109,9 +109,7 @@ class PIEPreprocessing(object):
         """
         images = dataset['image'].copy() # shape: (num_ped, num_frames, num_seq)
         bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, num_seq, 4)
-        objs_imgs = dataset['objs_img'].copy() # shape: (num_ped, num_frames, num_seq, num_objs)
         objs_bboxes = dataset['objs_bbox'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 4)
-        other_peds_imgs = dataset['other_peds_img'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds)
         other_peds_bboxes = dataset['other_peds_bbox'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 4)
         ped_ids = dataset['ped_id'].copy() # shape: (num_ped, num_frames, 1)
         int_bin = dataset['intention_binary'].copy() # shape: (num_ped, num_frames, 1)
@@ -123,9 +121,7 @@ class PIEPreprocessing(object):
 
         bboxes = self._get_tracks(bboxes, seq_length, overlap_stride)
         images = self._get_tracks(images, seq_length, overlap_stride)
-        objs_imgs = self._get_tracks(objs_imgs, seq_length, overlap_stride)
         objs_bboxes = self._get_tracks(objs_bboxes, seq_length, overlap_stride)
-        other_peds_imgs = self._get_tracks(other_peds_imgs, seq_length, overlap_stride)
         other_peds_bboxes = self._get_tracks(other_peds_bboxes, seq_length, overlap_stride)
         ped_ids = self._get_tracks(ped_ids, seq_length, overlap_stride)
         int_bin = self._get_tracks(int_bin, seq_length, overlap_stride)
@@ -138,9 +134,7 @@ class PIEPreprocessing(object):
 
         return {'images': images,
                 'bboxes': bboxes,
-                'objs_imgs': objs_imgs,
                 'objs_bboxes': objs_bboxes,
-                'other_peds_imgs': other_peds_imgs,
                 'other_peds_bboxes': other_peds_bboxes,
                 'ped_ids': ped_ids,
                 'intention_binary': int_bin}

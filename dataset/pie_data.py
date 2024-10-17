@@ -120,11 +120,15 @@ class PIE(object):
         :param image_set: Image set split
         :return: Set ids of the image set
         """
-        image_set_nums = {'train': ['set01', 'set02', 'set04'],
-                          'val': ['set05', 'set06'],
-                          'test': ['set03'],
-                          'all': ['set01', 'set02', 'set03',
-                                  'set04', 'set05', 'set06']}
+        # image_set_nums = {'train': ['set01', 'set02', 'set04'],
+        #                   'val': ['set05', 'set06'],
+        #                   'test': ['set03'],
+        #                   'all': ['set01', 'set02', 'set03',
+        #                           'set04', 'set05', 'set06']}
+        image_set_nums = {'train': ['set01', 'set02'],
+                    'val': ['set03'],
+                    'test': ['set03'],
+                    'all': ['set01', 'set02', 'set03']}
         return image_set_nums[image_set]
 
     def _get_image_path(self, sid, vid, fid):
@@ -414,7 +418,7 @@ class PIE(object):
         for seq, pid in zip(images, ped_ids):
             i += 1
             update_progress(i / len(images))
-            for imp, b, p, os, ps in zip(seq, bboxes[i], pid, trff[i], peds[i]):
+            for imp, b, b_p, os, ps in zip(seq, bboxes[i], pid, trff[i], peds[i]):
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]
@@ -426,31 +430,31 @@ class PIE(object):
                     'image_name': img_name,
                     'img_path': imp,
                     'bbox': tuple(b),
-                    'id': p[0],
+                    'id': b_p[0],
                     'type': self.ped_type
                 })
 
                 # Collect traffic data
-                for o in os:
+                for b_o in os:
                     data.append({
                         'set_id': set_id,
                         'vid_id': vid_id,
                         'image_name': img_name,
                         'img_path': imp,
-                        'bbox': tuple(o['bbox']),
-                        'id': o['obj_id'],
+                        'bbox': tuple(b_o),
+                        'id': b_o['obj_id'],
                         'type': self.traffic_type
                     })
                 
                 # Collect other pedestrian data
-                for p in ps:
+                for b_p in ps:
                     data.append({
                         'set_id': set_id,
                         'vid_id': vid_id,
                         'image_name': img_name,
                         'img_path': imp,
-                        'bbox': tuple(p['bbox']),
-                        'id': p['ped_id'],
+                        'bbox': tuple(b_p),
+                        'id': b_p['ped_id'],
                         'type': self.ped_type
                     })
 
@@ -562,8 +566,8 @@ class PIE(object):
             images = sequence_data['image'],
             bboxes = sequence_data['bbox'],
             ped_ids = sequence_data['ped_id'],
-            trff = sequence_data['objs'],
-            peds = sequence_data['peds'])
+            trff = sequence_data['objs_bbox'],
+            peds = sequence_data['other_peds_bbox'])
         
         print_separator("Extracting features and saving on hard drive")
         # Extract image features
@@ -1527,20 +1531,19 @@ class PIE(object):
                     int_bin = [[int(pid_annots[pid]['attributes']['intention_prob'] > 0.5)]] * len(boxes)
 
                     # Get the objects in the frame
-                    frame_objs = [[] for _ in range(len(boxes))]
-                    for obj, obj_data in trff_annots.items():
+                    objs_bbox = [[] for _ in range(len(boxes))]
+                    objs_ids = [[] for _ in range(len(boxes))]
+                    for _, obj_data in trff_annots.items():
                         obj_frames = obj_data['frames']
                         frame_to_idx = {f: idx for idx, f in enumerate(obj_frames)}  # Precompute frame-to-index mapping
                         for idx, f in enumerate(frame_ids):
                             if f in frame_to_idx:
                                 obj_idx = frame_to_idx[f]  # Get the index directly from precomputed mapping
-                                frame_objs[idx].append({
-                                    'obj_class': obj_data['obj_class'],
-                                    'bbox': obj_data['bbox'][obj_idx],
-                                    'obj_id': obj
-                                })
+                                objs_bbox[idx].append(obj_data['bbox'][obj_idx])
+                                objs_ids[idx].append(obj_data['obj_id'])
                     # Get the other pedestrians in the frame
-                    frame_peds = [[] for _ in range(len(boxes))]
+                    other_peds_bbox = [[] for _ in range(len(boxes))]
+                    other_peds_ids = [[] for _ in range(len(boxes))]
                     for ped, ped_data in pid_annots.items():
                         ped_frames = ped_data['frames']
                         frame_to_idx = {f: idx for idx, f in enumerate(ped_frames)} # Precompute frame-to-index mapping
@@ -1548,10 +1551,8 @@ class PIE(object):
                             if f in frame_to_idx:
                                 ped_idx = frame_to_idx[f]
                                 if ped != pid:
-                                    frame_peds[idx].append({
-                                        'bbox': ped_data['bbox'][ped_idx],
-                                        'ped_id': ped
-                                    })                        
+                                    other_peds_bbox[idx].append(ped_data['bbox'][ped_idx])
+                                    other_peds_ids[idx].append(ped_data['ped_id'])                    
 
                     image_seq.append(images[::seq_stride])
                     box_seq.append(boxes[::seq_stride])
@@ -1563,8 +1564,8 @@ class PIE(object):
                     ped_ids = [[pid]] * len(boxes)
                     pids_seq.append(ped_ids[::seq_stride])
 
-                    objs.append(frame_objs[::seq_stride])
-                    peds.append(frame_peds[::seq_stride])                       
+                    objs.append(objs_bbox[::seq_stride])
+                    peds.append(other_peds_bbox[::seq_stride])                       
 
         print('Subset: %s' % image_set)
         print('Number of pedestrians: %d ' % num_pedestrians)
@@ -1572,8 +1573,8 @@ class PIE(object):
 
         return {'image': image_seq,
                 'bbox': box_seq,
-                'objs': objs,
-                'peds': peds,
+                'objs_bbox': objs,
+                'other_peds_bbox': peds,
                 'occlusion': occ_seq,
                 'intention_prob': intention_prob,
                 'intention_binary': intention_binary,
