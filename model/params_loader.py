@@ -147,7 +147,6 @@ class ParamsLoader:
             "task": self.args[self.setting]['task'],
             "instance_data_len": dataset_len,
             "emb_dim": self.args['emb_dim'],
-            "middle_dim": self.args['vgg_out_shape'].split(',')[2],
             "dropout_rate1": self.args['dropout_rate1'],
             "dropout_rate2": self.args['dropout_rate2'],
         }

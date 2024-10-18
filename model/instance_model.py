@@ -161,7 +161,6 @@ def build_output(
             )
     
     unpie_framework = UnPIENetwork(
-        kwargs.get('middle_dim'), 
         kwargs.get('emb_dim'), 
         kwargs.get('dropout_rate1'), 
         kwargs.get('dropout_rate2')

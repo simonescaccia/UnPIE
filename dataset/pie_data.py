@@ -45,7 +45,7 @@ from sklearn.model_selection import train_test_split, KFold
 from pathlib import PurePath
 from dataset.pretrained_extractor import PretrainedExtractor
 from PIL import Image
-from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress
+from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress, merge_directory
 from utils.print_utils import print_separator
 
 class PIE(object):
@@ -90,6 +90,12 @@ class PIE(object):
         self.ped_type = 'peds'
         self.traffic_type = 'objs'
 
+        self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
+                               'val': ['set05', 'set06'],
+                               'test': ['set03'],
+                               'all': ['set01', 'set02', 'set03',
+                                       'set04', 'set05', 'set06']}
+
     # Path generators
     @property
     def cache_path(self):
@@ -120,16 +126,17 @@ class PIE(object):
         :param image_set: Image set split
         :return: Set ids of the image set
         """
-        # image_set_nums = {'train': ['set01', 'set02', 'set04'],
-        #                   'val': ['set05', 'set06'],
-        #                   'test': ['set03'],
-        #                   'all': ['set01', 'set02', 'set03',
-        #                           'set04', 'set05', 'set06']}
-        image_set_nums = {'train': ['set01', 'set02'],
-                    'val': ['set03'],
-                    'test': ['set03'],
-                    'all': ['set01', 'set02', 'set03']}
-        return image_set_nums[image_set]
+        return self.image_set_nums[image_set]
+    
+    def get_folder_from_set(self, set_id):
+        """
+        Returns the folder name from the set id
+        :param set_id: Set id
+        :return: Folder name
+        """
+        for folder in self.image_set_nums:
+            if set_id in self.image_set_nums[folder]:
+                return folder
 
     def _get_image_path(self, sid, vid, fid):
         """
@@ -333,6 +340,10 @@ class PIE(object):
                 os.makedirs(save_path)
             return os.path.join(save_path, file_name), save_path
         else:
+            assert feature_type != ''
+            assert data_subset != ''
+            assert data_type != ''
+            assert model_name != ''
             save_path = os.path.join(root, 'pie', feature_type, data_subset, data_type, model_name)
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
@@ -399,7 +410,7 @@ class PIE(object):
         bboxes = bb
         return d, images, bboxes, ped_ids
 
-    def _get_ped_info_per_image(self, images, bboxes, ped_ids, trff, peds):
+    def _get_ped_info_per_image(self, images, bboxes, ped_ids, obj_bboxes, obj_ids, other_ped_bboxes, other_ped_ids):
         """
         @author: Simone Scaccia
         Collects annotations for each image
@@ -418,7 +429,7 @@ class PIE(object):
         for seq, pid in zip(images, ped_ids):
             i += 1
             update_progress(i / len(images))
-            for imp, b, b_p, os, ps in zip(seq, bboxes[i], pid, trff[i], peds[i]):
+            for imp, b, p, o_b, o_id, op_b, op_id in zip(seq, bboxes[i], pid, obj_bboxes[i], obj_ids[i], other_ped_bboxes[i], other_ped_ids[i]):
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]
@@ -430,31 +441,31 @@ class PIE(object):
                     'image_name': img_name,
                     'img_path': imp,
                     'bbox': tuple(b),
-                    'id': b_p[0],
+                    'id': p[0],
                     'type': self.ped_type
                 })
 
                 # Collect traffic data
-                for b_o in os:
+                for o_b_i, o_id_i  in zip(o_b, o_id):
                     data.append({
                         'set_id': set_id,
                         'vid_id': vid_id,
                         'image_name': img_name,
                         'img_path': imp,
-                        'bbox': tuple(b_o),
-                        'id': b_o['obj_id'],
+                        'bbox': tuple(o_b_i),
+                        'id': o_id_i,
                         'type': self.traffic_type
                     })
                 
                 # Collect other pedestrian data
-                for b_p in ps:
+                for op_b_i, op_id_i in zip(op_b, op_id):
                     data.append({
                         'set_id': set_id,
                         'vid_id': vid_id,
                         'image_name': img_name,
                         'img_path': imp,
-                        'bbox': tuple(b_p),
-                        'id': b_p['ped_id'],
+                        'bbox': tuple(op_b_i),
+                        'id': op_id_i,
                         'type': self.ped_type
                     })
 
@@ -481,13 +492,21 @@ class PIE(object):
         :param save_path: The path to save the features
         """
         save_path = self.get_path(type_save='data',
-                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                    model_name='vgg16_'+'none',
-                    data_subset='all',
-                    feature_type=feature_type)
+                                  data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                                  model_name='vgg16_'+'none',
+                                  data_subset='all',
+                                  feature_type=feature_type)
+        dest_folder = self.get_folder_from_set(set_id)
+        dest_path = self.get_path(type_save='data',
+                                  data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                                  model_name='vgg16_'+'none',
+                                  data_subset=dest_folder,
+                                  feature_type=feature_type)
         img_save_folder = os.path.join(save_path, set_id, vid_id)
         img_save_path = os.path.join(img_save_folder, img_name+'_'+ped_id+'.pkl')
-        if not os.path.exists(img_save_path):
+        img_dest_folder = os.path.join(dest_path, set_id, vid_id)
+        img_dest_path = os.path.join(img_dest_folder, img_name+'_'+ped_id+'.pkl')
+        if not os.path.exists(img_dest_path) and not os.path.exists(img_save_path):
             bbox = jitter_bbox([b],'enlarge', 2, image=image)[0]
             bbox = squarify(bbox, 1, image.size[0])
             bbox = list(map(int,bbox[0:4]))
@@ -563,11 +582,13 @@ class PIE(object):
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
         ped_dataframe = self._get_ped_info_per_image(
-            images = sequence_data['image'],
-            bboxes = sequence_data['bbox'],
-            ped_ids = sequence_data['ped_id'],
-            trff = sequence_data['objs_bbox'],
-            peds = sequence_data['other_peds_bbox'])
+            images=sequence_data['image'],
+            bboxes=sequence_data['bbox'],
+            ped_ids=sequence_data['ped_ids'],
+            obj_bboxes=sequence_data['obj_bboxes'],
+            obj_ids=sequence_data['obj_ids'],
+            other_ped_bboxes=sequence_data['other_ped_bboxes'],
+            other_ped_ids=sequence_data['other_ped_ids'])
         
         print_separator("Extracting features and saving on hard drive")
         # Extract image features
@@ -577,33 +598,42 @@ class PIE(object):
             extract_frames = self.get_annotated_frame_numbers(set_id)
 
             self._process_set(set_id, set_folder_path, extract_frames, ped_dataframe) # TODO: parallelize
+            self._organize_features()
 
-    def organize_features(self):
+    def _organize_features(self):
         """
         @author: Simone Scaccia
         Organizes the features in the default folders
         """
         print_separator("Moving features to the default folder")
-        source_path = self.get_path(type_save='data',
-                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                    model_name='vgg16_'+'none',
-                                    data_subset = 'all')
         folders = ['train', 'val', 'test']
-        for folder in folders:
-            dest_path = self.get_path(type_save='data',
+        feature_types = [self.ped_type, self.traffic_type]
+        for feature_type in feature_types:
+            source_path = self.get_path(type_save='data',
                                 data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                 model_name='vgg16_'+'none',
-                                data_subset = folder)
-            sets = self.get_image_set_ids(folder)
-            for set_id in sets:
-                # Move the folder set_id from source_path to path
-                source_set_path = os.path.join(source_path, set_id)
-                # Check if the folder exists
-                if not os.path.exists(source_set_path):
-                    continue
-                dest_set_path = os.path.join(dest_path, set_id)
-                print("Moving", source_set_path, "to", dest_set_path)
-                shutil.move(source_set_path, dest_set_path)   
+                                data_subset='all',
+                                feature_type=feature_type)
+            for folder in folders:
+                dest_path = self.get_path(type_save='data',
+                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                                    model_name='vgg16_'+'none',
+                                    data_subset=folder,
+                                    feature_type=feature_type)
+                sets = self.get_image_set_ids(folder)
+                for set_id in sets:
+                    # Move the folder set_id from source_path to path
+                    source_set_path = os.path.join(source_path, set_id)
+                    dest_set_path = os.path.join(dest_path, set_id)
+                    # Check if the folder exists
+                    if not os.path.exists(source_set_path):
+                        continue
+                    print("Moving", source_set_path, "to", dest_set_path)
+                    if os.path.exists(dest_set_path):
+                        merge_directory(source_set_path, dest_set_path)
+                    else:
+                        shutil.move(source_set_path, dest_set_path)
+        print('')
 
     # Annotation processing helpers
     def _map_text_to_scalar(self, label_type, value):
@@ -1493,7 +1523,8 @@ class PIE(object):
         image_seq, pids_seq = [], []
         box_seq, center_seq, occ_seq = [], [], []
         set_ids, _pids = self._get_data_ids(image_set, params) if type(image_set) == str else (image_set, None)
-        objs, peds = [], []
+        obj_boxes_seq, other_ped_boxes_seq = [], []
+        obj_ids_seq, other_ped_ids_seq = [], []
 
         print("set_ids", set_ids)
         for sid in set_ids:
@@ -1533,14 +1564,14 @@ class PIE(object):
                     # Get the objects in the frame
                     objs_bbox = [[] for _ in range(len(boxes))]
                     objs_ids = [[] for _ in range(len(boxes))]
-                    for _, obj_data in trff_annots.items():
+                    for obj, obj_data in trff_annots.items():
                         obj_frames = obj_data['frames']
                         frame_to_idx = {f: idx for idx, f in enumerate(obj_frames)}  # Precompute frame-to-index mapping
                         for idx, f in enumerate(frame_ids):
                             if f in frame_to_idx:
                                 obj_idx = frame_to_idx[f]  # Get the index directly from precomputed mapping
                                 objs_bbox[idx].append(obj_data['bbox'][obj_idx])
-                                objs_ids[idx].append(obj_data['obj_id'])
+                                objs_ids[idx].append(obj)
                     # Get the other pedestrians in the frame
                     other_peds_bbox = [[] for _ in range(len(boxes))]
                     other_peds_ids = [[] for _ in range(len(boxes))]
@@ -1552,7 +1583,7 @@ class PIE(object):
                                 ped_idx = frame_to_idx[f]
                                 if ped != pid:
                                     other_peds_bbox[idx].append(ped_data['bbox'][ped_idx])
-                                    other_peds_ids[idx].append(ped_data['ped_id'])                    
+                                    other_peds_ids[idx].append(ped)                    
 
                     image_seq.append(images[::seq_stride])
                     box_seq.append(boxes[::seq_stride])
@@ -1564,8 +1595,10 @@ class PIE(object):
                     ped_ids = [[pid]] * len(boxes)
                     pids_seq.append(ped_ids[::seq_stride])
 
-                    objs.append(objs_bbox[::seq_stride])
-                    peds.append(other_peds_bbox[::seq_stride])                       
+                    obj_boxes_seq.append(objs_bbox[::seq_stride])
+                    obj_ids_seq.append(objs_ids[::seq_stride])
+                    other_ped_boxes_seq.append(other_peds_bbox[::seq_stride])
+                    other_ped_ids_seq.append(other_peds_ids[::seq_stride])                      
 
         print('Subset: %s' % image_set)
         print('Number of pedestrians: %d ' % num_pedestrians)
@@ -1573,12 +1606,14 @@ class PIE(object):
 
         return {'image': image_seq,
                 'bbox': box_seq,
-                'objs_bbox': objs,
-                'other_peds_bbox': peds,
+                'obj_bboxes': obj_boxes_seq,
+                'obj_ids': obj_ids_seq,
+                'other_ped_bboxes': other_ped_boxes_seq,
+                'other_ped_ids': other_ped_ids_seq,
                 'occlusion': occ_seq,
                 'intention_prob': intention_prob,
                 'intention_binary': intention_binary,
-                'ped_id': pids_seq}
+                'ped_ids': pids_seq}
 
     def _get_all(self, image_set, annotations, **params):
         """
