@@ -42,7 +42,7 @@ def get_placeholders(
         name_prefix, multi_frame, multi_group):
     image_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, num_frames, crop_size, crop_size, num_channels),
+        (batch_size, num_frames, num_channels),
         name='%s_IMAGE_PLACEHOLDER' % name_prefix)
     bbox_placeholder = tf.compat.v1.placeholder(
         tf.float32,
@@ -50,7 +50,7 @@ def get_placeholders(
         name='%s_BBOX_PLACEHOLDER' % name_prefix)
     objs_img_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, num_frames, None, crop_size, crop_size, num_channels),
+        (batch_size, num_frames, None, num_channels),
         name='%s_OBJS_IMG_PLACEHOLDER' % name_prefix)
     objs_bbox_placeholder = tf.compat.v1.placeholder(
         tf.float32,
@@ -58,7 +58,7 @@ def get_placeholders(
         name='%s_OBJS_BBOX_PLACEHOLDER' % name_prefix)
     other_peds_img_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, num_frames, None, crop_size, crop_size, num_channels),
+        (batch_size, num_frames, None, num_channels),
         name='%s_OTHER_PEDS_IMG_PLACEHOLDER' % name_prefix)
     other_peds_bbox_placeholder = tf.compat.v1.placeholder(
         tf.float
@@ -83,19 +83,19 @@ def get_placeholders(
         else:
             image_placeholder = tf.reshape(
                 image_placeholder, 
-                [-1, crop_size, crop_size, num_channels])
+                [-1, num_channels])
             bbox_placeholder = tf.reshape(
                 bbox_placeholder, 
                 [-1, 4])
             objs_img_placeholder = tf.reshape(
                 objs_img_placeholder,
-                [-1, None, crop_size, crop_size, num_channels])
+                [-1, None, num_channels])
             objs_bbox_placeholder = tf.reshape(
                 objs_bbox_placeholder,
                 [-1, None, 4])
             other_peds_img_placeholder = tf.reshape(
                 other_peds_img_placeholder,
-                [-1, None, crop_size, crop_size, num_channels])
+                [-1, None, num_channels])
             other_peds_bbox_placeholder = tf.reshape(
                 other_peds_bbox_placeholder,
                 [-1, None, 4])
@@ -103,20 +103,19 @@ def get_placeholders(
         if multi_group is not None:
             image_placeholder = tf.reshape(
                 image_placeholder, 
-                [batch_size*multi_group, num_frames // multi_group, \
-                        crop_size, crop_size, num_channels])
+                [batch_size*multi_group, num_frames // multi_group, num_channels])
             bbox_placeholder = tf.reshape(
                 bbox_placeholder, 
                 [batch_size*multi_group, num_frames // multi_group, 4])
             objs_img_placeholder = tf.reshape(
                 objs_img_placeholder,
-                [batch_size*multi_group, num_frames // multi_group, None, crop_size, crop_size, num_channels])
+                [batch_size*multi_group, num_frames // multi_group, None, num_channels])
             objs_bbox_placeholder = tf.reshape(
                 objs_bbox_placeholder,
                 [batch_size*multi_group, num_frames // multi_group, None, 4])
             other_peds_img_placeholder = tf.reshape(
                 other_peds_img_placeholder,
-                [batch_size*multi_group, num_frames // multi_group, None, crop_size, crop_size, num_channels])
+                [batch_size*multi_group, num_frames // multi_group, None, num_channels])
             other_peds_bbox_placeholder = tf.reshape(
                 other_peds_bbox_placeholder,
                 [batch_size*multi_group, num_frames // multi_group, None, 4])

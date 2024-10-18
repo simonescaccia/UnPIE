@@ -18,6 +18,8 @@ limitations under the License.
 
 Updated by: Simone Scaccia
 """
+import os
+import shutil
 import sys
 import PIL
 # from keras.utils import load_img (tensorflow 2)
@@ -40,39 +42,21 @@ def update_progress(progress):
     sys.stdout.write(text)
     sys.stdout.flush()
 
-def save_graphs(history_path, loss_graph_path, accuracy_graph_path, lr_graph_path):
-    print_separator("Saving the loss and accuracy graphs")
-    obj = pd.read_pickle(history_path)
-    loss = obj['loss']
-    val_loss = obj['val_loss']
-    acc = obj["accuracy"]
-    val_acc = obj["val_accuracy"]
-    lr = obj['lr']
-    # save the losses plot
-    plt.plot(loss)
-    plt.plot(val_loss)
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig(loss_graph_path)
-    plt.clf()
-    # save the accuracy plot
-    plt.plot(acc)
-    plt.plot(val_acc)
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig(accuracy_graph_path)
-    plt.clf()
-    # save the learning rate plot
-    plt.plot(lr)
-    plt.title('learning rate')
-    plt.ylabel('lr')
-    plt.xlabel('epoch')
-    plt.savefig(lr_graph_path)
-    plt.clf()
+def merge_directory(source_dir, dest_dir):
+    for file in os.listdir(source_dir):
+        source_file = os.path.join(source_dir, file)
+        dest_file = os.path.join(dest_dir, file)
+        if not os.path.exists(dest_file):
+            shutil.move(source_file, dest_file)
+        elif os.path.isdir(source_file):
+            merge_directory(source_file, dest_file)
+        else:
+            print('File already exists in the destination directory')
+            print('File: %s' % dest_file)
+    if len(os.listdir(source_dir)) == 0:
+        os.rmdir(source_dir)
+    else:
+        print('Cannot merge directory %s to %s' % (source_file, dest_file))  
 
 
 ######### DATA UTILITIES ##############

@@ -16,4 +16,3 @@ imdb = PIE(data_path=pie_path)
 sets_to_extract = config_file['SETS_TO_EXTRACT'] or imdb.get_image_set_ids('all')
 
 imdb.extract_images_and_save_features(sets_to_extract)
-imdb.organize_features()

@@ -7,12 +7,15 @@ from tensorflow.keras.preprocessing.image import img_to_array
 
 class PretrainedExtractor(object):
     def __init__(self):
-        self.model = VGG16(input_shape=(224, 224, 3),
-                           include_top=False,
+        model = VGG16(input_shape=(224, 224, 3),
+                           include_top=True,
                            weights='imagenet')
+        fc1_layer = model.get_layer('fc1')
+        self.model = tf.keras.Model(inputs=model.input, outputs=fc1_layer.output)
+        
 
     def __call__(self, inputs):
-        x = self.model.predict(inputs, verbose=0) # x shape: (1, 7, 7, 512)
+        x = self.model.predict(inputs, verbose=0) # x shape: (1, 4096)
         return x
     
     def preprocess(self, inputs):
