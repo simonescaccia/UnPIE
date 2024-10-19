@@ -302,7 +302,6 @@ class ParamsLoader:
                 'func': data.get_placeholders,
                 'batch_size': self.args['val_batch_size'],
                 'num_frames': self.args['num_frames'] * self.args['val_num_clips'],
-                'crop_size': self.args['input_shape']['crop_size'],
                 'num_channels': self.args['input_shape']['num_channels'],
                 'multi_frame': True,
                 'multi_group': self.args['val_num_clips'],
@@ -314,7 +313,6 @@ class ParamsLoader:
                 'func': data.get_placeholders,
                 'batch_size': self.args['test_batch_size'],
                 'num_frames': self.args['num_frames'] * self.args['test_num_clips'],
-                'crop_size': self.args['input_shape']['crop_size'],
                 'num_channels': self.args['input_shape']['num_channels'],
                 'multi_frame': True,
                 'multi_group': self.args['test_num_clips'],
@@ -322,11 +320,9 @@ class ParamsLoader:
         return topn_test_data_param
 
     def _get_input_shape(self):
-        vgg_out_shape = self.args['vgg_out_shape'].split(',')
-        crop_size = int(vgg_out_shape[0])
-        num_channels = int(vgg_out_shape[2])
+        vgg_out_shape = self.args['vgg_out_shape']
+        num_channels = int(vgg_out_shape[0])
         input_shape = {
-            'crop_size': crop_size,
             'num_channels': num_channels,
         }
         return input_shape
@@ -463,7 +459,6 @@ class ParamsLoader:
                 'func': data.get_placeholders,
                 'batch_size': self.args['batch_size'], 
                 'num_frames': self.args['num_frames'],
-                'crop_size': self.args['input_shape']['crop_size'],
                 'num_channels': self.args['input_shape']['num_channels'],
                 'multi_frame': True,
                 'multi_group': None,

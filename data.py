@@ -37,8 +37,7 @@ def get_feeddict(image, bbox, objs_img, objs_bbox, other_peds_img, other_peds_bb
 
 
 def get_placeholders(
-        batch_size, num_frames, 
-        crop_size, num_channels,
+        batch_size, num_frames, num_channels,
         name_prefix, multi_frame, multi_group):
     image_placeholder = tf.compat.v1.placeholder(
         tf.float32,
@@ -61,7 +60,7 @@ def get_placeholders(
         (batch_size, num_frames, None, num_channels),
         name='%s_OTHER_PEDS_IMG_PLACEHOLDER' % name_prefix)
     other_peds_bbox_placeholder = tf.compat.v1.placeholder(
-        tf.float
+        tf.float32,
         (batch_size, num_frames, None, 4),
         name='%s_OTHER_PEDS_BBOX_PLACEHOLDER' % name_prefix)
     label_placeholder = tf.compat.v1.placeholder(
