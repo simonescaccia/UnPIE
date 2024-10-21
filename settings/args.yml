@@ -36,7 +36,7 @@ vd_3dresnet_IR:
   lr_boundaries: null
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 1000
+  train_num_steps: 2000
   load_exp: null
   load_step: null
 vd_3dresnet:
@@ -45,5 +45,5 @@ vd_3dresnet:
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 2000
+  train_num_steps: 3000
   load_exp: 'vd_3dresnet_IR'

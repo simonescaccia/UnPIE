@@ -167,11 +167,7 @@ def build_output(
     )
     output = unpie_framework(
         inputs['image'], 
-        inputs['bbox'], 
-        inputs['objs_img'], 
-        inputs['objs_bbox'], 
-        inputs['other_peds_img'], 
-        inputs['other_peds_bbox']
+        inputs['bbox'],
     )
     output = tf.nn.l2_normalize(output, axis=1)
 
