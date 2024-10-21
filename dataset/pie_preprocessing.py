@@ -57,29 +57,44 @@ class PIEPreprocessing(object):
                                              train_d['obj_ids'],
                                              train_d['other_ped_ids'],
                                              data_type='train')
+        train_other_features = {
+            'ped_bboxes': train_d['bboxes'],
+            'obj_bboxes': train_d['obj_bboxes'],
+            'other_ped_bboxes': train_d['other_ped_bboxes'],
+            'intention_binary': train_d['intention_binary'], # train_d['intention_binary'] shape: (num_seqs, 1)
+            'data_split': 'train'
+        }
+        train_features.update(train_other_features)
                                         
         val_features = self._load_features(val_d['images'],
                                            val_d['ped_ids'],
                                            val_d['obj_ids'],
                                            val_d['other_ped_ids'],
                                            data_type='val')
+        val_other_features = {
+            'ped_bboxes': val_d['bboxes'],
+            'obj_bboxes': val_d['obj_bboxes'],
+            'other_ped_bboxes': val_d['other_ped_bboxes'],
+            'intention_binary': val_d['intention_binary'],
+            'data_split': 'val'
+        }
+        val_features.update(val_other_features)
+        
         if is_test:
             test_features = self._load_features(test_d['images'],
                                                 test_d['ped_ids'],
                                                 test_d['obj_ids'],
                                                 test_d['other_ped_ids'],
-                                                data_type='test')
-        train_features['ped_bboxes'] = train_d['bboxes']
-        train_features['intention_binary'] = train_d['intention_binary'] # train_d['intention_binary'] shape: (num_seqs, 1)
-        train_features['data_type'] = 'train'
-        val_features['ped_bboxes'] = val_d['bboxes']
-        val_features['intention_binary'] = val_d['intention_binary']
-        val_features['data_type'] = 'val'
-        if is_test:
-            test_features['ped_bboxes'] = test_d['bboxes']
-            test_features['intention_binary'] = test_d['intention_binary']
-            test_features['data_type'] = 'test'
-
+                                                data_type='test') 
+            test_other_features = {
+                'ped_bboxes': test_d['bboxes'],
+                'obj_bboxes': test_d['obj_bboxes'],
+                'other_ped_bboxes': test_d['other_ped_bboxes'],
+                'intention_binary': test_d['intention_binary'],
+                'data_split': 'test'
+            }
+            test_features.update(test_other_features)
+            
         # Create dataloaders
         test_loader = None
         train_loader = self._get_dataloader(train_features)
@@ -108,7 +123,7 @@ class PIEPreprocessing(object):
             'test':
                 torch.utils.data.DataLoader(
                     dataset, batch_size=self.test_batch_size, shuffle=False, pin_memory=False)
-        }[type]
+        }[features['data_split']]
 
         
     def _get_data(self, dataset, seq_length, overlap):
@@ -122,8 +137,10 @@ class PIEPreprocessing(object):
         """
         images = dataset['image'].copy() # shape: (num_ped, num_frames, num_seq)
         bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, num_seq, 4)
-        objs_bboxes = dataset['obj_bboxes'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 4)
-        other_peds_bboxes = dataset['other_ped_bboxes'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 4)
+        obj_bboxes = dataset['obj_bboxes'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 4)
+        obj_ids = dataset['obj_ids'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 1)
+        other_ped_bboxes = dataset['other_ped_bboxes'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 4)
+        other_ped_ids = dataset['other_ped_ids'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 1)
         ped_ids = dataset['ped_ids'].copy() # shape: (num_ped, num_frames, 1)
         int_bin = dataset['intention_binary'].copy() # shape: (num_ped, num_frames, 1)
 
@@ -134,21 +151,23 @@ class PIEPreprocessing(object):
 
         bboxes = self._get_tracks(bboxes, seq_length, overlap_stride)
         images = self._get_tracks(images, seq_length, overlap_stride)
-        objs_bboxes = self._get_tracks(objs_bboxes, seq_length, overlap_stride)
-        other_peds_bboxes = self._get_tracks(other_peds_bboxes, seq_length, overlap_stride)
+        obj_bboxes = self._get_tracks(obj_bboxes, seq_length, overlap_stride)
+        obj_ids = self._get_tracks(obj_ids, seq_length, overlap_stride)
+        other_ped_bboxes = self._get_tracks(other_ped_bboxes, seq_length, overlap_stride)
+        other_ped_ids = self._get_tracks(other_ped_ids, seq_length, overlap_stride)
         ped_ids = self._get_tracks(ped_ids, seq_length, overlap_stride)
         int_bin = self._get_tracks(int_bin, seq_length, overlap_stride)
 
         bboxes = np.array(bboxes) # shape: (num_seqs, seq_length, 4)
-        objs_bboxes = np.array(objs_bboxes) # shape: (num_seqs, seq_length, num_objs, 4)
-        other_peds_bboxes = np.array(other_peds_bboxes) # shape: (num_seqs, seq_length, num_other_peds, 4)
         int_bin = np.array(int_bin)[:, 0] # every frame has the same intention label
         int_bin = np.squeeze(int_bin, axis=1) # shape: (num_seqs, 1)
 
         return {'images': images,
                 'bboxes': bboxes,
-                'objs_bboxes': objs_bboxes,
-                'other_peds_bboxes': other_peds_bboxes,
+                'obj_bboxes': obj_bboxes,
+                'obj_ids': obj_ids,
+                'other_ped_bboxes': other_ped_bboxes,
+                'other_ped_ids': other_ped_ids,
                 'ped_ids': ped_ids,
                 'intention_binary': int_bin}
 
@@ -180,10 +199,10 @@ class PIEPreprocessing(object):
                                     data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                     model_name='vgg16_'+'none',
                                     data_subset = data_type,
-                                    feature_type=self.pie.get_obj_type())
+                                    feature_type=self.pie.get_traffic_type())
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, peds_load_path))
 
-        ped_sequences, obj_sequences, other_ped_sequences = []
+        ped_sequences, obj_sequences, other_ped_sequences = [], [], []
         i = -1
         for seq, pid in zip(img_sequences, ped_ids):
             i += 1
@@ -244,9 +263,6 @@ class PIEPreprocessing(object):
             other_ped_sequences.append(other_ped_seq)
         update_progress(1)
         print("\n")
-        ped_sequences = np.array(ped_sequences)
-        obj_sequences = np.array(obj_sequences)
-        other_ped_sequences = np.array(other_ped_sequences)
 
         features = {'ped_feats': ped_sequences,
                     'obj_feats': obj_sequences,
