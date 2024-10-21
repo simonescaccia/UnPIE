@@ -263,6 +263,7 @@ class PIEPreprocessing(object):
             other_ped_sequences.append(other_ped_seq)
         update_progress(1)
         print("\n")
+        ped_sequences = np.array(ped_sequences)
 
         features = {'ped_feats': ped_sequences,
                     'obj_feats': obj_sequences,

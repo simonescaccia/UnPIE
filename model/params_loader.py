@@ -320,8 +320,7 @@ class ParamsLoader:
         return topn_test_data_param
 
     def _get_input_shape(self):
-        vgg_out_shape = self.args['vgg_out_shape']
-        num_channels = int(vgg_out_shape[0])
+        num_channels = int(self.args['vgg_out_shape'])
         input_shape = {
             'num_channels': num_channels,
         }
