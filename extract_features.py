@@ -3,6 +3,8 @@ import os
 import yaml
 import tensorflow as tf
 
+tf.compat.v1.disable_v2_behavior()
+
 with open('settings/config.yml', 'r') as file:
     config_file = yaml.safe_load(file)
 
