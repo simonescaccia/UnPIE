@@ -46,25 +46,6 @@ Deactivate environment:
   conda deactivate
   ```
 
-### Venv environment
-
-To install via virtual environment (recommended) follow these steps:
-
-- Linux:
-
-    - Install virtual environment `sudo apt-get install virtualenv`.
-
-    - Create a virtual environment with Python3:
-
-      ```bash
-      virtualenv --system-site-packages -p python3.10 ./venv
-      source venv/bin/activate
-      pip install -U pip
-      ```
-
-Install dependencies:
-`python3 -m pip install -r requirements_tfx.txt`
-
 ### UnPIE setup
 
 Create `config.yml`:
