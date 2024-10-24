@@ -1,5 +1,7 @@
 # UnPIE
-Unsupervised Pedestrian Intention Estimation
+Unsupervised Pedestrian Intention Estimation with Graph Neural Networks
+
+![graph_representation](/images/Figure_4.png)
 
 ## Credits
 Some modules are taken and modified from the following repositories:
