@@ -5,11 +5,11 @@ from utils.pie_utils import update_progress
 from spektral.data import Dataset
 
 class PIEGraphDataset(Dataset):
-    def __init__(self, features, transform=None):
-        self.compute_graphs(features, transform)
+    def __init__(self, features, normalize_bbox, transform_a=None):
+        self.compute_graphs(features, normalize_bbox, transform_a)
 
 
-    def compute_graphs(self, features, transform):
+    def compute_graphs(self, features, normalize_bbox, transform_a):
         '''
         Compute the graph structure of the dataset:
         - The pedestrian node is the center node
@@ -50,18 +50,18 @@ class PIEGraphDataset(Dataset):
             for j in range(num_frames):
                 # Pedestrian node
                 num_nodes = 1
-                ped_node = np.concatenate((ped_feats[i][j], ped_bboxes[i][j])) # TODO normalize the bounding box
+                ped_node = np.concatenate((ped_feats[i][j], normalize_bbox(ped_bboxes[i][j]))) # TODO normalize the bounding box
                 x_seq[i, j, 0, :] = ped_node
 
                 # Object nodes
                 for k, obj_feat in enumerate(obj_feats[i][j]):
-                    obj_node = np.concatenate((obj_feat, obj_bboxes[i][j][k]))
+                    obj_node = np.concatenate((obj_feat, normalize_bbox(obj_bboxes[i][j][k])))
                     x_seq[i, j, num_nodes, :] = obj_node
                     num_nodes += 1
                 
                 # Other pedestrian nodes
                 for k, other_ped_feat in enumerate(other_ped_feats[i][j]):
-                    other_ped_node = np.concatenate((other_ped_feat, other_ped_bboxes[i][j][k]))
+                    other_ped_node = np.concatenate((other_ped_feat, normalize_bbox(other_ped_bboxes[i][j][k])))
                     x_seq[i, j, num_nodes, :] = other_ped_node
                     num_nodes += 1
 
@@ -70,8 +70,8 @@ class PIEGraphDataset(Dataset):
                 if num_nodes < max_num_nodes:
                     a_seq[i, j, num_nodes:, :] = 0  # Zero out rows and columns beyond the active node count
                     a_seq[i, j, :, num_nodes:] = 0  # Zero out rows and columns beyond the active node count
-                    if transform is not None:
-                        a_seq[i, j, :, :] = transform(a_seq[i, j, :, :])
+                    if transform_a is not None:
+                        a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
 
         update_progress(1)
         print('')

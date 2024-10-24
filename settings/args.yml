@@ -11,6 +11,8 @@ trn_use_mean: True
 num_frames: 15
 middle_dim: 512
 emb_dim: 128
+img_height: 1080
+img_width: 1920
 resume: False
 batch_size: 32
 val_batch_size: 32
