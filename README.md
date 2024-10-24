@@ -79,7 +79,7 @@ PIE_dataset
 ```
 
 ## Preprocessing
-Run the following command to preprocess the image features without extracting all the annotated frames:
+Run the following command to extract and save all the image features needed by the GNN without saving each frame:
 
   ```bash
   python extract_images.py
