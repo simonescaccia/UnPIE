@@ -50,7 +50,7 @@ class PIEGraphDataset(Dataset):
             for j in range(num_frames):
                 # Pedestrian node
                 num_nodes = 1
-                ped_node = np.concatenate((ped_feats[i][j], normalize_bbox(ped_bboxes[i][j]))) # TODO normalize the bounding box
+                ped_node = np.concatenate((ped_feats[i][j], normalize_bbox(ped_bboxes[i][j])))
                 x_seq[i, j, 0, :] = ped_node
 
                 # Object nodes
