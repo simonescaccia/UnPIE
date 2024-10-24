@@ -407,12 +407,18 @@ class ParamsLoader:
 
         return params
     
+    def _get_num_nodes(self, data_loader):
+        _, (x, _, _) = next(enumerate(data_loader))
+        print('x.shape', x.shape)
+        return x.shape[1]
+
     def get_train_params(self, data_loaders, nn_clusterings):
         train_data_loader = data_loaders['train']
         val_data_loader = data_loaders['val']
 
         train_dataset_len = train_data_loader.dataset.__len__()
-        
+
+        num_nodes_per_graph = self._get_num_nodes(train_data_loader)
         loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)
 
         first_step = []
@@ -454,18 +460,20 @@ class ParamsLoader:
 
         # train_params: parameters about training data
         train_data_param = {
-                'func': data.get_placeholders,
-                'batch_size': self.args['batch_size'],
-                'num_channels': self.args['input_shape']['num_channels'],
-                'name_prefix': 'TRAIN'}
+            'func': data.get_placeholders,
+            'batch_size': self.args['batch_size'],
+            'num_nodes': num_nodes_per_graph,
+            'num_channels': self.args['input_shape']['num_channels'],
+            'name_prefix': 'TRAIN'
+        }
         train_params = {
-                'validate_first': False,
-                'data_params': train_data_param,
-                'queue_params': None,
-                'thres_loss': float('Inf'),
-                'num_steps': self.args[self.setting]['train_num_steps'],
-                'train_loop': {'func': train_loop},
-                }
+            'validate_first': False,
+            'data_params': train_data_param,
+            'queue_params': None,
+            'thres_loss': float('Inf'),
+            'num_steps': self.args[self.setting]['train_num_steps'],
+            'train_loop': {'func': train_loop},
+        }
         
         if not self.args[self.setting]['task'] == 'SUP':
             ## Add other loss reports (loss_model, loss_noise)

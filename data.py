@@ -9,11 +9,11 @@ sys.path.append(os.path.abspath('../'))
 
 def get_feeddict(x, a, y, name_prefix):
     x_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
-        '%s_IMAGE_PLACEHOLDER:0' % name_prefix)
+        '%s_X_PLACEHOLDER:0' % name_prefix)
     a_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
-        '%s_BBOX_PLACEHOLDER:0' % name_prefix)
+        '%s_A_PLACEHOLDER:0' % name_prefix)
     y_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
-        '%s_LABEL_PLACEHOLDER:0' % name_prefix)
+        '%s_Y_PLACEHOLDER:0' % name_prefix)
     feed_dict = {
         x_placeholder: x.numpy(),
         a_placeholder: a.numpy(),
@@ -21,19 +21,19 @@ def get_feeddict(x, a, y, name_prefix):
     return feed_dict
 
 
-def get_placeholders(batch_size, num_channels, name_prefix):
+def get_placeholders(batch_size, num_nodes, num_channels, name_prefix):
     x_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, None, num_channels + 4),
-        name='%s_IMAGE_PLACEHOLDER' % name_prefix)
+        (batch_size, num_nodes, num_channels + 4),
+        name='%s_X_PLACEHOLDER' % name_prefix)
     a_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, None, None),
-        name='%s_BBOX_PLACEHOLDER' % name_prefix)
+        (batch_size, num_nodes, num_nodes),
+        name='%s_A_PLACEHOLDER' % name_prefix)
     y_placeholder = tf.compat.v1.placeholder(
         tf.int64,
         (batch_size),
-        name='%s_LABEL_PLACEHOLDER' % name_prefix)
+        name='%s_Y_PLACEHOLDER' % name_prefix)
 
     inputs = {
         'x': x_placeholder,

@@ -21,10 +21,7 @@ class UnPIENetwork(object):
         '''
         print('a\n', a) # TODO remove padding
         # Aggregate spatial features using a GNN
-        ped_feat = []
-        graph_seq = graph_to_graph_seq(x, a)
-        for x, a in graph_seq:
-            ped_feat.append(self.gcn(x, a))
+        ped_feat = self.gcn(x, a)
 
         # Aggregate temporal features
         ped_feat = self.temporal_aggregator(ped_feat)

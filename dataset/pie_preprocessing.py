@@ -9,7 +9,7 @@ from dataset.pie_data import PIE
 from dataset.pie_dataset import PIEGraphDataset
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
-from spektral.data import BatchLoader
+from torch.utils.data import DataLoader
 
 
 class PIEPreprocessing(object):
@@ -36,35 +36,35 @@ class PIEPreprocessing(object):
         print_separator('PIE preprocessing',bottom_new_line=False)
 
         # Generate data sequences
-        seq_train = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
-        seq_val = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
+        train_d = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
+        val_d = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
         if is_test:
-            seq_test = self.pie.generate_data_trajectory_sequence('test', **self.data_opts)
+            test_d = self.pie.generate_data_trajectory_sequence('test', **self.data_opts)
 
         # Generate data mini sequences
         seq_length = self.data_opts['max_size_observe']
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
-        train_d = self._get_data(seq_train, seq_length, seq_ovelap_rate)
-        val_d = self._get_data(seq_val, seq_length*self.val_num_clips, seq_ovelap_rate)
+        train_d = self._get_data(train_d, seq_length, seq_ovelap_rate)
+        val_d = self._get_data(val_d, seq_length*self.val_num_clips, seq_ovelap_rate)
         if is_test:
-            test_d = self._get_data(seq_test, seq_length*self.test_num_clips, seq_ovelap_rate)
+            test_d = self._get_data(test_d, seq_length*self.test_num_clips, seq_ovelap_rate)
 
         # Balance the number of samples in each split
         train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
         val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
-        train_features = self._load_features(train_d, data_split='train')
-        val_features = self._load_features(val_d, data_split='val')
+        train_d = self._load_features(train_d, data_split='train')
+        val_d = self._load_features(val_d, data_split='val')
         if is_test:
-            test_features = self._load_features(test_d, data_split='test')
+            test_d = self._load_features(test_d, data_split='test')
 
         # Create dataloaders
         test_loader = None
-        train_loader = self._get_dataloader(train_features)
-        val_loader = self._get_dataloader(val_features)
+        train_loader = self._get_dataloader(train_d)
+        val_loader = self._get_dataloader(val_d)
         if is_test:
-            test_loader = self._get_dataloader(test_features)
+            test_loader = self._get_dataloader(test_d)
 
         return {
             'train': train_loader,
@@ -79,13 +79,13 @@ class PIEPreprocessing(object):
         dataset = PIEGraphDataset(features)
         return { # switch statement, python < 3.10 support
             'train':
-                BatchLoader(
+                DataLoader(
                     dataset, batch_size=self.batch_size, shuffle=True),
             'val':
-                BatchLoader(
+                DataLoader(
                     dataset, batch_size=self.val_batch_size, shuffle=False),
             'test':
-                BatchLoader(
+                DataLoader(
                     dataset, batch_size=self.test_batch_size, shuffle=False)
         }[features['data_split']]
 
@@ -167,12 +167,14 @@ class PIEPreprocessing(object):
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_split, peds_load_path))
 
         ped_sequences, obj_sequences, other_ped_sequences = [], [], []
+        max_num_nodes = 0 # max number of nodes in a sequence, for padding
         i = -1
         for seq, pid in zip(img_sequences, ped_ids):
             i += 1
             update_progress(i / len(img_sequences))
             ped_seq, obj_seq, other_ped_seq = [], [], []
             for imp, p, o, op in zip(seq, pid, obj_ids[i], other_ped_ids[i]):
+                num_nodes = 0
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]
@@ -187,8 +189,9 @@ class PIEPreprocessing(object):
                         img_features = pickle.load(fid)
                     except:
                         img_features = pickle.load(fid, encoding='bytes')
-                img_features = np.squeeze(img_features) # VGG16 output shape: (7, 7, 512)
+                img_features = np.squeeze(img_features) # VGG16 output
                 ped_seq.append(img_features)
+                num_nodes += 1
 
                 # object image features
                 obj_seq_i = []
@@ -204,6 +207,7 @@ class PIEPreprocessing(object):
                             img_features = pickle.load(fid, encoding='bytes')
                     img_features = np.squeeze(img_features)
                     obj_seq_i.append(img_features)
+                    num_nodes += 1
                 obj_seq.append(obj_seq_i)
 
                 # other pedestrian image features
@@ -220,23 +224,27 @@ class PIEPreprocessing(object):
                             img_features = pickle.load(fid, encoding='bytes')
                     img_features = np.squeeze(img_features)
                     other_ped_seq_i.append(img_features)
+                    num_nodes += 1
                 other_ped_seq.append(other_ped_seq_i)
+
+                max_num_nodes = max(max_num_nodes, num_nodes)
 
             ped_sequences.append(ped_seq)
             obj_sequences.append(obj_seq)
             other_ped_sequences.append(other_ped_seq)
         update_progress(1)
         print("\n")
-
-        features = {'ped_feats': ped_sequences,
-                    'obj_feats': obj_sequences,
-                    'other_ped_feats': other_ped_sequences,
-                    'ped_bboxes': data['bboxes'],
-                    'obj_bboxes': data['obj_bboxes'],
-                    'other_ped_bboxes': data['other_ped_bboxes'],
-                    'intention_binary': data['intention_binary'], # train_d['intention_binary'] shape: (num_seqs, 1)
-                    'data_split': data_split
-                    }
+        features = {
+            'ped_feats': ped_sequences,
+            'obj_feats': obj_sequences,
+            'other_ped_feats': other_ped_sequences,
+            'ped_bboxes': data['bboxes'],
+            'obj_bboxes': data['obj_bboxes'],
+            'other_ped_bboxes': data['other_ped_bboxes'],
+            'intention_binary': data['intention_binary'], # shape: (num_seqs, 1)
+            'data_split': data_split,
+            'max_num_nodes': max_num_nodes
+        }
         return features
 
     def _get_tracks(self, sequences, seq_length, overlap_stride):

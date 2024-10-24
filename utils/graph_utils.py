@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 from spektral.data import Graph
 from spektral.data.utils import to_disjoint
 
@@ -30,18 +31,18 @@ def graph_to_graph_seq(x, a):
     Convert a DisjointGraph to a sequence of graphs
     - Graphs are undirected, so the adjacency matrix is symmetric
     '''
-    graph_seq = []
-
-    a = a.toarray() # convert to dense matrix
-
+    graph_seq_batch = []
     i = 1 # last node of the current graph
     j = 0 # first node of the current graph
-    while i < len(a):
-        row = a[i, :i]
-        col = a[:i, i]
-        if np.sum(row) == 0 and np.sum(col) == 0:
-            graph_seq.append((x[j:i], a[j:i, j:i]))
-            j = i
-        i += 1
-
-    return graph_seq
+    for i in range(a.shape[1]):
+        graph_seq = []
+        while i < a.shape[1]:
+            row = a[i, :i]
+            col = a[:i, i]
+            if np.sum(row) == 0 and np.sum(col) == 0:
+                graph_seq.append((x[j:i], a[j:i, j:i]))
+                j = i
+            i += 1
+        graph_seq_batch.append(graph_seq)
+    graph_seq_batch = np.array(graph_seq_batch)
+    return graph_seq_batch
