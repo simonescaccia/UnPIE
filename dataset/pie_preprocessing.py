@@ -5,11 +5,11 @@ import pickle5 as pickle
 
 from pathlib import PurePath
 
-import torch
 from dataset.pie_data import PIE
-from dataset.pie_dataset import PIEDataset
+from dataset.pie_dataset import PIEGraphDataset
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
+from spektral.data import BatchLoader
 
 
 class PIEPreprocessing(object):
@@ -35,12 +35,13 @@ class PIEPreprocessing(object):
         # PIE preprocessing
         print_separator('PIE preprocessing',bottom_new_line=False)
 
-        # Generate image sequences
+        # Generate data sequences
         seq_train = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
         seq_val = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
         if is_test:
             seq_test = self.pie.generate_data_trajectory_sequence('test', **self.data_opts)
 
+        # Generate data mini sequences
         seq_length = self.data_opts['max_size_observe']
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
         train_d = self._get_data(seq_train, seq_length, seq_ovelap_rate)
@@ -48,53 +49,16 @@ class PIEPreprocessing(object):
         if is_test:
             test_d = self._get_data(seq_test, seq_length*self.test_num_clips, seq_ovelap_rate)
 
+        # Balance the number of samples in each split
         train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
         val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
-        train_features = self._load_features(train_d['images'],
-                                             train_d['ped_ids'],
-                                             train_d['obj_ids'],
-                                             train_d['other_ped_ids'],
-                                             data_type='train')
-        train_other_features = {
-            'ped_bboxes': train_d['bboxes'],
-            'obj_bboxes': train_d['obj_bboxes'],
-            'other_ped_bboxes': train_d['other_ped_bboxes'],
-            'intention_binary': train_d['intention_binary'], # train_d['intention_binary'] shape: (num_seqs, 1)
-            'data_split': 'train'
-        }
-        train_features.update(train_other_features)
-                                        
-        val_features = self._load_features(val_d['images'],
-                                           val_d['ped_ids'],
-                                           val_d['obj_ids'],
-                                           val_d['other_ped_ids'],
-                                           data_type='val')
-        val_other_features = {
-            'ped_bboxes': val_d['bboxes'],
-            'obj_bboxes': val_d['obj_bboxes'],
-            'other_ped_bboxes': val_d['other_ped_bboxes'],
-            'intention_binary': val_d['intention_binary'],
-            'data_split': 'val'
-        }
-        val_features.update(val_other_features)
-        
+        train_features = self._load_features(train_d, data_split='train')
+        val_features = self._load_features(val_d, data_split='val')
         if is_test:
-            test_features = self._load_features(test_d['images'],
-                                                test_d['ped_ids'],
-                                                test_d['obj_ids'],
-                                                test_d['other_ped_ids'],
-                                                data_type='test') 
-            test_other_features = {
-                'ped_bboxes': test_d['bboxes'],
-                'obj_bboxes': test_d['obj_bboxes'],
-                'other_ped_bboxes': test_d['other_ped_bboxes'],
-                'intention_binary': test_d['intention_binary'],
-                'data_split': 'test'
-            }
-            test_features.update(test_other_features)
-            
+            test_features = self._load_features(test_d, data_split='test')
+
         # Create dataloaders
         test_loader = None
         train_loader = self._get_dataloader(train_features)
@@ -112,17 +76,17 @@ class PIEPreprocessing(object):
         '''
         Create a dataloader for the clustering computation
         '''
-        dataset = PIEDataset(features)
+        dataset = PIEGraphDataset(features)
         return { # switch statement, python < 3.10 support
             'train':
-                torch.utils.data.DataLoader(
-                    dataset, batch_size=self.batch_size, shuffle=True, pin_memory=False),
+                BatchLoader(
+                    dataset, batch_size=self.batch_size, shuffle=True),
             'val':
-                torch.utils.data.DataLoader(
-                    dataset, batch_size=self.val_batch_size, shuffle=False, pin_memory=False),
+                BatchLoader(
+                    dataset, batch_size=self.val_batch_size, shuffle=False),
             'test':
-                torch.utils.data.DataLoader(
-                    dataset, batch_size=self.test_batch_size, shuffle=False, pin_memory=False)
+                BatchLoader(
+                    dataset, batch_size=self.test_batch_size, shuffle=False)
         }[features['data_split']]
 
         
@@ -171,12 +135,7 @@ class PIEPreprocessing(object):
                 'ped_ids': ped_ids,
                 'intention_binary': int_bin}
 
-    def _load_features(self,
-                      img_sequences,
-                      ped_ids,
-                      obj_ids,
-                      other_ped_ids,
-                      data_type):
+    def _load_features(self, data, data_split):
         """
         Load image features. The images are first
         cropped to 1.5x the size of the bounding box, padded and resized to
@@ -189,18 +148,23 @@ class PIEPreprocessing(object):
         :regen_pkl: if set to True overwrites previously saved features
         :return: a list of image features
         """
+        img_sequences = data['images']
+        ped_ids = data['ped_ids']
+        obj_ids = data['obj_ids']
+        other_ped_ids = data['other_ped_ids']
+
         # load the feature files if exists
         peds_load_path = self.pie.get_path(type_save='data',
                                     data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                     model_name='vgg16_'+'none',
-                                    data_subset = data_type,
+                                    data_subset = data_split,
                                     feature_type=self.pie.get_ped_type())
         objs_load_path = self.pie.get_path(type_save='data',
                                     data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                                     model_name='vgg16_'+'none',
-                                    data_subset = data_type,
+                                    data_subset = data_split,
                                     feature_type=self.pie.get_traffic_type())
-        print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_type, peds_load_path))
+        print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_split, peds_load_path))
 
         ped_sequences, obj_sequences, other_ped_sequences = [], [], []
         i = -1
@@ -266,7 +230,13 @@ class PIEPreprocessing(object):
 
         features = {'ped_feats': ped_sequences,
                     'obj_feats': obj_sequences,
-                    'other_ped_feats': other_ped_sequences}
+                    'other_ped_feats': other_ped_sequences,
+                    'ped_bboxes': data['bboxes'],
+                    'obj_bboxes': data['obj_bboxes'],
+                    'other_ped_bboxes': data['other_ped_bboxes'],
+                    'intention_binary': data['intention_binary'], # train_d['intention_binary'] shape: (num_seqs, 1)
+                    'data_split': data_split
+                    }
         return features
 
     def _get_tracks(self, sequences, seq_length, overlap_stride):
