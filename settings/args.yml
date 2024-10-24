@@ -9,6 +9,7 @@ instance_k: 4096 # number of neighbor embeddings to evaluate
 num_classes: 2 # number of different clusters
 trn_use_mean: True
 num_frames: 15
+middle_dim: 512
 emb_dim: 128
 resume: False
 batch_size: 32

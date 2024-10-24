@@ -7,6 +7,7 @@ from pathlib import PurePath
 
 from dataset.pie_data import PIE
 from dataset.pie_dataset import PIEGraphDataset
+from model.unpie_gcn import UnPIEGCN
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
 from torch.utils.data import DataLoader
@@ -76,7 +77,7 @@ class PIEPreprocessing(object):
         '''
         Create a dataloader for the clustering computation
         '''
-        dataset = PIEGraphDataset(features)
+        dataset = PIEGraphDataset(features, transform=UnPIEGCN.transform)
         return { # switch statement, python < 3.10 support
             'train':
                 DataLoader(
@@ -241,7 +242,7 @@ class PIEPreprocessing(object):
             'ped_bboxes': data['bboxes'],
             'obj_bboxes': data['obj_bboxes'],
             'other_ped_bboxes': data['other_ped_bboxes'],
-            'intention_binary': data['intention_binary'], # shape: (num_seqs, 1)
+            'intention_binary': data['intention_binary'], # shape: [num_seqs, 1]
             'data_split': data_split,
             'max_num_nodes': max_num_nodes
         }

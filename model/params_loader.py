@@ -146,7 +146,8 @@ class ParamsLoader:
             "kmeans_k": self.args['kmeans_k'],
             "task": self.args[self.setting]['task'],
             "instance_data_len": dataset_len,
-            "emb_dim": self.args['emb_dim']
+            "emb_dim": self.args['emb_dim'],
+            "middle_dim": self.args['middle_dim'],
         }
         return model_params
 
@@ -409,8 +410,7 @@ class ParamsLoader:
     
     def _get_num_nodes(self, data_loader):
         _, (x, _, _) = next(enumerate(data_loader))
-        print('x.shape', x.shape)
-        return x.shape[1]
+        return x.shape[2]
 
     def get_train_params(self, data_loaders, nn_clusterings):
         train_data_loader = data_loaders['train']
@@ -462,8 +462,11 @@ class ParamsLoader:
         train_data_param = {
             'func': data.get_placeholders,
             'batch_size': self.args['batch_size'],
+            'num_frames': self.args['num_frames'],
             'num_nodes': num_nodes_per_graph,
             'num_channels': self.args['input_shape']['num_channels'],
+            'multi_frame': True,
+            'multi_group': None,
             'name_prefix': 'TRAIN'
         }
         train_params = {
