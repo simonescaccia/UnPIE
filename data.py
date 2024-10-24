@@ -7,66 +7,66 @@ import tensorflow as tf
 sys.path.append(os.path.abspath('../'))
 
 
-def get_feeddict(image, bbox, label, index, name_prefix):
-    image_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
-        '%s_IMAGE_PLACEHOLDER:0' % name_prefix)
-    bbox_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
-        '%s_BBOX_PLACEHOLDER:0' % name_prefix)
-    label_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
-        '%s_LABEL_PLACEHOLDER:0' % name_prefix)
+def get_feeddict(x, a, y, idx, name_prefix):
+    x_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
+        '%s_X_PLACEHOLDER:0' % name_prefix)
+    a_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
+        '%s_A_PLACEHOLDER:0' % name_prefix)
+    y_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
+        '%s_Y_PLACEHOLDER:0' % name_prefix)
     index_placeholder = tf.compat.v1.get_default_graph().get_tensor_by_name(
         '%s_INDEX_PLACEHOLDER:0' % name_prefix)
     feed_dict = {
-        image_placeholder: image.numpy(),
-        bbox_placeholder: bbox.numpy(),
-        label_placeholder: label.numpy(),
-        index_placeholder: index.numpy()}
+        x_placeholder: x.numpy(),
+        a_placeholder: a.numpy(),
+        y_placeholder: y.numpy(),
+        index_placeholder: idx.numpy()}
     return feed_dict
 
 
-def get_placeholders(
-        batch_size, num_frames, num_channels,
-        name_prefix, multi_frame, multi_group):
-    image_placeholder = tf.compat.v1.placeholder(
+def get_placeholders(batch_size, num_frames, num_nodes, num_channels, 
+                     multi_frame, multi_group,
+                     name_prefix):
+    x_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, num_frames, num_channels),
-        name='%s_IMAGE_PLACEHOLDER' % name_prefix)
-    bbox_placeholder = tf.compat.v1.placeholder(
+        (batch_size, num_frames, num_nodes, num_channels + 4),
+        name='%s_X_PLACEHOLDER' % name_prefix)
+    a_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, num_frames, 4),
-        name='%s_BBOX_PLACEHOLDER' % name_prefix)
-    label_placeholder = tf.compat.v1.placeholder(
+        (batch_size, num_frames, num_nodes, num_nodes),
+        name='%s_A_PLACEHOLDER' % name_prefix)
+    y_placeholder = tf.compat.v1.placeholder(
         tf.int64,
         (batch_size),
-        name='%s_LABEL_PLACEHOLDER' % name_prefix)
+        name='%s_Y_PLACEHOLDER' % name_prefix)
     index_placeholder = tf.compat.v1.placeholder(
         tf.int64,
         (batch_size),
         name='%s_INDEX_PLACEHOLDER' % name_prefix)
     if not multi_frame:
         if num_frames == 1:
-            image_placeholder = tf.squeeze(image_placeholder, axis=1)
-            bbox_placeholder = tf.squeeze(bbox_placeholder, axis=1)
+            x_placeholder = tf.squeeze(x_placeholder, axis=1)
+            a_placeholder = tf.squeeze(a_placeholder, axis=1)
         else:
-            image_placeholder = tf.reshape(
-                image_placeholder, 
-                [-1, num_channels])
-            bbox_placeholder = tf.reshape(
-                bbox_placeholder, 
-                [-1, 4])
+            x_placeholder = tf.reshape(
+                x_placeholder, 
+                [-1, num_nodes, num_channels + 4])
+            a_placeholder = tf.reshape(
+                a_placeholder, 
+                [-1, num_nodes, num_nodes])            
     else:
         if multi_group is not None:
-            image_placeholder = tf.reshape(
-                image_placeholder, 
-                [batch_size*multi_group, num_frames // multi_group, num_channels])
-            bbox_placeholder = tf.reshape(
-                bbox_placeholder, 
-                [batch_size*multi_group, num_frames // multi_group, 4])
-
+            x_placeholder = tf.reshape(
+                x_placeholder, 
+                [batch_size*multi_group, num_frames // multi_group, num_nodes, num_channels + 4])
+            a_placeholder = tf.reshape(
+                a_placeholder, 
+                [batch_size*multi_group, num_frames // multi_group, num_nodes, num_nodes])
     inputs = {
-            'image': image_placeholder,
-            'bbox': bbox_placeholder,
-            'label': label_placeholder,
-            'index': index_placeholder
+        'x': x_placeholder,
+        'a': a_placeholder,
+        'y': y_placeholder,
+        'index': index_placeholder
     }
     return inputs
+

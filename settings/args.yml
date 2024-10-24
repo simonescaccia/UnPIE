@@ -9,7 +9,10 @@ instance_k: 4096 # number of neighbor embeddings to evaluate
 num_classes: 2 # number of different clusters
 trn_use_mean: True
 num_frames: 15
+middle_dim: 512
 emb_dim: 128
+img_height: 1080
+img_width: 1920
 resume: False
 batch_size: 32
 val_batch_size: 32
@@ -36,7 +39,7 @@ vd_3dresnet_IR:
   lr_boundaries: null
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 2000
+  train_num_steps: 3000
   load_exp: null
   load_step: null
 vd_3dresnet:
@@ -45,5 +48,5 @@ vd_3dresnet:
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 3000
+  train_num_steps: 4000
   load_exp: 'vd_3dresnet_IR'

@@ -147,8 +147,7 @@ class ParamsLoader:
             "task": self.args[self.setting]['task'],
             "instance_data_len": dataset_len,
             "emb_dim": self.args['emb_dim'],
-            "dropout_rate1": self.args['dropout_rate1'],
-            "dropout_rate2": self.args['dropout_rate2'],
+            "middle_dim": self.args['middle_dim'],
         }
         return model_params
 
@@ -181,7 +180,7 @@ class ParamsLoader:
                 update_ops.append(mb_update_op)
                 lb_update_op = tf.compat.v1.scatter_update(
                         all_labels, data_indx,
-                        inputs['label'])
+                        inputs['y'])
                 update_ops.append(lb_update_op)
 
         with tf.control_dependencies(update_ops):
@@ -226,7 +225,7 @@ class ParamsLoader:
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
         imagenet_top1 = tf.reduce_mean(
                 tf.cast(
-                    tf.equal(curr_pred, inputs['label']),
+                    tf.equal(curr_pred, inputs['y']),
                     tf.float32))
         return {'top1_{k}NN'.format(k=k): imagenet_top1}
     
@@ -252,7 +251,7 @@ class ParamsLoader:
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
         imagenet_top1 = tf.reduce_mean(
                 tf.cast(
-                    tf.equal(curr_pred, inputs['label']),
+                    tf.equal(curr_pred, inputs['y']),
                     tf.float32))
         return {'top1_{k}NN'.format(k=k): imagenet_top1}
 
@@ -265,8 +264,8 @@ class ParamsLoader:
         curr_output = tf.reshape(output, [-1, val_num_clips, num_classes])
         curr_output = tf.reduce_mean(curr_output, axis=1)
 
-        top1_accuracy = tf.nn.in_top_k(curr_output, inputs['label'], k=1)
-        top5_accuracy = tf.nn.in_top_k(curr_output, inputs['label'], k=5)
+        top1_accuracy = tf.nn.in_top_k(curr_output, inputs['y'], k=1)
+        top5_accuracy = tf.nn.in_top_k(curr_output, inputs['y'], k=5)
         return {'top1': top1_accuracy, 'top5': top5_accuracy}
 
     def _get_valid_loop_from_arg(self, val_data_loader):
@@ -278,8 +277,8 @@ class ParamsLoader:
             if val_counter[0] % val_step_num == 0:
                 val_data_enumerator.pop()
                 val_data_enumerator.append(enumerate(val_data_loader))
-            _, (image, bbox, label, index) = next(val_data_enumerator[0])
-            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='VAL')
+            _, (x, a, y, i) = next(val_data_enumerator[0])
+            feed_dict = data.get_feeddict(x, a, y, i, name_prefix='VAL')
             return sess.run(target, feed_dict=feed_dict)
         return valid_loop, val_step_num    
 
@@ -292,27 +291,29 @@ class ParamsLoader:
             if test_counter[0] % test_step_num == 0:
                 test_data_enumerator.pop()
                 test_data_enumerator.append(enumerate(test_data_loader))
-            _, (image, bbox, label, index) = next(test_data_enumerator[0])
-            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='TEST')
+            _, (x, a, y, i) = next(test_data_enumerator[0])
+            feed_dict = data.get_feeddict(x, a, y, i, name_prefix='TEST')
             return sess.run(target, feed_dict=feed_dict)
         return test_loop, test_step_num
 
-    def _get_topn_val_data_param_from_arg(self):
+    def _get_topn_val_data_param_from_arg(self, val_num_nodes_per_graph):
         topn_val_data_param = {
                 'func': data.get_placeholders,
                 'batch_size': self.args['val_batch_size'],
                 'num_frames': self.args['num_frames'] * self.args['val_num_clips'],
+                'num_nodes': val_num_nodes_per_graph,
                 'num_channels': self.args['input_shape']['num_channels'],
                 'multi_frame': True,
                 'multi_group': self.args['val_num_clips'],
                 'name_prefix': 'VAL'}
         return topn_val_data_param
     
-    def _get_topn_test_data_param_from_arg(self):
+    def _get_topn_test_data_param_from_arg(self, test_num_nodes_per_graph):
         topn_test_data_param = {
                 'func': data.get_placeholders,
                 'batch_size': self.args['test_batch_size'],
                 'num_frames': self.args['num_frames'] * self.args['test_num_clips'],
+                'num_nodes': test_num_nodes_per_graph,
                 'num_channels': self.args['input_shape']['num_channels'],
                 'multi_frame': True,
                 'multi_group': self.args['test_num_clips'],
@@ -344,6 +345,8 @@ class ParamsLoader:
         test_batch_size = self.args['test_batch_size']
         test_num_clips = self.args['test_num_clips']
         emb_dim = self.args['emb_dim']
+        img_height = self.args['img_height']
+        img_width = self.args['img_width']
         data_opts = {
             'fstride': 1,
             'sample_type': 'all', 
@@ -370,14 +373,17 @@ class ParamsLoader:
             'val_num_clips': val_num_clips,
             'test_batch_size': test_batch_size,
             'test_num_clips': test_num_clips,
-            'emb_dim': emb_dim
+            'emb_dim': emb_dim,
+            'img_height': img_height,
+            'img_width': img_width,
         }
         return pie_params
     
     def get_test_params(self, data_loaders):
         test_data_loader = data_loaders['test']
+        test_num_nodesper_graph = self._get_num_nodes(test_data_loader)
 
-        topn_test_data_param = self._get_topn_test_data_param_from_arg()
+        topn_test_data_param = self._get_topn_test_data_param_from_arg(test_num_nodesper_graph)
 
         test_targets = {
             'func': self._test_perf_func_kNN,
@@ -409,12 +415,18 @@ class ParamsLoader:
 
         return params
     
+    def _get_num_nodes(self, data_loader):
+        _, (x, _, _, _) = next(enumerate(data_loader))
+        return x.shape[2]
+
     def get_train_params(self, data_loaders, nn_clusterings):
         train_data_loader = data_loaders['train']
         val_data_loader = data_loaders['val']
 
         train_dataset_len = train_data_loader.dataset.__len__()
-        
+        train_num_nodes_per_graph = self._get_num_nodes(train_data_loader)
+        val_num_nodes_per_graph = self._get_num_nodes(val_data_loader)
+
         loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)
 
         first_step = []
@@ -448,28 +460,30 @@ class ParamsLoader:
             if global_step % data_en_update_fre == 0:
                 data_enumerator.pop()
                 data_enumerator.append(enumerate(train_data_loader))
-            _, (image, bbox, label, index) = next(data_enumerator[0])
-            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='TRAIN')
+            _, (x, a, y, i) = next(data_enumerator[0])
+            feed_dict = data.get_feeddict(x, a, y, i, name_prefix='TRAIN')
             sess_res = sess.run(train_targets, feed_dict=feed_dict)
             return sess_res
 
         # train_params: parameters about training data
         train_data_param = {
-                'func': data.get_placeholders,
-                'batch_size': self.args['batch_size'], 
-                'num_frames': self.args['num_frames'],
-                'num_channels': self.args['input_shape']['num_channels'],
-                'multi_frame': True,
-                'multi_group': None,
-                'name_prefix': 'TRAIN'}
+            'func': data.get_placeholders,
+            'batch_size': self.args['batch_size'],
+            'num_frames': self.args['num_frames'],
+            'num_nodes': train_num_nodes_per_graph,
+            'num_channels': self.args['input_shape']['num_channels'],
+            'multi_frame': True,
+            'multi_group': None,
+            'name_prefix': 'TRAIN'
+        }
         train_params = {
-                'validate_first': False,
-                'data_params': train_data_param,
-                'queue_params': None,
-                'thres_loss': float('Inf'),
-                'num_steps': self.args[self.setting]['train_num_steps'],
-                'train_loop': {'func': train_loop},
-                }
+            'validate_first': False,
+            'data_params': train_data_param,
+            'queue_params': None,
+            'thres_loss': float('Inf'),
+            'num_steps': self.args[self.setting]['train_num_steps'],
+            'train_loop': {'func': train_loop},
+        }
         
         if not self.args[self.setting]['task'] == 'SUP':
             ## Add other loss reports (loss_model, loss_noise)
@@ -478,7 +492,7 @@ class ParamsLoader:
             }
 
         # validation_params: control the validation
-        topn_val_data_param = self._get_topn_val_data_param_from_arg()
+        topn_val_data_param = self._get_topn_val_data_param_from_arg(val_num_nodes_per_graph)
 
         if not self.args[self.setting]['task'] == 'SUP':
             val_targets = {

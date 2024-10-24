@@ -1,30 +1,21 @@
-import tensorflow as tf
-
-from model.feature_extractor import FeatureExtractor
-from model.temporal_aggregator import TemporalAggregator
-
+from model.unpie_gcn import UnPIEGCN
+from model.unpie_temporal_aggregator import UnPIETemporalAggregator
 
 class UnPIENetwork(object):
-    def __init__(self, emb_size, dropout_rate1, dropout_rate2):
-        self.feature_extractor = FeatureExtractor(emb_size, dropout_rate1, dropout_rate2)
-        self.temporal_aggregator = TemporalAggregator(emb_size)
+    def __init__(self, middle_dim, emb_dim):
+        self.gcn = UnPIEGCN(middle_dim, emb_dim)
+        self.temporal_aggregator = UnPIETemporalAggregator(emb_dim)
     
-    def __call__(self, ped_feat, ped_bbox): 
+    def __call__(self, x, a): 
         '''
         Args:
-            ped_feat: [batch_size, num_frames, emb_size]
-            ped_bbox: [batch_size, num_frames, 4]
-            objs_feat: [batch_size, num_frames, num_objs, emb_size]
-            objs_bbox: [batch_size, num_frames, num_objs, 4]
-            other_peds_feat: [batch_size, num_frames, num_other_peds, emb_size]
-            other_peds_bbox: [batch_size, num_frames, num_other_peds, 4]
+            x: tf.Tensor, shape=(batch_size, num_frames, num_nodes, num_channels + 4)
+            a: tf.Tensor, shape=(batch_size, num_frames, num_nodes, num_nodes)
+            y: tf.Tensor, shape=(batch_size)
         '''
-        # Compute features
-        new_ped_feat = self.feature_extractor(ped_feat, ped_bbox)
-
-        # Extract features for each object and other pedestrian: TODO
-        # Aggregate spatial features using a GNN: TODO
+        # Aggregate spatial features using a GNN
+        ped_feat = self.gcn(x, a) # ped_feat shape: (batch_size, num_frames, emb_dim)
 
         # Aggregate temporal features
-        new_ped_feat = self.temporal_aggregator(new_ped_feat)
-        return new_ped_feat
+        ped_feat = self.temporal_aggregator(ped_feat) # ped_feat shape: (batch_size, emb_dim)
+        return ped_feat

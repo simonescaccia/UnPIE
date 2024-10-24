@@ -1,9 +1,12 @@
 import sys
+import tensorflow as tf
 
 from dataset.pie_preprocessing import PIEPreprocessing
 from model.params_loader import ParamsLoader
 from model.unpie import UnPIE
 from utils.print_utils import print_separator
+
+tf.compat.v1.disable_v2_behavior() # VIE tf1 compatibility
 
 def get_unpie(training_step, train_test):
     is_test = train_test > 0 # 0: train only, 1: train and test, 2: test only
