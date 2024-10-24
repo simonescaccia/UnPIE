@@ -35,12 +35,12 @@ Add `export PATH="/home/username/miniconda3/bin:$PATH"` at the end of `~/.profil
 
 Create environment:
   ```bash
-  conda env create -f environment_tf1.yaml
+  conda env create -f environment_tf2.yaml
   ```
 
 Activate environment:
   ```bash
-  conda activate unpie-tf1-env
+  conda activate unpie-tf2-env
   ```
 
 Deactivate environment:
