@@ -6,21 +6,26 @@ import tensorflow as tf
 DEFAULT_SEED = 1234
 
 
-def run_kmeans(x, nmb_clusters, verbose=False, seed=DEFAULT_SEED):
+def run_kmeans(x, nmb_clusters, verbose=False):
     """Runs kmeans on 1 GPU.
     Args:
         x: data
         nmb_clusters (int): number of clusters
     Returns:
-        list: ids of data in each cluster
+        (list: ids of data in each cluster, float: loss value)
     """
     n_data, d = x.shape
 
     # faiss implementation of k-means
     clus = faiss.Clustering(d, nmb_clusters)
+
+    # Change faiss seed at each k-means so that the randomly picked
+    # initialization centroids do not correspond to the same feature ids
+    # from an epoch to another.
+    clus.seed = np.random.randint(1234)
+
     clus.niter = 20
     clus.max_points_per_centroid = 10000000
-    clus.seed = seed
     res = faiss.StandardGpuResources()
     flat_config = faiss.GpuIndexFlatConfig()
     flat_config.useFloat16 = False
@@ -30,7 +35,15 @@ def run_kmeans(x, nmb_clusters, verbose=False, seed=DEFAULT_SEED):
     # perform the training
     clus.train(x, index)
     _, I = index.search(x, 1)
-    losses = faiss.vector_to_array(clus.obj)
+
+    # losses = faiss.vector_to_array(clus.obj)
+
+    stats = clus.iteration_stats
+    losses = np.array([
+        stats.at(i).obj for i in range(stats.size())
+    ])
+
+
     if verbose:
         print('k-means loss evolution: {0}'.format(losses))
 
@@ -61,7 +74,7 @@ class Kmeans:
         for k_idx, each_k in enumerate(self.k):
             # cluster the data
             I, _ = run_kmeans(data, each_k, 
-                              verbose, seed = k_idx + DEFAULT_SEED)
+                              verbose)
             new_clust_labels = np.asarray(I)
             all_lables.append(new_clust_labels)
         new_clust_labels = np.stack(all_lables, axis=0)
