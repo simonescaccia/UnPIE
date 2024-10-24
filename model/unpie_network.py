@@ -1,5 +1,5 @@
-from model.unpie_gcn import GCN
-from model.unpie_temporal_aggregator import TemporalAggregator
+from model.unpie_gcn import UnPIEGCN
+from model.unpie_temporal_aggregator import UnPIETemporalAggregator
 import numpy
 import sys
 
@@ -9,20 +9,19 @@ numpy.set_printoptions(linewidth=numpy.inf)
 
 class UnPIENetwork(object):
     def __init__(self, middle_dim, emb_dim):
-        self.gcn = GCN(middle_dim, emb_dim)
-        self.temporal_aggregator = TemporalAggregator(emb_dim)
+        self.gcn = UnPIEGCN(middle_dim, emb_dim)
+        self.temporal_aggregator = UnPIETemporalAggregator(emb_dim)
     
     def __call__(self, x, a): 
         '''
         Args:
-            x: tf.Tensor, shape=(batch_size, num_nodes, num_channels + 4)
-            a: tf.Tensor, shape=(batch_size, num_nodes, num_nodes)
+            x: tf.Tensor, shape=(batch_size, num_frames, num_nodes, num_channels + 4)
+            a: tf.Tensor, shape=(batch_size, num_frames, num_nodes, num_nodes)
             y: tf.Tensor, shape=(batch_size)
         '''
-        print('a\n', a) # TODO remove padding
         # Aggregate spatial features using a GNN
-        ped_feat = self.gcn(x, a)
+        ped_feat = self.gcn(x, a) # ped_feat shape: (batch_size, num_frames, emb_dim)
 
         # Aggregate temporal features
-        ped_feat = self.temporal_aggregator(ped_feat)
+        ped_feat = self.temporal_aggregator(ped_feat) # ped_feat shape: (batch_size, emb_dim)
         return ped_feat

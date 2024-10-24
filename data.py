@@ -21,23 +21,44 @@ def get_feeddict(x, a, y, name_prefix):
     return feed_dict
 
 
-def get_placeholders(batch_size, num_nodes, num_channels, name_prefix):
+def get_placeholders(batch_size, num_frames, num_nodes, num_channels, 
+                     multi_frame, multi_group,
+                     name_prefix):
     x_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, num_nodes, num_channels + 4),
+        (batch_size, num_frames, num_nodes, num_channels + 4),
         name='%s_X_PLACEHOLDER' % name_prefix)
     a_placeholder = tf.compat.v1.placeholder(
         tf.float32,
-        (batch_size, num_nodes, num_nodes),
+        (batch_size, num_frames, num_nodes, num_nodes),
         name='%s_A_PLACEHOLDER' % name_prefix)
     y_placeholder = tf.compat.v1.placeholder(
         tf.int64,
         (batch_size),
         name='%s_Y_PLACEHOLDER' % name_prefix)
-
+    if not multi_frame:
+        if num_frames == 1:
+            x_placeholder = tf.squeeze(x_placeholder, axis=1)
+            a_placeholder = tf.squeeze(a_placeholder, axis=1)
+        else:
+            x_placeholder = tf.reshape(
+                x_placeholder, 
+                [-1, num_nodes, num_channels + 4])
+            a_placeholder = tf.reshape(
+                a_placeholder, 
+                [-1, num_nodes, num_nodes])            
+    else:
+        if multi_group is not None:
+            x_placeholder = tf.reshape(
+                x_placeholder, 
+                [batch_size*multi_group, num_frames // multi_group, num_nodes, num_channels])
+            a_placeholder = tf.reshape(
+                a_placeholder, 
+                [batch_size*multi_group, num_frames // multi_group, num_nodes, num_nodes])
     inputs = {
         'x': x_placeholder,
         'a': a_placeholder,
         'y': y_placeholder
     }
     return inputs
+
