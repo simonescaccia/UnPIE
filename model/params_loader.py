@@ -146,9 +146,7 @@ class ParamsLoader:
             "kmeans_k": self.args['kmeans_k'],
             "task": self.args[self.setting]['task'],
             "instance_data_len": dataset_len,
-            "emb_dim": self.args['emb_dim'],
-            "dropout_rate1": self.args['dropout_rate1'],
-            "dropout_rate2": self.args['dropout_rate2'],
+            "emb_dim": self.args['emb_dim']
         }
         return model_params
 
@@ -278,8 +276,8 @@ class ParamsLoader:
             if val_counter[0] % val_step_num == 0:
                 val_data_enumerator.pop()
                 val_data_enumerator.append(enumerate(val_data_loader))
-            _, (image, bbox, label, index) = next(val_data_enumerator[0])
-            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='VAL')
+            _, (inputs, target) = next(val_data_enumerator[0])
+            feed_dict = data.get_feeddict(inputs, target, name_prefix='VAL')
             return sess.run(target, feed_dict=feed_dict)
         return valid_loop, val_step_num    
 
@@ -292,8 +290,8 @@ class ParamsLoader:
             if test_counter[0] % test_step_num == 0:
                 test_data_enumerator.pop()
                 test_data_enumerator.append(enumerate(test_data_loader))
-            _, (image, bbox, label, index) = next(test_data_enumerator[0])
-            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='TEST')
+            _, (inputs, target) = next(test_data_enumerator[0])
+            feed_dict = data.get_feeddict(inputs, target, name_prefix='TEST')
             return sess.run(target, feed_dict=feed_dict)
         return test_loop, test_step_num
 
@@ -320,8 +318,7 @@ class ParamsLoader:
         return topn_test_data_param
 
     def _get_input_shape(self):
-        vgg_out_shape = self.args['vgg_out_shape']
-        num_channels = int(vgg_out_shape[0])
+        num_channels = int(self.args['vgg_out_shape'])
         input_shape = {
             'num_channels': num_channels,
         }
@@ -449,19 +446,17 @@ class ParamsLoader:
             if global_step % data_en_update_fre == 0:
                 data_enumerator.pop()
                 data_enumerator.append(enumerate(train_data_loader))
-            _, (image, bbox, label, index) = next(data_enumerator[0])
-            feed_dict = data.get_feeddict(image, bbox, label, index, name_prefix='TRAIN')
+            _, (inputs, y) = next(data_enumerator[0])
+            x, a = inputs
+            feed_dict = data.get_feeddict(x, a, y, name_prefix='TRAIN')
             sess_res = sess.run(train_targets, feed_dict=feed_dict)
             return sess_res
 
         # train_params: parameters about training data
         train_data_param = {
                 'func': data.get_placeholders,
-                'batch_size': self.args['batch_size'], 
-                'num_frames': self.args['num_frames'],
+                'batch_size': self.args['batch_size'],
                 'num_channels': self.args['input_shape']['num_channels'],
-                'multi_frame': True,
-                'multi_group': None,
                 'name_prefix': 'TRAIN'}
         train_params = {
                 'validate_first': False,

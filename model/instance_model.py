@@ -161,17 +161,12 @@ def build_output(
             )
     
     unpie_framework = UnPIENetwork(
-        kwargs.get('emb_dim'), 
-        kwargs.get('dropout_rate1'), 
-        kwargs.get('dropout_rate2')
+        kwargs.get('middle_dim'),
+        kwargs.get('emb_dim'),
     )
     output = unpie_framework(
-        inputs['image'], 
-        inputs['bbox'], 
-        inputs['objs_img'], 
-        inputs['objs_bbox'], 
-        inputs['other_peds_img'], 
-        inputs['other_peds_bbox']
+        inputs['x'], 
+        inputs['a']
     )
     output = tf.nn.l2_normalize(output, axis=1)
 
