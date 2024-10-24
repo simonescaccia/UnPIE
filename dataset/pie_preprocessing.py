@@ -26,6 +26,8 @@ class PIEPreprocessing(object):
         self.val_num_clips = params['val_num_clips']
         self.test_batch_size = params['test_batch_size']
         self.test_num_clips = params['test_num_clips']
+        self.img_height = params['img_height']
+        self.img_width = params['img_width']
 
         self.pie = PIE(data_path=self.pie_path)
 
@@ -73,11 +75,25 @@ class PIEPreprocessing(object):
             'test': test_loader
         }
 
+    def _normalize_bbox(self, bbox):
+        '''
+        Normalize the bounding box coordinates
+        '''
+        img_height = self.img_height
+        img_width = self.img_width
+
+        bbox[0] = bbox[0] / img_width
+        bbox[1] = bbox[1] / img_height
+        bbox[2] = bbox[2] / img_width
+        bbox[3] = bbox[3] / img_height
+
+        return bbox
+
     def _get_dataloader(self, features):
         '''
         Create a dataloader for the clustering computation
         '''
-        dataset = PIEGraphDataset(features, transform=UnPIEGCN.transform)
+        dataset = PIEGraphDataset(features, transform_a=UnPIEGCN.transform, normalize_bbox=self._normalize_bbox)
         return { # switch statement, python < 3.10 support
             'train':
                 DataLoader(
