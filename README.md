@@ -3,6 +3,9 @@ Unsupervised Pedestrian Intention Estimation with Graph Neural Networks
 
 ![graph_representation](/images/Figure_4.png)
 
+UnPIE network:
+![unpie_network](/images/UnPIE.jpg)
+
 ## Credits
 Some modules are taken and modified from the following repositories:
 - [Pedestrian Intention Estimation (PIE) dataset](http://data.nvision2.eecs.yorku.ca/PIE_dataset/).
@@ -82,8 +85,9 @@ PIE_dataset
 Run the following command to extract and save all the image features needed by the GNN without saving each frame:
 
   ```bash
-  python extract_images.py
+  python extract_features.py
   ```
+![feature_extraction](/images/Feature%20extraction.png)
 
 ## Training and testing
 
