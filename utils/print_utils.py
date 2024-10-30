@@ -1,5 +1,9 @@
-import subprocess as sp
 import tensorflow as tf
+import matplotlib.pyplot as plt
+import cv2
+from PIL import Image
+
+from utils.pie_utils import jitter_bbox, squarify
 
 num_dashes = 100
 
@@ -36,3 +40,24 @@ def print_memory_info(info):
         print(f"Bytes limit: {byteLimit_mb:.2f} MB")
         print(f"Max bytes in use: {maxByteInUse_mb:.2f} MB")
     print('')
+
+def print_image_with_bbox(image, df):
+    # Convert CV image to PIL image
+    image1 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+    image2 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+    image_pil = Image.fromarray(image1)
+    
+    for i, row in df.iterrows():
+        image_i = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        b = list(row['bbox'])
+        bbox = jitter_bbox([b],'enlarge', 2, image=image_pil)[0]
+        bbox = squarify(bbox, 1, image_pil.size[0])
+        bbox = list(map(int,bbox[0:4]))
+        cv2.rectangle(image_i, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
+        plt.imshow(image_i)
+        plt.axis('off')
+        plt.show()
+
+    plt.imshow(image2)
+    plt.axis('off')
+    plt.show()
