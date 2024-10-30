@@ -507,6 +507,10 @@ class PIE(object):
         img_dest_folder = os.path.join(dest_path, set_id, vid_id)
         img_dest_path = os.path.join(img_dest_folder, img_name+'_'+ped_id+'.pkl')
         if not os.path.exists(img_dest_path) and not os.path.exists(img_save_path):
+            # Convert CV image to PIL image
+            image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(image)
+            
             bbox = jitter_bbox([b],'enlarge', 2, image=image)[0]
             bbox = squarify(bbox, 1, image.size[0])
             bbox = list(map(int,bbox[0:4]))
@@ -541,10 +545,6 @@ class PIE(object):
                 if frame_num in frames_list:
                     self.update_progress(img_count / num_frames)
                     img_count += 1
-
-                    # Convert CV image to PIL image
-                    image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-                    image = Image.fromarray(image)
 
                     # Retrieve the image path, bbox, id from the annotation dataframe
                     df = ped_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))

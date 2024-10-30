@@ -1,5 +1,10 @@
 # UnPIE
-Unsupervised Pedestrian Intention Estimation
+Unsupervised Pedestrian Intention Estimation with Graph Neural Networks
+
+![graph_representation](/images/Figure_4.png)
+
+UnPIE network:
+![unpie_network](/images/UnPIE.jpg)
 
 ## Credits
 Some modules are taken and modified from the following repositories:
@@ -33,37 +38,18 @@ Add `export PATH="/home/username/miniconda3/bin:$PATH"` at the end of `~/.profil
 
 Create environment:
   ```bash
-  conda env create -f environment_tf1.yaml
+  conda env create -f environment_tf2.yaml
   ```
 
 Activate environment:
   ```bash
-  conda activate unpie-tf1-env
+  conda activate unpie-tf2-env
   ```
 
 Deactivate environment:
   ```bash
   conda deactivate
   ```
-
-### Venv environment
-
-To install via virtual environment (recommended) follow these steps:
-
-- Linux:
-
-    - Install virtual environment `sudo apt-get install virtualenv`.
-
-    - Create a virtual environment with Python3:
-
-      ```bash
-      virtualenv --system-site-packages -p python3.10 ./venv
-      source venv/bin/activate
-      pip install -U pip
-      ```
-
-Install dependencies:
-`python3 -m pip install -r requirements_tfx.txt`
 
 ### UnPIE setup
 
@@ -96,11 +82,13 @@ PIE_dataset
 ```
 
 ## Preprocessing
-Run the following command to preprocess the image features without extracting all the annotated frames:
+Run the following command to extract and save all the image features needed by the GNN without saving each frame:
 
   ```bash
-  python extract_images.py
+  python extract_features.py
   ```
+![feature_extraction](/images/Feature%20extraction.png)
+![vgg16](/images/vgg16.png)
 
 ## Training and testing
 
