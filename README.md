@@ -88,6 +88,7 @@ Run the following command to extract and save all the image features needed by t
   python extract_features.py
   ```
 ![feature_extraction](/images/Feature%20extraction.png)
+![vgg16](/images/vgg16.png)
 
 ## Training and testing
 
