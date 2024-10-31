@@ -55,6 +55,8 @@ class PIEPreprocessing(object):
         # Balance the number of samples in each split
         train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
         val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
+        if is_test:
+            test_d = self.pie.balance_samples_count(test_d, label_type='intention_binary')
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         train_d = self._load_features(train_d, data_split='train')
