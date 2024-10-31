@@ -1,0 +1,2 @@
+feat_extr_model, feat_extr_layer, feat_size, train_sets, val_sets, test_sets, IR_steps, LA_steps, test_accuracy, test_f1, test_auc, test_precision
+vgg16, fc1, 4096, set04, set06, set03, 4000, 6000, 0.49479166, , , ,   

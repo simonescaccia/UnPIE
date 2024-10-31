@@ -3,12 +3,8 @@ import os
 import yaml
 import tensorflow as tf
 
-tf.compat.v1.disable_v2_behavior()
-
 with open('settings/config.yml', 'r') as file:
     config_file = yaml.safe_load(file)
-
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 pie_path = config_file['PIE_PATH']
 
