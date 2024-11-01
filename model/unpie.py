@@ -179,14 +179,11 @@ class UnPIE(object):
 
     def run_train_loop(self):
         start_step = self.sess.run(self.global_step)
-        train_loop = self.params['train_params'].get('train_loop', None)
+        train_loop = self.params['train_params'].get('train_loop')
 
         for curr_step in range(start_step, int(self.params['train_params']['num_steps']+1)):
             self.start_time = time.time()
-            if train_loop is None:
-                train_res = self.sess.run(self.train_targets)
-            else:
-                train_res = train_loop['func'](self.sess, self.train_targets)
+            train_res = train_loop['func'](self.train_targets)
 
             duration = time.time() - self.start_time
 
@@ -198,7 +195,7 @@ class UnPIE(object):
             message += ', '.join(rep_msg)
             print(message)
 
-            if curr_step % self.params['save_params']['cache_filters_freq'] == 0 \
+            if curr_step % self.params['save_params']['fre_save_model'] == 0 \
                     and curr_step > 0:
                 print('Saving model...')
                 self.saver.save(
