@@ -25,8 +25,7 @@ dropout_rate1: 0.3
 dropout_rate2: 0.15
 kNN_val: 50
 kNN_test: 50
-fre_filter: 50
-fre_cache_filter: 50
+fre_save_model: 50 # frequency to save model checkpoint
 fre_valid: 50
 fre_metric: 50
 train_log_file: 'log.txt'
@@ -39,7 +38,7 @@ vd_3dresnet_IR:
   lr_boundaries: null
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 3000
+  train_num_steps: 4000
   load_exp: null
   load_step: null
 vd_3dresnet:
@@ -48,5 +47,5 @@ vd_3dresnet:
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 4000
+  train_num_steps: 6000
   load_exp: 'vd_3dresnet_IR'

@@ -100,7 +100,6 @@ class ParamsLoader:
         train_steps = self.args['train_steps']
         
         # save_params: defining where to save the models
-        fre_cache_filter = self.args['fre_cache_filter'] or self.args[self.setting]['fre_filter']
         dir_num_steps = ''
         for step in train_steps.split(','):
             dir_num_steps += str(self.args[step]['train_num_steps']) + '_'
@@ -110,8 +109,7 @@ class ParamsLoader:
         save_params = {
                 'save_metrics_freq': self.args['fre_metric'],
                 'save_valid_freq': self.args['fre_valid'],
-                'save_filters_freq': self.args['fre_filter'],
-                'cache_filters_freq': fre_cache_filter,
+                'fre_save_model': self.args['fre_save_model'],
                 'cache_dir': cache_dir,
                 'train_log_file': self.args['train_log_file'],
                 'val_log_file': self.args['val_log_file'],
