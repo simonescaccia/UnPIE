@@ -285,6 +285,8 @@ class ParamsLoader:
             ## Add other loss reports (loss_model, loss_noise)
             train_params['targets'] = {}
 
+        valid_loop, val_step_num = self._get_inference_loop_from_arg(val_data_loader)
+
         inference_targets = {
             'k': self.args['kNN_inference'],
             'instance_t': self.args['instance_t'],
@@ -292,9 +294,7 @@ class ParamsLoader:
             'num_classes': self.args['num_classes']
         }
 
-        valid_loop, val_step_num = self._get_inference_loop_from_arg(val_data_loader)
-
-        validation_params = {
+        inference_params = {
             'queue_params': None,
             'targets': inference_targets,
             'num_steps': val_step_num,
@@ -308,7 +308,7 @@ class ParamsLoader:
             'learning_rate_params': learning_rate_params,
             'optimizer_params': optimizer_params,
             'train_params': train_params,
-            'validation_params': validation_params,
+            'inference_params': inference_params,
         }
 
         return params
