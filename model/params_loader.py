@@ -5,7 +5,6 @@ import tensorflow as tf
 
 import data
 from model import instance_model
-from utils.vie_utils import tuple_get_one
 
 
 class ParamsLoader:
@@ -115,123 +114,25 @@ class ParamsLoader:
             # agg_res[k].append(v)
         return agg_res
 
-
-    def _valid_perf_func_kNN(
-            self,
-            inputs, output, 
-            instance_t,
-            k, val_num_clips,
-            num_classes):
-        curr_dist, all_labels = output
-        all_labels = tuple_get_one(all_labels)
-        top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
-        top_labels = tf.gather(all_labels, top_indices)
-        top_labels_one_hot = tf.one_hot(top_labels, num_classes)
-        top_prob = tf.exp(top_dist / instance_t)
-        top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1)
-        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
-        top_labels_one_hot = tf.reshape(
-                top_labels_one_hot,
-                [-1, val_num_clips, num_classes])
-        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
-        _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
-        curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
-        imagenet_top1 = tf.reduce_mean(
-                tf.cast(
-                    tf.equal(curr_pred, inputs['y']),
-                    tf.float32))
-        return {'top1_{k}NN'.format(k=k): imagenet_top1}
-    
-    def _test_perf_func_kNN(
-            self,
-            inputs, output, 
-            instance_t,
-            k, num_classes,
-            test_num_clips):
-        curr_dist, all_labels = output
-        all_labels = tuple_get_one(all_labels)
-        top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
-        top_labels = tf.gather(all_labels, top_indices)
-        top_labels_one_hot = tf.one_hot(top_labels, num_classes)
-        top_prob = tf.exp(top_dist / instance_t)
-        top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1)
-        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
-        top_labels_one_hot = tf.reshape(
-                top_labels_one_hot,
-                [-1, test_num_clips, num_classes])
-        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
-        _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
-        curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
-        imagenet_top1 = tf.reduce_mean(
-                tf.cast(
-                    tf.equal(curr_pred, inputs['y']),
-                    tf.float32))
-        return {'top1_{k}NN'.format(k=k): imagenet_top1}
-
-    def _valid_sup_func(
-            self,
-            inputs, output, 
-            val_num_clips):
-        num_classes = output.get_shape().as_list()[-1]
-        curr_output = tf.nn.softmax(output)
-        curr_output = tf.reshape(output, [-1, val_num_clips, num_classes])
-        curr_output = tf.reduce_mean(curr_output, axis=1)
-
-        top1_accuracy = tf.nn.in_top_k(curr_output, inputs['y'], k=1)
-        top5_accuracy = tf.nn.in_top_k(curr_output, inputs['y'], k=5)
-        return {'top1': top1_accuracy, 'top5': top5_accuracy}
-
-    def _get_valid_loop_from_arg(self, val_data_loader):
-        val_counter = [0]
-        val_step_num = val_data_loader.dataset.__len__() // self.args['val_batch_size']
-        val_data_enumerator = [enumerate(val_data_loader)]
-        def valid_loop(sess, target):
-            val_counter[0] += 1
-            if val_counter[0] % val_step_num == 0:
-                val_data_enumerator.pop()
-                val_data_enumerator.append(enumerate(val_data_loader))
-            _, (x, a, y, i) = next(val_data_enumerator[0])
-            feed_dict = data.get_feeddict(x, a, y, i, name_prefix='VAL')
-            return sess.run(target, feed_dict=feed_dict)
-        return valid_loop, val_step_num    
-
-    def _get_test_loop_from_arg(self, test_data_loader):
-        test_counter = [0]
-        test_step_num = test_data_loader.dataset.__len__() // self.args['test_batch_size']
-        test_data_enumerator = [enumerate(test_data_loader)]
-        def test_loop(sess, target):
-            test_counter[0] += 1
-            if test_counter[0] % test_step_num == 0:
-                test_data_enumerator.pop()
-                test_data_enumerator.append(enumerate(test_data_loader))
-            _, (x, a, y, i) = next(test_data_enumerator[0])
-            feed_dict = data.get_feeddict(x, a, y, i, name_prefix='TEST')
-            return sess.run(target, feed_dict=feed_dict)
-        return test_loop, test_step_num
-
-    def _get_topn_val_data_param_from_arg(self, val_num_nodes_per_graph):
-        topn_val_data_param = {
-                'func': data.get_placeholders,
-                'batch_size': self.args['val_batch_size'],
-                'num_frames': self.args['num_frames'] * self.args['val_num_clips'],
-                'num_nodes': val_num_nodes_per_graph,
-                'num_channels': self.args['input_shape']['num_channels'],
-                'multi_frame': True,
-                'multi_group': self.args['val_num_clips'],
-                'name_prefix': 'VAL'}
-        return topn_val_data_param
-    
-    def _get_topn_test_data_param_from_arg(self, test_num_nodes_per_graph):
-        topn_test_data_param = {
-                'func': data.get_placeholders,
-                'batch_size': self.args['test_batch_size'],
-                'num_frames': self.args['num_frames'] * self.args['test_num_clips'],
-                'num_nodes': test_num_nodes_per_graph,
-                'num_channels': self.args['input_shape']['num_channels'],
-                'multi_frame': True,
-                'multi_group': self.args['test_num_clips'],
-                'name_prefix': 'TEST'}
-        return topn_test_data_param
+    def _get_inference_loop_from_arg(self, data_loader):
+        counter = [0]
+        step_num = data_loader.dataset.__len__() // self.args['inference_batch_size']
+        data_enumerator = [enumerate(data_loader)]
+        def inference_loop(inference_func):
+            counter[0] += 1
+            if counter[0] % step_num == 0:
+                data_enumerator.pop()
+                data_enumerator.append(enumerate(data_loader))
+            _, (x, a, y, i) = next(data_enumerator[0])
+            inputs = {
+                'x': x,
+                'a': a,
+                'y': y,
+                'i': i,
+            }
+            res = inference_func(inputs, train=False)
+            return res
+        return inference_loop, step_num    
 
     def _get_input_shape(self):
         num_channels = int(self.args['vgg_out_shape'])
@@ -294,32 +195,23 @@ class ParamsLoader:
     
     def get_test_params(self, data_loaders):
         test_data_loader = data_loaders['test']
-        test_num_nodesper_graph = self._get_num_nodes(test_data_loader)
-
-        topn_test_data_param = self._get_topn_test_data_param_from_arg(test_num_nodesper_graph)
 
         test_targets = {
-            'func': self._test_perf_func_kNN,
             'k': self.args['kNN_test'],
             'instance_t': self.args['instance_t'],
             'test_num_clips': self.args['test_num_clips'],
             'num_classes': self.args['num_classes'],
             }
 
-        test_loop, test_step_num = self._get_test_loop_from_arg(test_data_loader)
+        test_loop, test_step_num = self._get_inference_loop_from_arg(test_data_loader)
 
-        topn_test_param = {
-            'data_params': topn_test_data_param,
+        test_params = {
             'queue_params': None,
             'targets': test_targets,
             'num_steps': test_step_num,
             'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
             'online_agg_func': self._online_agg,
             'test_loop': {'func': test_loop}
-        }
-
-        test_params = {
-            'topn': topn_test_param,
         }
 
         params = {
@@ -337,8 +229,6 @@ class ParamsLoader:
         val_data_loader = data_loaders['val']
 
         train_dataset_len = train_data_loader.dataset.__len__()
-        train_num_nodes_per_graph = self._get_num_nodes(train_data_loader)
-        val_num_nodes_per_graph = self._get_num_nodes(val_data_loader)
 
         loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)
 
@@ -383,20 +273,8 @@ class ParamsLoader:
             res = train_function(inputs, train=True)
             return res
 
-        # train_params: parameters about training data
-        train_data_param = {
-            'func': data.get_placeholders,
-            'batch_size': self.args['batch_size'],
-            'num_frames': self.args['num_frames'],
-            'num_nodes': train_num_nodes_per_graph,
-            'num_channels': self.args['input_shape']['num_channels'],
-            'multi_frame': True,
-            'multi_group': None,
-            'name_prefix': 'TRAIN'
-        }
         train_params = {
             'validate_first': False,
-            'data_params': train_data_param,
             'queue_params': None,
             'thres_loss': float('Inf'),
             'num_steps': self.args[self.setting]['train_num_steps'],
@@ -407,35 +285,22 @@ class ParamsLoader:
             ## Add other loss reports (loss_model, loss_noise)
             train_params['targets'] = {}
 
-        # validation_params: control the validation
-        topn_val_data_param = self._get_topn_val_data_param_from_arg(val_num_nodes_per_graph)
+        inference_targets = {
+            'k': self.args['kNN_inference'],
+            'instance_t': self.args['instance_t'],
+            'inference_num_clips': self.args['inference_num_clips'],
+            'num_classes': self.args['num_classes']
+        }
 
-        if not self.args[self.setting]['task'] == 'SUP':
-            val_targets = {
-                    'func': self._valid_perf_func_kNN,
-                    'k': self.args['kNN_val'],
-                    'instance_t': self.args['instance_t'],
-                    'val_num_clips': self.args['val_num_clips'],
-                    'num_classes': self.args['num_classes']}
-        else:
-            val_targets = {
-                    'func': self._valid_sup_func,
-                    'val_num_clips': self.args['val_num_clips']}
+        valid_loop, val_step_num = self._get_inference_loop_from_arg(val_data_loader)
 
-        valid_loop, val_step_num = self._get_valid_loop_from_arg(val_data_loader)
-
-        topn_val_param = {
-            'data_params': topn_val_data_param,
+        validation_params = {
             'queue_params': None,
-            'targets': val_targets,
+            'targets': inference_targets,
             'num_steps': val_step_num,
             'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
             'online_agg_func': self._online_agg,
             'valid_loop': {'func': valid_loop}
-            }
-
-        validation_params = {
-            'topn': topn_val_param,
         }
 
         params = {
