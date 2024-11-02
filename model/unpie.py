@@ -93,31 +93,7 @@ class UnPIE(tf.Module):
                 _load_saver = tf.compat.v1.train.Saver(var_list=filtered_var_list)
                 _load_saver.restore(self.sess, ckpt_path)
 
-    def build_test_inputs(self, test_key):
-        data_params = self.params['test_params'][test_key]['data_params']
-        func = data_params.pop('func')
-        test_inputs = func(**data_params)
-        return test_inputs
-    
-    def build_test_network(self, test_key, test_inputs):
-        with tf.name_scope('test/' + test_key):
-            test_outputs = self.build_network(test_inputs, False)
-        return test_outputs
-
-    def build_test(self):
-        tf.compat.v1.get_variable_scope().reuse_variables()
-        self.all_test_targets = {}
-        for each_val_key in self.params['test_params']:
-            test_inputs = self.build_test_inputs(each_val_key)
-            test_outputs = self.build_test_network(each_val_key, test_inputs)
-            test_targets = self.build_test_targets(
-                    each_val_key, test_inputs, test_outputs)
-            self.all_test_targets[each_val_key] = test_targets           
-
     def build_model(self):
-        if self.params['is_test']:
-            self.build_test()
-
         self.build_sess_and_saver()
         self.init_and_restore()
 
@@ -196,7 +172,7 @@ class UnPIE(tf.Module):
                 self.log_writer = open(self.log_file_path, 'a+')
 
             if curr_step % self.params['save_params']['save_valid_freq'] == 0:
-                val_result = self.run_inference()
+                val_result = self.run_inference('validation_params')
                 self.val_log_writer.write(
                         '%s: %s\n' % ('validation results: ', str(val_result)))
                 print(val_result)
@@ -220,11 +196,12 @@ class UnPIE(tf.Module):
         targets = self.build_inference_targets(inputs, outputs)
         return targets
 
-    def run_inference(self, num_steps):
+    def run_inference(self, params_type):
         agg_res = None
+        num_steps = self.params[params_type]['num_steps']
 
         for _step in tqdm.trange(num_steps):
-            res = self.params['inference_params']['inference_loop']['func'](
+            res = self.params[params_type]['inference_loop']['func'](
                     self.inference_func)
             online_func = self.params['inference_params']['online_agg_func']
             agg_res = online_func(agg_res, res, _step)
@@ -237,7 +214,7 @@ class UnPIE(tf.Module):
 
     # Testing functions
     def _run_test_loop(self):
-        test_result = self.run_inference()
+        test_result = self.run_inference('test_params')
         self.test_log_writer.write(
                 '%s: %s\n' % ('test results: ', str(test_result)))
         print(test_result)
