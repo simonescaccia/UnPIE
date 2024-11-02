@@ -64,10 +64,6 @@ class UnPIE(object):
                 self.loss_retval,
                 **loss_params.get('agg_func_kwargs', {}))
 
-        self.global_step = tf.compat.v1.get_variable(
-                'global_step', [],
-                dtype=tf.int64, trainable=False,
-                initializer=tf.constant_initializer(0))
         lr_rate_params = self.params['learning_rate_params']
         func = lr_rate_params.pop('func')
         learning_rate = func(self.global_step, **lr_rate_params)
@@ -177,13 +173,17 @@ class UnPIE(object):
         test_result = agg_func(agg_res)
         return test_result
 
+    def train_func(x, a, y, i, train):
+        
+
     def run_train_loop(self):
-        start_step = self.sess.run(self.global_step)
+        start_step = self.global_step
         train_loop = self.params['train_params'].get('train_loop')
+        train_func = self.train_func
 
         for curr_step in range(start_step, int(self.params['train_params']['num_steps']+1)):
             self.start_time = time.time()
-            train_res = train_loop['func'](self.train_targets)
+            train_res = train_loop['func'](train_func)
 
             duration = time.time() - self.start_time
 
