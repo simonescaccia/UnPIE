@@ -429,13 +429,13 @@ class ParamsLoader:
 
         first_step = []
         data_enumerator = [enumerate(train_data_loader)]
-        def train_loop(sess, train_targets, num_minibatches=1, **params):
+        def train_loop(train_function, num_minibatches=1, **params):
             assert num_minibatches==1, "Mini-batch not supported!"
 
             global_step_vars = [v for v in tf.compat.v1.global_variables() \
                                 if 'global_step' in v.name]
             assert len(global_step_vars) == 1
-            global_step = sess.run(global_step_vars[0])
+            global_step = global_step_vars[0]
 
             first_flag = len(first_step) == 0
             update_fre = self.args['clstr_update_fre'] or train_dataset_len // self.args['batch_size']
@@ -459,9 +459,14 @@ class ParamsLoader:
                 data_enumerator.pop()
                 data_enumerator.append(enumerate(train_data_loader))
             _, (x, a, y, i) = next(data_enumerator[0])
-            feed_dict = data.get_feeddict(x, a, y, i, name_prefix='TRAIN')
-            sess_res = sess.run(train_targets, feed_dict=feed_dict)
-            return sess_res
+            inputs = {
+                'x': x,
+                'a': a,
+                'y': y,
+                'i': i,
+            }
+            res = train_function(inputs, train=True)
+            return res
 
         # train_params: parameters about training data
         train_data_param = {
