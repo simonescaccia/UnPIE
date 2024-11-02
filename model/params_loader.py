@@ -196,22 +196,11 @@ class ParamsLoader:
     def get_test_params(self, data_loaders):
         test_data_loader = data_loaders['test']
 
-        test_targets = {
-            'k': self.args['kNN_test'],
-            'instance_t': self.args['instance_t'],
-            'test_num_clips': self.args['test_num_clips'],
-            'num_classes': self.args['num_classes'],
-            }
-
         test_loop, test_step_num = self._get_inference_loop_from_arg(test_data_loader)
 
         test_params = {
-            'queue_params': None,
-            'targets': test_targets,
             'num_steps': test_step_num,
-            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
-            'online_agg_func': self._online_agg,
-            'test_loop': {'func': test_loop}
+            'inference_loop': {'func': test_loop}
         }
 
         params = {
@@ -297,10 +286,13 @@ class ParamsLoader:
         inference_params = {
             'queue_params': None,
             'targets': inference_targets,
-            'num_steps': val_step_num,
             'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
             'online_agg_func': self._online_agg,
-            'valid_loop': {'func': valid_loop}
+        }
+
+        validation_params = {
+            'inference_loop': {'func': valid_loop},
+            'num_steps': val_step_num,
         }
 
         params = {
@@ -309,6 +301,7 @@ class ParamsLoader:
             'optimizer_params': optimizer_params,
             'train_params': train_params,
             'inference_params': inference_params,
+            'validation_params': validation_params,
         }
 
         return params
