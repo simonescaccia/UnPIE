@@ -27,70 +27,27 @@ class ParamsLoader:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
-    def _reg_loss(self, loss, weight_decay):
-        # Add weight decay to the loss.
-        l2_loss = weight_decay * tf.add_n(
-                [tf.nn.l2_loss(tf.cast(v, tf.float32))
-                    for v in tf.compat.v1.trainable_variables()])
-        loss_all = tf.add(loss, l2_loss)
-        return loss_all
-
-
-    def _loss_func(self, output):
-        return output['loss']
-
-
-    def _get_lr_from_boundary_and_ramp_up(
-            self,
-            global_step, boundaries, 
-            init_lr, target_lr, ramp_up_epoch,
-            num_batches_per_epoch):
-        curr_epoch  = tf.math.divide(
-                tf.cast(global_step, tf.float32), 
-                tf.cast(num_batches_per_epoch, tf.float32))
-        curr_phase = (tf.minimum(curr_epoch/float(ramp_up_epoch), 1))
-        curr_lr = init_lr + (target_lr-init_lr) * curr_phase
-
-        if boundaries is not None:
-            boundaries = boundaries.split(',')
-            boundaries = [int(each_boundary) for each_boundary in boundaries]
-
-            all_lrs = [
-                    curr_lr * (0.1 ** drop_level) \
-                    for drop_level in range(len(boundaries) + 1)]
-
-            curr_lr = tf.compat.v1.train.piecewise_constant(
-                    x=global_step,
-                    boundaries=boundaries, values=all_lrs)
-        return curr_lr
-
-
     def _get_loss_lr_opt_params_from_arg(self, dataset_len):
         # loss_params: parameters to build the loss
         loss_params = {
-            'pred_targets': [],
-            'agg_func': self._reg_loss,
             'agg_func_kwargs': {'weight_decay': self.args['weight_decay']},
-            'loss_func': self._loss_func,
         }
 
         # learning_rate_params: build the learning rate
         # For now, just stay the same
         learning_rate_params = {
-                'func': self._get_lr_from_boundary_and_ramp_up,
-                'init_lr': self.args['init_lr'],
-                'target_lr': self.args['target_lr'] or self.args['init_lr'],
-                'num_batches_per_epoch': dataset_len // self.args['batch_size'],
-                'boundaries': self.args[self.setting]['lr_boundaries'],
-                'ramp_up_epoch': self.args['ramp_up_epoch'],
-                }
+            'init_lr': self.args['init_lr'],
+            'target_lr': self.args['target_lr'] or self.args['init_lr'],
+            'num_batches_per_epoch': dataset_len // self.args['batch_size'],
+            'boundaries': self.args[self.setting]['lr_boundaries'],
+            'ramp_up_epoch': self.args['ramp_up_epoch'],
+        }
 
         # optimizer_params: use tfutils optimizer,
         # as mini batch is implemented there
         optimizer_params = {
-                'optimizer': tf.compat.v1.train.MomentumOptimizer,
-                'momentum': .9,
-                }
+            'momentum': .9,
+        }
         return loss_params, learning_rate_params, optimizer_params
 
 
@@ -148,48 +105,6 @@ class ParamsLoader:
             "middle_dim": self.args['middle_dim'],
         }
         return model_params
-
-
-    def _rep_loss_func(
-            self,
-            inputs,
-            output,
-            gpu_offset=0,
-            **kwargs
-            ):
-        data_indx = output['data_indx']
-        new_data_memory = output['new_data_memory']
-        loss_pure = output['loss']
-
-        memory_bank_list = output['memory_bank']
-        all_labels_list = output['all_labels']
-        if isinstance(memory_bank_list, tf.Variable):
-            memory_bank_list = [memory_bank_list]
-            all_labels_list = [all_labels_list]
-
-        devices = ['/gpu:%i' \
-                % (idx + gpu_offset) for idx in range(len(memory_bank_list))]
-        update_ops = []
-        for device, memory_bank, all_labels \
-                in zip(devices, memory_bank_list, all_labels_list):
-            with tf.device(device):
-                mb_update_op = tf.compat.v1.scatter_update(
-                        memory_bank, data_indx, new_data_memory)
-                update_ops.append(mb_update_op)
-                lb_update_op = tf.compat.v1.scatter_update(
-                        all_labels, data_indx,
-                        inputs['y'])
-                update_ops.append(lb_update_op)
-
-        with tf.control_dependencies(update_ops):
-            # Force the updates to happen before the next batch.
-            loss_pure = tf.identity(loss_pure)
-
-        ret_dict = {'loss_pure': loss_pure}
-        for key, value in output.items():
-            if key.startswith('loss_'):
-                ret_dict[key] = value
-        return ret_dict
 
 
     def _online_agg(self, agg_res, res, step):
@@ -490,9 +405,7 @@ class ParamsLoader:
         
         if not self.args[self.setting]['task'] == 'SUP':
             ## Add other loss reports (loss_model, loss_noise)
-            train_params['targets'] = {
-                'func': self._rep_loss_func
-            }
+            train_params['targets'] = {}
 
         # validation_params: control the validation
         topn_val_data_param = self._get_topn_val_data_param_from_arg(val_num_nodes_per_graph)

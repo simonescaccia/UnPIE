@@ -6,9 +6,10 @@ import tensorflow as tf
 
 from utils.print_utils import print_separator
 
+class UnPIE(tf.Module):
+    def __init__(self, params, **kwargs):
+        super().__init__(**kwargs)
 
-class UnPIE(object):
-    def __init__(self, params):
         self.params = params
 
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
@@ -28,17 +29,6 @@ class UnPIE(object):
 
         self.global_step = tf.Variable(0, trainable=False, dtype=tf.int64)     
 
-    def build_train(self):
-        self.build_inputs()
-        self.outputs = self.build_network(self.inputs, train=True)
-        self.build_train_op()
-        self.build_train_targets()
-    
-    def build_inputs(self):
-        data_params = self.params['train_params']['data_params']
-        func = data_params.pop('func')
-        self.inputs = func(**data_params)
-
     def build_network(self, inputs, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
@@ -47,48 +37,40 @@ class UnPIE(object):
                 inputs=inputs,
                 train=train,
                 **model_func_params)
-        model_params['func'] = func
         return outputs
 
-    def build_train_op(self):
+    def build_train_opt(self, outputs):
         loss_params = self.params['loss_params']
 
-        input_targets = [self.inputs[key] \
-                for key in loss_params['pred_targets']]
-        func = loss_params['loss_func']
-        self.loss_retval = func(
-                self.outputs, 
-                *input_targets, 
-                **loss_params.get('loss_func_kwargs', {}))
-        self.loss_retval = loss_params['agg_func'](
-                self.loss_retval,
-                **loss_params.get('agg_func_kwargs', {}))
+        loss_retval = self._loss_func(
+            outputs,
+            **loss_params.get('loss_func_kwargs', {}))
+        loss_retval = self._reg_loss(
+            loss_retval,
+            **loss_params.get('agg_func_kwargs', {}))
 
         lr_rate_params = self.params['learning_rate_params']
-        func = lr_rate_params.pop('func')
-        learning_rate = func(self.global_step, **lr_rate_params)
-        self.learning_rate = learning_rate
+        learning_rate = self._get_lr_from_boundary_and_ramp_up(
+            **lr_rate_params)
 
         opt_params = self.params['optimizer_params']
-        func = opt_params.pop('optimizer')
-        opt = func(learning_rate=learning_rate, **opt_params)
-
-        with tf.control_dependencies(
-                tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)):
-            self.train_op = opt.minimize(
-                    self.loss_retval, 
-                    global_step=self.global_step)
+        train_opt = tf.keras.optimizers.SDG(
+            learning_rate=learning_rate, 
+            **opt_params)
+        
+        return loss_retval, learning_rate, train_opt 
             
-    def build_train_targets(self):
+    def build_train_targets(self, outputs, loss_retval, learning_rate, train_opt):
         extra_targets_params = self.params['train_params']['targets']
-        func = extra_targets_params.pop('func')
-        train_targets = func(self.inputs, self.outputs, **extra_targets_params)
+        train_targets = self._rep_loss_func(
+            outputs, 
+            **extra_targets_params)
 
-        train_targets['train_op'] = self.train_op
-        train_targets['loss'] = self.loss_retval
-        train_targets['learning_rate'] = self.learning_rate
+        train_targets['train_op'] = train_opt
+        train_targets['loss'] = loss_retval
+        train_targets['learning_rate'] = learning_rate
 
-        self.train_targets = train_targets
+        return train_targets
 
     def load_from_ckpt(self, ckpt_path):
         print('\nRestore from %s' % ckpt_path)
@@ -173,8 +155,12 @@ class UnPIE(object):
         test_result = agg_func(agg_res)
         return test_result
 
-    def train_func(x, a, y, i, train):
+    def train_func(self, inputs, train):
+        outputs = self.build_network(inputs, train=True)
+        loss_retval, learning_rate, train_opt = self.build_train_opt(outputs)     
+        train_targets = self.build_train_targets(outputs, loss_retval, learning_rate, train_opt)
         
+        return train_targets
 
     def run_train_loop(self):
         start_step = self.global_step
@@ -290,6 +276,54 @@ class UnPIE(object):
         self.build_sess_and_saver()
         self.init_and_restore()
 
+
+    # Loss functions
+    def _reg_loss(self, loss, weight_decay):
+        # Add weight decay to the loss.
+        l2_loss = weight_decay * tf.add_n(
+                [tf.nn.l2_loss(tf.cast(v, tf.float32))
+                    for v in self.trainable_variables()])
+        loss_all = tf.add(loss, l2_loss)
+        return loss_all
+    
+    def _loss_func(self, output):
+        return output['loss']
+
+    def _get_lr_from_boundary_and_ramp_up(
+            self, 
+            boundaries, 
+            init_lr, target_lr, ramp_up_epoch,
+            num_batches_per_epoch):
+        curr_epoch  = tf.math.divide(
+                tf.cast(self.global_step, tf.float32), 
+                tf.cast(num_batches_per_epoch, tf.float32))
+        curr_phase = (tf.minimum(curr_epoch/float(ramp_up_epoch), 1))
+        curr_lr = init_lr + (target_lr-init_lr) * curr_phase
+
+        if boundaries is not None:
+            boundaries = boundaries.split(',')
+            boundaries = [int(each_boundary) for each_boundary in boundaries]
+
+            all_lrs = [
+                    curr_lr * (0.1 ** drop_level) \
+                    for drop_level in range(len(boundaries) + 1)]
+
+            curr_lr = tf.compat.v1.train.piecewise_constant(
+                    x=self.global_step,
+                    boundaries=boundaries, values=all_lrs)
+        return curr_lr
+
+    def _rep_loss_func(
+            self,
+            output
+            ):
+        ret_dict = {'loss_pure': output['loss']}
+        for key, value in output.items():
+            if key.startswith('loss_'):
+                ret_dict[key] = value
+        return ret_dict
+
+    # Running functions
     def train(self):
         print_separator('Starting UnPIE training')
         self.run_train_loop()
