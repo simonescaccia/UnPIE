@@ -15,16 +15,15 @@ img_height: 1080
 img_width: 1920
 resume: False
 batch_size: 32
-val_batch_size: 32
+inference_batch_size: 32
 test_batch_size: 32
-val_num_clips: 5
+inference_num_clips: 5
 test_num_clips: 5
 clstr_update_fre: null
 part_vd: null
 dropout_rate1: 0.3
 dropout_rate2: 0.15
-kNN_val: 50
-kNN_test: 50
+kNN_inference: 50
 fre_save_model: 50 # frequency to save model checkpoint
 fre_valid: 50
 fre_metric: 50
