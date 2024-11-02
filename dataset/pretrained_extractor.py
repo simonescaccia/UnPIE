@@ -1,4 +1,5 @@
 import numpy as np
+import tensorflow as tf
 
 from tensorflow.keras.applications.vgg16 import preprocess_input
 from tensorflow.keras.applications import VGG16
@@ -9,6 +10,8 @@ class PretrainedExtractor(object):
         self.model = VGG16(input_shape=(224, 224, 3),
                            include_top=False, 
                            weights='imagenet')
+        # model = VGG16(input_shape=(224, 224, 3), 
+        #             weights='imagenet')
         # fc1_layer = model.get_layer('fc1')
         # self.model = tf.keras.Model(inputs=model.input, outputs=fc1_layer.output)
         
