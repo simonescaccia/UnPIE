@@ -24,6 +24,14 @@ class ParamsLoader:
     def _set_environment(self):
         if not self.config['IS_GPU']:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+        else:
+            physical_devices = tf.config.list_physical_devices('GPU')
+            try:
+                tf.config.experimental.set_memory_growth(physical_devices[0], True)
+            except:
+                # Invalid device or cannot modify virtual devices once initialized.
+                print("Cannot set memory growth for GPU")
+                pass
 
 
     def _get_loss_lr_opt_params_from_arg(self, dataset_len):
@@ -52,7 +60,7 @@ class ParamsLoader:
 
     def _get_save_load_params_from_arg(self):
         # load_params: defining where to load, if needed
-        load_exp_id = self.args[self.setting]['exp_id']
+        task = self.args[self.setting]['task']
         train_steps = self.args['train_steps']
         
         # save_params: defining where to save the models
@@ -61,9 +69,8 @@ class ParamsLoader:
             dir_num_steps += str(self.args[step]['train_num_steps']) + '_'
         dir_num_steps = dir_num_steps[:-1]
         cache_dir = os.path.join(
-                self.args['cache_dir'], dir_num_steps, load_exp_id)
+                self.args['cache_dir'], dir_num_steps, task)
         save_params = {
-                'save_metrics_freq': self.args['fre_metric'],
                 'save_valid_freq': self.args['fre_valid'],
                 'fre_save_model': self.args['fre_save_model'],
                 'cache_dir': cache_dir,
@@ -72,23 +79,26 @@ class ParamsLoader:
                 'test_log_file': self.args['test_log_file'],
                 }
         
-        load_exp = self.args[self.setting]['load_exp']
+        load_task = self.args[self.setting]['load_task']
         load_step = None
-        if load_exp:
-            load_step = self.args[load_exp]['train_num_steps']
+        if load_task:
+            load_step = self.args[load_task]['train_num_steps']
         load_query = None
 
-        if not self.args['resume']:
-            if load_exp is not None:
-                load_exp_id = load_exp
-            if load_step:
-                load_query = {'exp_id': load_exp,
-                              'saved_filters': True,
-                              'step': load_step}
+        if load_task is not None:
+            task = load_task
+        if load_step:
+            load_query = {
+                'task': load_task,
+                'saved_filters': True,
+                'step': load_step
+            }
 
         load_params = {
-                'exp_id': load_exp_id,
-                'query': load_query}
+            'task': task,
+            'query': load_query
+        }
+
         return save_params, load_params
 
 
@@ -96,7 +106,6 @@ class ParamsLoader:
         model_params = {
             "instance_t": self.args['instance_t'],
             "instance_k": self.args['instance_k'],
-            "trn_use_mean": self.args['trn_use_mean'],
             "kmeans_k": self.args['kmeans_k'],
             "task": self.args[self.setting]['task'],
             "instance_data_len": dataset_len,
@@ -223,14 +232,7 @@ class ParamsLoader:
 
         first_step = []
         data_enumerator = [enumerate(train_data_loader)]
-        def train_loop(train_function, num_minibatches=1, **params):
-            assert num_minibatches==1, "Mini-batch not supported!"
-
-            global_step_vars = [v for v in tf.compat.v1.global_variables() \
-                                if 'global_step' in v.name]
-            assert len(global_step_vars) == 1
-            global_step = global_step_vars[0]
-
+        def train_loop(train_function, global_step):
             first_flag = len(first_step) == 0
             update_fre = self.args['clstr_update_fre'] or train_dataset_len // self.args['batch_size']
             if (global_step % update_fre == 0 or first_flag) \
@@ -238,18 +240,14 @@ class ParamsLoader:
                 if first_flag:
                     first_step.append(1)
                 print("Recomputing clusters...")
-                new_clust_labels = nn_clusterings[0].recompute_clusters(sess)
+                new_clust_labels = nn_clusterings[0].recompute_clusters()
                 for clustering in nn_clusterings:
-                    clustering.apply_clusters(sess, new_clust_labels)
+                    clustering.apply_clusters(new_clust_labels)
 
-            if self.args['part_vd'] is None:
-                data_en_update_fre = train_dataset_len // self.args['batch_size']
-            else:
-                new_length = int(train_dataset_len * self.args['part_vd'])
-                data_en_update_fre = new_length // self.args['batch_size']
+            data_loader_restore_fre = train_dataset_len // self.args['batch_size']
 
             # TODO: make this smart
-            if global_step % data_en_update_fre == 0:
+            if global_step % data_loader_restore_fre == 0:
                 data_enumerator.pop()
                 data_enumerator.append(enumerate(train_data_loader))
             _, (x, a, y, i) = next(data_enumerator[0])
@@ -315,13 +313,13 @@ class ParamsLoader:
 
         # model_params: a function that will build the model
         nn_clusterings = []
-        def build_output(inputs, train, **kwargs):
-            res = instance_model.build_output(inputs, train, **kwargs)
+        def build_output(inputs, train, build_output, **kwargs):
+            res = build_output(inputs, train, **kwargs)
             if not train:
                 return res
-            outputs, logged_cfg, clustering = res
+            outputs, clustering = res
             nn_clusterings.append(clustering)
-            return outputs, logged_cfg
+            return outputs
 
         model_func_params = self._get_model_func_params(data_loaders['train'].dataset.__len__())
         model_params = {

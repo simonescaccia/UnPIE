@@ -1,13 +1,16 @@
 import os
 import time
 import tqdm
-import numpy as np
 import tensorflow as tf
 
+from model.instance_model import InstanceModel
+from model.memory_bank import MemoryBank
+from model.self_loss import get_selfloss
+from model.unpie_network import UnPIENetwork
 from utils.print_utils import print_separator
 from utils.vie_utils import tuple_get_one
 
-class UnPIE(tf.Module):
+class UnPIE(tf.keras.Model):
     def __init__(self, params, **kwargs):
         super().__init__(**kwargs)
 
@@ -28,42 +31,107 @@ class UnPIE(tf.Module):
             self.test_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['test_log_file'])
             self.test_log_writer = open(self.test_log_file_path, 'w')
 
-        self.global_step = tf.Variable(0, trainable=False, dtype=tf.int64)     
+        self.global_step = tf.Variable(0, trainable=False, dtype=tf.int64)
+        
+        self.unpie_network = UnPIENetwork(
+            self.params['model_params']['model_func_params']['middle_dim'],
+            self.params['model_params']['model_func_params']['emb_dim'],
+        )
 
-    def build_network(self, inputs, train):
+        self.data_len = self.params['model_params']['model_func_params']['data_len']
+        self.memory_bank = MemoryBank(self.data_len, self.params['model_params']['model_func_params']['emb_dim'])
+
+        self.checkpoint = tf.train.Checkpoint(self.unpie_network, global_step=self.global_step)
+        self._init_and_restore()
+
+    def _build_network(self, inputs, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
         func = model_params.pop('func')
         outputs, _ = func(
                 inputs=inputs,
                 train=train,
+                build_output=self._build_output,
                 **model_func_params)
         return outputs
+    
+    def _build_output(
+        self,
+        inputs, train,
+        kmeans_k,
+        task,
+        **kwargs):
 
-    def load_from_ckpt(self, ckpt_path):
+        all_labels = tf.Variable(
+            initial_value=tf.zeros(shape=(self.data_len,), dtype=tf.int64),
+            trainable=False,
+            dtype=tf.int64,
+            name='all_labels'
+        )
+
+        if task == 'LA':
+            lbl_init_values = tf.range(self.data_len, dtype=tf.int64)
+            no_kmeans_k = len(kmeans_k)
+            lbl_init_values = tf.tile(
+                    tf.expand_dims(lbl_init_values, axis=0),
+                    [no_kmeans_k, 1])
+            cluster_labels = tf.Variable(
+                initial_value=lbl_init_values,
+                trainable=False,
+                dtype=tf.int64,
+                name='cluster_labels'
+            )
+        
+        output = self.unpie_network(
+            inputs['x'], 
+            inputs['a']
+        )
+        output = tf.nn.l2_normalize(output, axis=1)
+
+        if not train:
+            all_dist = self.memory_bank.get_all_dot_products(output)
+            return [all_dist, all_labels]
+        model_class = InstanceModel(
+            inputs=inputs, output=output,
+            memory_bank=self.memory_bank,
+            **kwargs)
+        nn_clustering = None
+        other_losses = {}
+        if task == 'LA':
+            from .cluster_km import Kmeans
+            nn_clustering = Kmeans(kmeans_k, self.memory_bank, cluster_labels)
+            loss, _ = model_class.get_cluster_classification_loss(
+                    cluster_labels)
+        else:
+            selfloss = get_selfloss(self.memory_bank, **kwargs)
+            data_prob = model_class.compute_data_prob(selfloss)
+            noise_prob = model_class.compute_noise_prob()
+            losses = model_class.get_losses(data_prob, noise_prob)
+            loss, loss_model, loss_noise = losses
+            other_losses['loss_model'] = loss_model
+            other_losses['loss_noise'] = loss_noise
+
+        new_data_memory = model_class.updated_new_data_memory()
+        ret_dict = {
+            "loss": loss,
+            "data_indx": inputs['index'],
+            "memory_bank": self.memory_bank,
+            "new_data_memory": new_data_memory,
+            "all_labels": all_labels,
+        }
+        ret_dict.update(other_losses)
+        return ret_dict, nn_clustering
+
+    def _load_from_ckpt(self, ckpt_path):
         print('\nRestore from %s' % ckpt_path)
-        self.saver.restore(self.sess, ckpt_path)
+        self.checkpoint.restore(ckpt_path)
 
-    def build_sess_and_saver(self):
-        gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
-        sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(
-                allow_soft_placement=True,
-                gpu_options=gpu_options,
-                ))
-        self.sess = sess
-        self.saver = tf.compat.v1.train.Saver()
-
-    def init_and_restore(self):
-        init_op_global = tf.compat.v1.global_variables_initializer()
-        self.sess.run(init_op_global)
-        init_op_local = tf.compat.v1.local_variables_initializer()
-        self.sess.run(init_op_local)
-
+    def _init_and_restore(self):
         if self.load_from_curr_exp:
-            self.load_from_ckpt(self.load_from_curr_exp)
+            self._load_from_ckpt(self.load_from_curr_exp)
         else:
             split_cache_path = self.cache_dir.split(os.sep)
-            split_cache_path[-1] = self.params['load_params']['exp_id']
+            split_cache_path[-1] = self.params['load_params']['task']
             load_dir = os.sep.join(split_cache_path)
             if self.params['load_params']['query']:
                 ckpt_path = os.path.join(
@@ -73,32 +141,10 @@ class UnPIE(tf.Module):
                 ckpt_path = tf.train.latest_checkpoint(load_dir)
             if ckpt_path:
                 print('\nRestore from %s' % ckpt_path)
-                #self.load_from_ckpt(ckpt_path)
-                reader = tf.compat.v1.train.NewCheckpointReader(ckpt_path)
-                saved_var_shapes = reader.get_variable_to_shape_map()
-
-                all_vars = tf.compat.v1.global_variables()
-                all_var_list = {v.op.name: v for v in all_vars}
-                filtered_var_list = {}
-                for name, var in all_var_list.items():
-                    if name in saved_var_shapes:
-                        curr_shape = var.get_shape().as_list()
-                        saved_shape = saved_var_shapes[name]
-                        if (curr_shape == saved_shape):
-                            filtered_var_list[name] = var
-                        else:
-                            print('Shape mismatch for %s: ' % name \
-                                    + str(curr_shape) \
-                                    + str(saved_shape))
-                _load_saver = tf.compat.v1.train.Saver(var_list=filtered_var_list)
-                _load_saver.restore(self.sess, ckpt_path)
-
-    def build_model(self):
-        self.build_sess_and_saver()
-        self.init_and_restore()
+                self._load_from_ckpt(ckpt_path)
 
     # Training functions
-    def build_train_opt(self, outputs):
+    def _build_train_opt(self, outputs):
         loss_params = self.params['loss_params']
 
         loss_retval = self._loss_func(
@@ -119,7 +165,7 @@ class UnPIE(tf.Module):
         
         return loss_retval, learning_rate, train_opt 
             
-    def build_train_targets(self, outputs, loss_retval, learning_rate, train_opt):
+    def _build_train_targets(self, outputs, loss_retval, learning_rate, train_opt):
         extra_targets_params = self.params['train_params']['targets']
         train_targets = self._rep_loss_func(
             outputs, 
@@ -131,20 +177,20 @@ class UnPIE(tf.Module):
 
         return train_targets
 
-    def train_func(self, inputs):
-        outputs = self.build_network(inputs, train=True)
-        loss_retval, learning_rate, train_opt = self.build_train_opt(outputs)     
-        train_targets = self.build_train_targets(outputs, loss_retval, learning_rate, train_opt)
+    def _train_func(self, inputs):
+        outputs = self._build_network(inputs, train=True)
+        loss_retval, learning_rate, train_opt = self._build_train_opt(outputs)     
+        train_targets = self._build_train_targets(outputs, loss_retval, learning_rate, train_opt)
         return train_targets
 
     def _run_train_loop(self):
         start_step = self.global_step
         train_loop = self.params['train_params'].get('train_loop')
-        train_func = self.train_func
+        train_func = self._train_func
 
         for curr_step in range(start_step, int(self.params['train_params']['num_steps']+1)):
             self.start_time = time.time()
-            train_res = train_loop['func'](train_func)
+            train_res = train_loop['func'](train_func, self.global_step)
 
             duration = time.time() - self.start_time
 
@@ -159,20 +205,15 @@ class UnPIE(tf.Module):
             if curr_step % self.params['save_params']['fre_save_model'] == 0 \
                     and curr_step > 0:
                 print('Saving model...')
-                self.saver.save(
-                        self.sess, 
+                self.checkpoint.save(
                         os.path.join(
                             self.cache_dir,
                             'model.ckpt'), 
                         global_step=curr_step)
 
             self.log_writer.write(message + '\n')
-            if curr_step % self.params['save_params']['save_metrics_freq'] == 0:
-                self.log_writer.close()
-                self.log_writer = open(self.log_file_path, 'a+')
-
             if curr_step % self.params['save_params']['save_valid_freq'] == 0:
-                val_result = self.run_inference('validation_params')
+                val_result = self._run_inference('validation_params')
                 self.val_log_writer.write(
                         '%s: %s\n' % ('validation results: ', str(val_result)))
                 print(val_result)
@@ -186,23 +227,23 @@ class UnPIE(tf.Module):
 
 
     # Validation functions
-    def build_inference_targets(self, inputs, outputs):
+    def _build_inference_targets(self, inputs, outputs):
         target_params = self.params['inference_params']['targets']
         targets = self._perf_func_kNN(inputs, outputs, **target_params)
         return targets
 
-    def inference_func(self, inputs):
-        outputs = self.build_network(inputs, train=False)
-        targets = self.build_inference_targets(inputs, outputs)
+    def _inference_func(self, inputs):
+        outputs = self._build_network(inputs, train=False)
+        targets = self._build_inference_targets(inputs, outputs)
         return targets
 
-    def run_inference(self, params_type):
+    def _run_inference(self, params_type):
         agg_res = None
         num_steps = self.params[params_type]['num_steps']
 
         for _step in tqdm.trange(num_steps):
             res = self.params[params_type]['inference_loop']['func'](
-                    self.inference_func)
+                    self._inference_func)
             online_func = self.params['inference_params']['online_agg_func']
             agg_res = online_func(agg_res, res, _step)
 
@@ -214,7 +255,7 @@ class UnPIE(tf.Module):
 
     # Testing functions
     def _run_test_loop(self):
-        test_result = self.run_inference('test_params')
+        test_result = self._run_inference('test_params')
         self.test_log_writer.write(
                 '%s: %s\n' % ('test results: ', str(test_result)))
         print(test_result)
