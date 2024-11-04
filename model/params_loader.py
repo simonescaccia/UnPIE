@@ -108,7 +108,7 @@ class ParamsLoader:
             "instance_k": self.args['instance_k'],
             "kmeans_k": self.args['kmeans_k'],
             "task": self.args[self.setting]['task'],
-            "instance_data_len": dataset_len,
+            "data_len": dataset_len,
             "emb_dim": self.args['emb_dim'],
             "middle_dim": self.args['middle_dim'],
         }
@@ -163,10 +163,8 @@ class ParamsLoader:
     def get_pie_params(self):
         pie_path = self.config['PIE_PATH']
         batch_size = self.args['batch_size']
-        val_batch_size = self.args['val_batch_size']
-        val_num_clips = self.args['val_num_clips']
-        test_batch_size = self.args['test_batch_size']
-        test_num_clips = self.args['test_num_clips']
+        inference_batch_size = self.args['inference_batch_size']
+        inference_num_clips = self.args['inference_num_clips']
         emb_dim = self.args['emb_dim']
         img_height = self.args['img_height']
         img_width = self.args['img_width']
@@ -192,10 +190,8 @@ class ParamsLoader:
             'data_opts': data_opts,
             'pie_path': pie_path,
             'batch_size': batch_size,
-            'val_batch_size': val_batch_size,
-            'val_num_clips': val_num_clips,
-            'test_batch_size': test_batch_size,
-            'test_num_clips': test_num_clips,
+            'inference_batch_size': inference_batch_size,
+            'inference_num_clips': inference_num_clips,
             'emb_dim': emb_dim,
             'img_height': img_height,
             'img_width': img_width,
@@ -222,7 +218,7 @@ class ParamsLoader:
         _, (x, _, _, _) = next(enumerate(data_loader))
         return x.shape[2]
 
-    def get_train_params(self, data_loaders, nn_clusterings):
+    def get_train_params(self, data_loaders):
         train_data_loader = data_loaders['train']
         val_data_loader = data_loaders['val']
 
@@ -232,18 +228,7 @@ class ParamsLoader:
 
         first_step = []
         data_enumerator = [enumerate(train_data_loader)]
-        def train_loop(train_function, global_step):
-            first_flag = len(first_step) == 0
-            update_fre = self.args['clstr_update_fre'] or train_dataset_len // self.args['batch_size']
-            if (global_step % update_fre == 0 or first_flag) \
-                    and (nn_clusterings[0] is not None):
-                if first_flag:
-                    first_step.append(1)
-                print("Recomputing clusters...")
-                new_clust_labels = nn_clusterings[0].recompute_clusters()
-                for clustering in nn_clusterings:
-                    clustering.apply_clusters(new_clust_labels)
-
+        def train_loop(train_function, nn_clusterings, global_step):
             data_loader_restore_fre = train_dataset_len // self.args['batch_size']
 
             # TODO: make this smart
@@ -257,7 +242,19 @@ class ParamsLoader:
                 'y': y,
                 'i': i,
             }
-            res = train_function(inputs, train=True)
+            res = train_function(inputs)
+
+            first_flag = len(first_step) == 0
+            update_fre = self.args['clstr_update_fre'] or train_dataset_len // self.args['batch_size']
+            if (global_step % update_fre == 0 or first_flag) \
+                    and (nn_clusterings[0] is not None):
+                if first_flag:
+                    first_step.append(1)
+                print("Recomputing clusters...")
+                new_clust_labels = nn_clusterings[0].recompute_clusters()
+                for clustering in nn_clusterings:
+                    clustering.apply_clusters(new_clust_labels)
+
             return res
 
         train_params = {
@@ -311,19 +308,8 @@ class ParamsLoader:
         self.args['kmeans_k'] = [self.args['num_classes']]
         self.args['input_shape'] = self._get_input_shape()
 
-        # model_params: a function that will build the model
-        nn_clusterings = []
-        def build_output(inputs, train, build_output, **kwargs):
-            res = build_output(inputs, train, **kwargs)
-            if not train:
-                return res
-            outputs, clustering = res
-            nn_clusterings.append(clustering)
-            return outputs
-
         model_func_params = self._get_model_func_params(data_loaders['train'].dataset.__len__())
         model_params = {
-            'func': build_output,
             'model_func_params': model_func_params
         }
 
@@ -335,7 +321,7 @@ class ParamsLoader:
             'data_opts': pie_params['data_opts'],
             'model_params': model_params,
         }
-        train_params = self.get_train_params(data_loaders, nn_clusterings)
+        train_params = self.get_train_params(data_loaders)
 
         test_params = {}
         if is_test:

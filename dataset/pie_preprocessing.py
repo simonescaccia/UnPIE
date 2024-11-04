@@ -22,10 +22,8 @@ class PIEPreprocessing(object):
         self.pie_path = params['pie_path']
         self.data_opts = params['data_opts']
         self.batch_size = params['batch_size']
-        self.val_batch_size = params['val_batch_size']
-        self.val_num_clips = params['val_num_clips']
-        self.test_batch_size = params['test_batch_size']
-        self.test_num_clips = params['test_num_clips']
+        self.inference_batch_size = params['inference_batch_size']
+        self.inference_num_clips = params['inference_num_clips']
         self.img_height = params['img_height']
         self.img_width = params['img_width']
 
@@ -48,9 +46,9 @@ class PIEPreprocessing(object):
         seq_length = self.data_opts['max_size_observe']
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
         train_d = self._get_data(train_d, seq_length, seq_ovelap_rate)
-        val_d = self._get_data(val_d, seq_length*self.val_num_clips, seq_ovelap_rate)
+        val_d = self._get_data(val_d, seq_length*self.inference_num_clips, seq_ovelap_rate)
         if is_test:
-            test_d = self._get_data(test_d, seq_length*self.test_num_clips, seq_ovelap_rate)
+            test_d = self._get_data(test_d, seq_length*self.inference_num_clips, seq_ovelap_rate)
 
         # Balance the number of samples in each split
         train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
@@ -102,10 +100,10 @@ class PIEPreprocessing(object):
                     dataset, batch_size=self.batch_size, shuffle=True),
             'val':
                 DataLoader(
-                    dataset, batch_size=self.val_batch_size, shuffle=False),
+                    dataset, batch_size=self.inference_batch_size, shuffle=False),
             'test':
                 DataLoader(
-                    dataset, batch_size=self.test_batch_size, shuffle=False)
+                    dataset, batch_size=self.inference_batch_size, shuffle=False)
         }[features['data_split']]
 
         

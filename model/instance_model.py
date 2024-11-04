@@ -88,10 +88,10 @@ class InstanceModel(object):
 
         assert_shape(probs, [self.batch_size])
         loss = -tf.reduce_mean(tf.math.log(probs + 1e-7))
-        return loss, self.inputs['index']
+        return loss, self.inputs['i']
 
     def compute_data_prob(self, selfloss):
-        data_indx = self.inputs['index']
+        data_indx = self.inputs['i']
         logits = selfloss.get_closeness(data_indx, self.embed_output)
         return self._softmax(logits)
 

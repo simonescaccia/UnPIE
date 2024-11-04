@@ -10,9 +10,8 @@ from model.unpie_network import UnPIENetwork
 from utils.print_utils import print_separator
 from utils.vie_utils import tuple_get_one
 
-class UnPIE(tf.keras.Model):
-    def __init__(self, params, **kwargs):
-        super().__init__(**kwargs)
+class UnPIE():
+    def __init__(self, params):
 
         self.params = params
 
@@ -38,8 +37,7 @@ class UnPIE(tf.keras.Model):
             self.params['model_params']['model_func_params']['emb_dim'],
         )
 
-        self.data_len = self.params['model_params']['model_func_params']['data_len']
-        self.memory_bank = MemoryBank(self.data_len, self.params['model_params']['model_func_params']['emb_dim'])
+        self.nn_clusterings = []
 
         self.checkpoint = tf.train.Checkpoint(self.unpie_network, global_step=self.global_step)
         self._init_and_restore()
@@ -47,12 +45,11 @@ class UnPIE(tf.keras.Model):
     def _build_network(self, inputs, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
-        func = model_params.pop('func')
-        outputs, _ = func(
-                inputs=inputs,
-                train=train,
-                build_output=self._build_output,
-                **model_func_params)
+        res = self._build_output(inputs, train, **model_func_params)
+        if not train:
+            return res
+        outputs, clustering = res
+        self.nn_clusterings.append(clustering)
         return outputs
     
     def _build_output(
@@ -62,15 +59,17 @@ class UnPIE(tf.keras.Model):
         task,
         **kwargs):
 
+        data_len = kwargs.get('data_len')
         all_labels = tf.Variable(
-            initial_value=tf.zeros(shape=(self.data_len,), dtype=tf.int64),
+            initial_value=tf.zeros(shape=(data_len,), dtype=tf.int64),
             trainable=False,
             dtype=tf.int64,
             name='all_labels'
         )
 
+        memory_bank = MemoryBank(data_len, kwargs.get('emb_dim'))
         if task == 'LA':
-            lbl_init_values = tf.range(self.data_len, dtype=tf.int64)
+            lbl_init_values = tf.range(data_len, dtype=tf.int64)
             no_kmeans_k = len(kmeans_k)
             lbl_init_values = tf.tile(
                     tf.expand_dims(lbl_init_values, axis=0),
@@ -81,29 +80,30 @@ class UnPIE(tf.keras.Model):
                 dtype=tf.int64,
                 name='cluster_labels'
             )
-        
+        print("Here 2.1")
+        inputs['a'] = tf.cast(inputs['a'], tf.float32)
         output = self.unpie_network(
             inputs['x'], 
             inputs['a']
         )
         output = tf.nn.l2_normalize(output, axis=1)
-
+        print("Here 2.2")
         if not train:
-            all_dist = self.memory_bank.get_all_dot_products(output)
+            all_dist = memory_bank.get_all_dot_products(output)
             return [all_dist, all_labels]
         model_class = InstanceModel(
             inputs=inputs, output=output,
-            memory_bank=self.memory_bank,
+            memory_bank=memory_bank,
             **kwargs)
         nn_clustering = None
         other_losses = {}
         if task == 'LA':
             from .cluster_km import Kmeans
-            nn_clustering = Kmeans(kmeans_k, self.memory_bank, cluster_labels)
+            nn_clustering = Kmeans(kmeans_k, memory_bank, cluster_labels)
             loss, _ = model_class.get_cluster_classification_loss(
                     cluster_labels)
         else:
-            selfloss = get_selfloss(self.memory_bank, **kwargs)
+            selfloss = get_selfloss(memory_bank, **kwargs)
             data_prob = model_class.compute_data_prob(selfloss)
             noise_prob = model_class.compute_noise_prob()
             losses = model_class.get_losses(data_prob, noise_prob)
@@ -115,7 +115,7 @@ class UnPIE(tf.keras.Model):
         ret_dict = {
             "loss": loss,
             "data_indx": inputs['index'],
-            "memory_bank": self.memory_bank,
+            "memory_bank": memory_bank,
             "new_data_memory": new_data_memory,
             "all_labels": all_labels,
         }
@@ -179,18 +179,19 @@ class UnPIE(tf.keras.Model):
 
     def _train_func(self, inputs):
         outputs = self._build_network(inputs, train=True)
-        loss_retval, learning_rate, train_opt = self._build_train_opt(outputs)     
+        loss_retval, learning_rate, train_opt = self._build_train_opt(outputs) 
         train_targets = self._build_train_targets(outputs, loss_retval, learning_rate, train_opt)
         return train_targets
 
     def _run_train_loop(self):
-        start_step = self.global_step
+        start_step = self.global_step.numpy()
         train_loop = self.params['train_params'].get('train_loop')
         train_func = self._train_func
 
         for curr_step in range(start_step, int(self.params['train_params']['num_steps']+1)):
             self.start_time = time.time()
-            train_res = train_loop['func'](train_func, self.global_step)
+
+            train_res = train_loop['func'](train_func, self.nn_clusterings, self.global_step)
 
             duration = time.time() - self.start_time
 
