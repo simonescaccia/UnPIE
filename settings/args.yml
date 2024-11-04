@@ -15,7 +15,8 @@ batch_size: 32 # training batch size
 inference_batch_size: 32 # val/test batch size
 inference_num_clips: 5 # number of clips to sample from each video
 clstr_update_fre: null # frequency to recompute clusters, default is 1 epoch
-kNN_inference: 50 # number of nearest neighbors to consider.
+kNN_inference: 50 # number of nearest neighbors to consider
+instance_k: 4096 # background neighbors to sample
 fre_save_model: 50 # frequency to save model checkpoint (epochs)
 fre_valid: 50 # frequency to validate model (epochs)
 train_log_file: 'log.txt' # training log file
@@ -28,7 +29,7 @@ IR:
   train_num_workers': 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
   train_num_steps: 4000 # number of training epochs
-  load_exp: null # load task
+  load_task: null # load task
   load_step: null # load step
 LA:
   task: 'LA'
