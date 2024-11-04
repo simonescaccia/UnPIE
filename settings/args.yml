@@ -1,50 +1,39 @@
-vgg_out_shape: '4096'
-weight_decay: 0.0001
-init_lr: 0.03
-target_lr: null
-ramp_up_epoch: 1
-cache_dir: 'checkpoints'
-instance_t: 0.07
-instance_k: 4096 # number of neighbor embeddings to evaluate
+vgg_out_shape: '4096' # output shape of feature extractor
+weight_decay: 0.0001 # loss function weight decay
+init_lr: 0.03 # optimizer initial learning rate
+target_lr: null # optimizer target learning rate
+ramp_up_epoch: 1 # learning rate ramp up epoch
+cache_dir: 'checkpoints' # directory to save model checkpoints
+instance_t: 0.07 # temperature for contrastive loss
 num_classes: 2 # number of different clusters
-trn_use_mean: True
-num_frames: 15
-middle_dim: 512
-emb_dim: 128
-img_height: 1080
-img_width: 1920
-resume: False
-batch_size: 32
-inference_batch_size: 32
-test_batch_size: 32
-inference_num_clips: 5
-test_num_clips: 5
-clstr_update_fre: null
-part_vd: null
-dropout_rate1: 0.3
-dropout_rate2: 0.15
-kNN_inference: 50
-fre_save_model: 50 # frequency to save model checkpoint
-fre_valid: 50
-fre_metric: 50
-train_log_file: 'log.txt'
-val_log_file: 'val_log.txt'
-test_log_file: 'test_log.txt'
-train_steps: 'vd_3dresnet_IR,vd_3dresnet'
-vd_3dresnet_IR:
-  exp_id: 'vd_3dresnet_IR'
-  task: 'IR'
-  lr_boundaries: null
-  train_num_workers': 1
-  val_num_workers: 1
-  train_num_steps: 4000
-  load_exp: null
-  load_step: null
-vd_3dresnet:
-  exp_id: 'vd_3dresnet'
+num_frames: 15 # number of frames in each clip
+middle_dim: 512 # middle layer dimension in the unpie network
+emb_dim: 128 # final embedding dimension
+img_height: 1080 # video frame height
+img_width: 1920 # video frame width
+batch_size: 32 # training batch size
+inference_batch_size: 32 # val/test batch size
+inference_num_clips: 5 # number of clips to sample from each video
+clstr_update_fre: null # frequency to recompute clusters, default is 1 epoch
+kNN_inference: 50 # number of nearest neighbors to consider.
+fre_save_model: 50 # frequency to save model checkpoint (epochs)
+fre_valid: 50 # frequency to validate model (epochs)
+train_log_file: 'log.txt' # training log file
+val_log_file: 'val_log.txt' # validation log file
+test_log_file: 'test_log.txt' # test log file
+train_steps: 'IR,LA' # training steps
+IR:
+  task: 'IR' # task name
+  lr_boundaries: null # learning rate boundaries
+  train_num_workers': 1 # number of workers for training data loader
+  val_num_workers: 1 # number of workers for validation data loader
+  train_num_steps: 4000 # number of training epochs
+  load_exp: null # load task
+  load_step: null # load step
+LA:
   task: 'LA'
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
   train_num_steps: 6000
-  load_exp: 'vd_3dresnet_IR'
+  load_task: 'IR'
