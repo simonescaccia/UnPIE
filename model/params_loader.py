@@ -139,7 +139,7 @@ class ParamsLoader:
                 'y': y,
                 'i': i,
             }
-            res = inference_func(inputs, train=False)
+            res = inference_func(inputs)
             return res
         return inference_loop, step_num    
 

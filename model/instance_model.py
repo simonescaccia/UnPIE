@@ -32,7 +32,7 @@ class InstanceModel(object):
         return tf.exp(dot_prods / self.instance_t) / instance_Z
 
     def updated_new_data_memory(self):
-        data_indx = self.inputs['index'] # [bs]
+        data_indx = self.inputs['i'] # [bs]
         data_memory = self.memory_bank.at_idxs(data_indx)
         new_data_memory = (data_memory * self.instance_m
                            + (1 - self.instance_m) * self.embed_output)
@@ -41,7 +41,7 @@ class InstanceModel(object):
     def __get_lbl_equal(self, each_k_idx, cluster_labels, top_idxs, k):
         batch_labels = tf.gather(
                 cluster_labels[each_k_idx], 
-                self.inputs['index'])
+                self.inputs['i'])
         if k > 0:
             top_cluster_labels = tf.gather(cluster_labels[each_k_idx], top_idxs)
             batch_labels = repeat_1d_tensor(batch_labels, k)
