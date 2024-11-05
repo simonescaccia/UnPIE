@@ -59,6 +59,9 @@ class UnPIE():
         task,
         **kwargs):
 
+        inputs['a'] = tf.cast(inputs['a'], tf.float32)
+        inputs['i'] = tf.cast(inputs['i'], tf.int32)
+
         data_len = kwargs.get('data_len')
         all_labels = tf.Variable(
             initial_value=tf.zeros(shape=(data_len,), dtype=tf.int64),
@@ -80,14 +83,12 @@ class UnPIE():
                 dtype=tf.int64,
                 name='cluster_labels'
             )
-        print("Here 2.1")
-        inputs['a'] = tf.cast(inputs['a'], tf.float32)
+
         output = self.unpie_network(
             inputs['x'], 
             inputs['a']
         )
         output = tf.nn.l2_normalize(output, axis=1)
-        print("Here 2.2")
         if not train:
             all_dist = memory_bank.get_all_dot_products(output)
             return [all_dist, all_labels]
@@ -114,7 +115,7 @@ class UnPIE():
         new_data_memory = model_class.updated_new_data_memory()
         ret_dict = {
             "loss": loss,
-            "data_indx": inputs['index'],
+            "data_indx": inputs['i'],
             "memory_bank": memory_bank,
             "new_data_memory": new_data_memory,
             "all_labels": all_labels,
@@ -159,7 +160,7 @@ class UnPIE():
             **lr_rate_params)
 
         opt_params = self.params['optimizer_params']
-        train_opt = tf.keras.optimizers.SDG(
+        train_opt = tf.keras.optimizers.SGD(
             learning_rate=learning_rate, 
             **opt_params)
         
@@ -273,7 +274,7 @@ class UnPIE():
         # Add weight decay to the loss.
         l2_loss = weight_decay * tf.add_n(
                 [tf.nn.l2_loss(tf.cast(v, tf.float32))
-                    for v in self.trainable_variables()])
+                    for v in self.unpie_network.trainable_variables])
         loss_all = tf.add(loss, l2_loss)
         return loss_all
     
@@ -320,19 +321,30 @@ class UnPIE():
             self,
             inputs, output, 
             instance_t,
-            k, val_num_clips,
+            k, inference_num_clips,
             num_classes):
         curr_dist, all_labels = output
+        print("curr_dist: ", curr_dist)
+        print("all_labels: ", all_labels)
         all_labels = tuple_get_one(all_labels)
+        print("all_labels: ", all_labels)
         top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
+        print("top_dist: ", top_dist)
+        print("top_indices: ", top_indices)
         top_labels = tf.gather(all_labels, top_indices)
+        print("top_labels: ", top_labels)
         top_labels_one_hot = tf.one_hot(top_labels, num_classes)
+        print("top_labels_one_hot: ", top_labels_one_hot)
         top_prob = tf.exp(top_dist / instance_t)
+        print("top_prob: ", top_prob)
         top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1)
+        print("top_labels_one_hot: ", top_labels_one_hot)
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
+        print("top_labels_one_hot: ", top_labels_one_hot)
+        print("top_labels_one_hot shape: ", top_labels_one_hot.shape)
         top_labels_one_hot = tf.reshape(
                 top_labels_one_hot,
-                [-1, val_num_clips, num_classes])
+                [-1, inference_num_clips, num_classes])
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
