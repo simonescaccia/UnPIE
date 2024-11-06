@@ -135,17 +135,14 @@ class UnPIE():
     def _init_and_restore(self):
         latest_checkpoint = self.check_manager.latest_checkpoint
         if latest_checkpoint:
-            print("Here: latest_checkpoint", latest_checkpoint)
             # Load current task training
             self._load_from_ckpt(latest_checkpoint)
-        elif self.params['load_params']['query'] is not None:
-            print("Here: load_params query", self.params['load_params']['query'])
+        elif self.params['load_params'] is not None:
             # Load previous task training
             split_cache_path = self.cache_dir.split(os.sep)
             split_cache_path[-1] = self.params['load_params']['task']
             load_dir = os.sep.join(split_cache_path)
             ckpt_path = tf.train.latest_checkpoint(load_dir)
-            print('\nRestore from %s' % ckpt_path)
             self._load_from_ckpt(ckpt_path)
 
     # Training functions
@@ -190,9 +187,14 @@ class UnPIE():
 
     def _run_train_loop(self):
         train_loop = self.params['train_params'].get('train_loop')
+        train_num_epochs = self.params['train_params']['num_epochs']
+        train_num_steps = self.params['train_params']['num_steps']
         train_func = self._train_func
 
-        for _ in range(self.checkpoint.step+1, int(self.params['train_params']['num_steps']+1)):
+
+        for _ in range(
+                self.checkpoint.step+1, 
+                int(train_num_epochs*train_num_steps)+1):
             self.start_time = time.time()
 
             train_res = train_loop['func'](train_func, self.nn_clusterings, self.checkpoint.step)
@@ -201,28 +203,29 @@ class UnPIE():
 
             self.checkpoint.step.assign_add(1)
 
-            message = 'Step {} ({:.0f} ms) -- '\
-                    .format(self.checkpoint.step.numpy(), 1000 * duration)
+            epoch = ((self.checkpoint.step.numpy()-1)//train_num_steps)+1
+            message = 'Epoch {}, Step {} ({:.0f} ms) -- '\
+                    .format(epoch, self.checkpoint.step.numpy(), 1000 * duration)
             rep_msg = ['{}: {:.4f}'.format(k, v) \
                     for k, v in train_res.items()
                     if k != 'train_op']
             message += ', '.join(rep_msg)
             print(message)
 
-            if self.checkpoint.step % self.params['save_params']['fre_save_model'] == 0 \
+            if self.checkpoint.step % (train_num_steps*self.params['save_params']['fre_save_model']) == 0 \
                     and self.checkpoint.step > 0:
                 print('Saving model...')
-                self.check_manager.save(checkpoint_number=self.checkpoint.step)
+                self.check_manager.save(checkpoint_number=epoch)
 
             self.log_writer.write(message + '\n')
-            if self.checkpoint.step % self.params['save_params']['save_valid_freq'] == 0:
+            if self.checkpoint.step % (train_num_steps*self.params['save_params']['save_valid_freq']) == 0:
                 val_result = self._run_inference('validation_params')
                 self.val_log_writer.write(
                         '%s: %s\n' % ('validation results: ', str(val_result)))
                 print(val_result)
                 self.val_log_writer.close()
                 self.val_log_writer = open(self.val_log_file_path, 'a+')
-    
+
 
     def train(self):
         print_separator('Starting UnPIE training')
@@ -310,6 +313,9 @@ class UnPIE():
             curr_lr = tf.compat.v1.train.piecewise_constant(
                     x=self.checkpoint.step,
                     boundaries=boundaries, values=all_lrs)
+        
+            curr_lr = curr_lr() # eager execution compatibility
+
         return curr_lr
 
     def _rep_loss_func(
