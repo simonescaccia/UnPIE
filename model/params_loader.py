@@ -24,14 +24,14 @@ class ParamsLoader:
     def _set_environment(self):
         if not self.config['IS_GPU']:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-        else:
-            physical_devices = tf.config.list_physical_devices('GPU')
-            try:
-                tf.config.experimental.set_memory_growth(physical_devices[0], True)
-            except:
-                # Invalid device or cannot modify virtual devices once initialized.
-                print("Cannot set memory growth for GPU")
-                pass
+        # else:
+        #     physical_devices = tf.config.list_physical_devices('GPU')
+        #     try:
+        #         tf.config.experimental.set_memory_growth(physical_devices[0], True)
+        #     except:
+        #         # Invalid device or cannot modify virtual devices once initialized.
+        #         print("Cannot set memory growth for GPU")
+        #         pass
 
 
     def _get_loss_lr_opt_params_from_arg(self, dataset_len):
@@ -64,12 +64,12 @@ class ParamsLoader:
         train_steps = self.args['train_steps']
         
         # save_params: defining where to save the models
-        dir_num_steps = ''
+        dir_num_epochs = ''
         for step in train_steps.split(','):
-            dir_num_steps += str(self.args[step]['train_num_steps']) + '_'
-        dir_num_steps = dir_num_steps[:-1]
+            dir_num_epochs += str(self.args[step]['train_num_epochs']) + '_'
+        dir_num_epochs = dir_num_epochs[:-1]
         cache_dir = os.path.join(
-                self.args['cache_dir'], dir_num_steps, task)
+                self.args['cache_dir'], dir_num_epochs, task)
         save_params = {
                 'save_valid_freq': self.args['fre_valid'],
                 'fre_save_model': self.args['fre_save_model'],
@@ -82,22 +82,15 @@ class ParamsLoader:
         load_task = self.args[self.setting]['load_task']
         load_step = None
         if load_task:
-            load_step = self.args[load_task]['train_num_steps']
-        load_query = None
-
-        if load_task is not None:
             task = load_task
+            load_step = self.args[load_task]['train_num_epochs']
+  
+        load_params = None
         if load_step:
-            load_query = {
-                'task': load_task,
-                'saved_filters': True,
+            load_params = {
+                'task': task,
                 'step': load_step
             }
-
-        load_params = {
-            'task': task,
-            'query': load_query
-        }
 
         return save_params, load_params
 
@@ -125,11 +118,11 @@ class ParamsLoader:
 
     def _get_inference_loop_from_arg(self, data_loader):
         counter = [0]
-        step_num = data_loader.dataset.__len__() // self.args['inference_batch_size']
+        num_steps = data_loader.dataset.__len__() // self.args['inference_batch_size']
         data_enumerator = [enumerate(data_loader)]
         def inference_loop(inference_func):
             counter[0] += 1
-            if counter[0] % step_num == 0:
+            if counter[0] % num_steps == 0:
                 data_enumerator.pop()
                 data_enumerator.append(enumerate(data_loader))
             _, (x, a, y, i) = next(data_enumerator[0])
@@ -141,7 +134,7 @@ class ParamsLoader:
             }
             res = inference_func(inputs)
             return res
-        return inference_loop, step_num    
+        return inference_loop, num_steps    
 
     def _get_input_shape(self):
         num_channels = int(self.args['vgg_out_shape'])
@@ -201,10 +194,10 @@ class ParamsLoader:
     def get_test_params(self, data_loaders):
         test_data_loader = data_loaders['test']
 
-        test_loop, test_step_num = self._get_inference_loop_from_arg(test_data_loader)
+        test_loop, test_num_steps = self._get_inference_loop_from_arg(test_data_loader)
 
         test_params = {
-            'num_steps': test_step_num,
+            'num_steps': test_num_steps,
             'inference_loop': {'func': test_loop}
         }
 
@@ -223,13 +216,14 @@ class ParamsLoader:
         val_data_loader = data_loaders['val']
 
         train_dataset_len = train_data_loader.dataset.__len__()
+        train_num_steps = train_dataset_len // self.args['batch_size']
 
         loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)
 
         first_step = []
         data_enumerator = [enumerate(train_data_loader)]
         def train_loop(train_function, nn_clusterings, global_step):
-            data_loader_restore_fre = train_dataset_len // self.args['batch_size']
+            data_loader_restore_fre = train_num_steps
 
             # TODO: make this smart
             if global_step % data_loader_restore_fre == 0:
@@ -245,7 +239,7 @@ class ParamsLoader:
             res = train_function(inputs)
 
             first_flag = len(first_step) == 0
-            update_fre = self.args['clstr_update_fre'] or train_dataset_len // self.args['batch_size']
+            update_fre = self.args['clstr_update_fre'] or train_num_steps
             if (global_step % update_fre == 0 or first_flag) \
                     and (nn_clusterings[0] is not None):
                 if first_flag:
@@ -261,15 +255,16 @@ class ParamsLoader:
             'validate_first': False,
             'queue_params': None,
             'thres_loss': float('Inf'),
-            'num_steps': self.args[self.setting]['train_num_steps'],
+            'num_epochs': self.args[self.setting]['train_num_epochs'],
             'train_loop': {'func': train_loop},
+            'num_steps': train_num_steps,
         }
         
         if not self.args[self.setting]['task'] == 'SUP':
             ## Add other loss reports (loss_model, loss_noise)
             train_params['targets'] = {}
 
-        valid_loop, val_step_num = self._get_inference_loop_from_arg(val_data_loader)
+        valid_loop, val_num_steps = self._get_inference_loop_from_arg(val_data_loader)
 
         inference_targets = {
             'k': self.args['kNN_inference'],
@@ -283,11 +278,12 @@ class ParamsLoader:
             'targets': inference_targets,
             'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
             'online_agg_func': self._online_agg,
+            'inference_batch_size': self.args['inference_batch_size'],
         }
 
         validation_params = {
             'inference_loop': {'func': valid_loop},
-            'num_steps': val_step_num,
+            'num_steps': val_num_steps,
         }
 
         params = {

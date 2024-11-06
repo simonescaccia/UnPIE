@@ -17,8 +17,8 @@ inference_num_clips: 5 # number of clips to sample from each video
 clstr_update_fre: null # frequency to recompute clusters, default is 1 epoch
 kNN_inference: 50 # number of nearest neighbors to consider
 instance_k: 4096 # background neighbors to sample
-fre_save_model: 50 # frequency to save model checkpoint (epochs)
-fre_valid: 50 # frequency to validate model (epochs)
+fre_save_model: 1 # frequency to save model checkpoint (epochs)
+fre_valid: 1 # frequency to validate model (epochs)
 train_log_file: 'log.txt' # training log file
 val_log_file: 'val_log.txt' # validation log file
 test_log_file: 'test_log.txt' # test log file
@@ -28,7 +28,7 @@ IR:
   lr_boundaries: null # learning rate boundaries
   train_num_workers': 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_steps: 1000 # number of training epochs
+  train_num_epochs: 10 # number of training epochs
   load_task: null # load task
   load_step: null # load step
 LA:
@@ -36,5 +36,5 @@ LA:
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_steps: 2000
+  train_num_epochs: 20
   load_task: 'IR'

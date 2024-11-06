@@ -63,7 +63,7 @@ class Kmeans:
         """
         end = time.time()
 
-        data = self.memory_bank
+        data = self.memory_bank.as_tensor()
 
         all_lables = []
         for k_idx, each_k in enumerate(self.k):
