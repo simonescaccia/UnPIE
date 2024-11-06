@@ -15,6 +15,7 @@ class UnPIE():
 
         self.params = params
 
+        # Log files
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
         self.log_file_path = os.path.join(self.cache_dir, self.params['save_params']['train_log_file'])
         self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
@@ -29,17 +30,21 @@ class UnPIE():
         if self.params['is_test']:
             self.test_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['test_log_file'])
             self.test_log_writer = open(self.test_log_file_path, 'w')
-
-        self.global_step = tf.Variable(0, trainable=False, dtype=tf.int64)
         
-        self.unpie_network = UnPIENetwork(
+        # Model
+        self.model = UnPIENetwork(
             self.params['model_params']['model_func_params']['middle_dim'],
             self.params['model_params']['model_func_params']['emb_dim'],
         )
 
         self.nn_clusterings = []
 
-        self.checkpoint = tf.train.Checkpoint(self.unpie_network, global_step=self.global_step)
+        self.checkpoint = tf.train.Checkpoint(
+            model=self.model, 
+            step=tf.Variable(0))
+
+        self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=5)
+
         self._init_and_restore()
 
     def _build_network(self, inputs, train):
@@ -84,7 +89,7 @@ class UnPIE():
                 name='cluster_labels'
             )
 
-        output = self.unpie_network(
+        output = self.model(
             inputs['x'], 
             inputs['a']
         )
@@ -128,21 +133,20 @@ class UnPIE():
         self.checkpoint.restore(ckpt_path)
 
     def _init_and_restore(self):
-        if self.load_from_curr_exp:
-            self._load_from_ckpt(self.load_from_curr_exp)
-        else:
+        latest_checkpoint = self.check_manager.latest_checkpoint
+        if latest_checkpoint:
+            print("Here: latest_checkpoint", latest_checkpoint)
+            # Load current task training
+            self._load_from_ckpt(latest_checkpoint)
+        elif self.params['load_params']['query'] is not None:
+            print("Here: load_params query", self.params['load_params']['query'])
+            # Load previous task training
             split_cache_path = self.cache_dir.split(os.sep)
             split_cache_path[-1] = self.params['load_params']['task']
             load_dir = os.sep.join(split_cache_path)
-            if self.params['load_params']['query']:
-                ckpt_path = os.path.join(
-                        load_dir, 
-                        'model.ckpt-%i' % self.params['load_params']['query']['step'])
-            else:
-                ckpt_path = tf.train.latest_checkpoint(load_dir)
-            if ckpt_path:
-                print('\nRestore from %s' % ckpt_path)
-                self._load_from_ckpt(ckpt_path)
+            ckpt_path = tf.train.latest_checkpoint(load_dir)
+            print('\nRestore from %s' % ckpt_path)
+            self._load_from_ckpt(ckpt_path)
 
     # Training functions
     def _build_train_opt(self, outputs):
@@ -154,7 +158,7 @@ class UnPIE():
         loss_retval = self._reg_loss(
             loss_retval,
             **loss_params.get('agg_func_kwargs', {}))
-
+        
         lr_rate_params = self.params['learning_rate_params']
         learning_rate = self._get_lr_from_boundary_and_ramp_up(
             **lr_rate_params)
@@ -163,8 +167,8 @@ class UnPIE():
         train_opt = tf.keras.optimizers.SGD(
             learning_rate=learning_rate, 
             **opt_params)
-        
-        return loss_retval, learning_rate, train_opt 
+
+        return loss_retval, learning_rate, train_opt
             
     def _build_train_targets(self, outputs, loss_retval, learning_rate, train_opt):
         extra_targets_params = self.params['train_params']['targets']
@@ -185,42 +189,40 @@ class UnPIE():
         return train_targets
 
     def _run_train_loop(self):
-        start_step = self.global_step.numpy()
         train_loop = self.params['train_params'].get('train_loop')
         train_func = self._train_func
 
-        for curr_step in range(start_step, int(self.params['train_params']['num_steps']+1)):
+        for _ in range(self.checkpoint.step+1, int(self.params['train_params']['num_steps']+1)):
             self.start_time = time.time()
 
-            train_res = train_loop['func'](train_func, self.nn_clusterings, self.global_step)
+            train_res = train_loop['func'](train_func, self.nn_clusterings, self.checkpoint.step)
 
             duration = time.time() - self.start_time
 
+            self.checkpoint.step.assign_add(1)
+
             message = 'Step {} ({:.0f} ms) -- '\
-                    .format(curr_step, 1000 * duration)
+                    .format(self.checkpoint.step.numpy(), 1000 * duration)
             rep_msg = ['{}: {:.4f}'.format(k, v) \
                     for k, v in train_res.items()
                     if k != 'train_op']
             message += ', '.join(rep_msg)
             print(message)
 
-            if curr_step % self.params['save_params']['fre_save_model'] == 0 \
-                    and curr_step > 0:
+            if self.checkpoint.step % self.params['save_params']['fre_save_model'] == 0 \
+                    and self.checkpoint.step > 0:
                 print('Saving model...')
-                self.checkpoint.save(
-                        os.path.join(
-                            self.cache_dir,
-                            'model.ckpt'), 
-                        global_step=curr_step)
+                self.check_manager.save(checkpoint_number=self.checkpoint.step)
 
             self.log_writer.write(message + '\n')
-            if curr_step % self.params['save_params']['save_valid_freq'] == 0:
+            if self.checkpoint.step % self.params['save_params']['save_valid_freq'] == 0:
                 val_result = self._run_inference('validation_params')
                 self.val_log_writer.write(
                         '%s: %s\n' % ('validation results: ', str(val_result)))
                 print(val_result)
                 self.val_log_writer.close()
                 self.val_log_writer = open(self.val_log_file_path, 'a+')
+    
 
     def train(self):
         print_separator('Starting UnPIE training')
@@ -235,6 +237,11 @@ class UnPIE():
         return targets
 
     def _inference_func(self, inputs):
+        inference_num_clips = self.params['inference_params']['targets']['inference_num_clips']
+        x_shape = inputs['x'].shape
+        inputs['x'] = tf.reshape(inputs['x'], 
+            [x_shape[0]*inference_num_clips, x_shape[1]//inference_num_clips, x_shape[2], x_shape[3]])
+        
         outputs = self._build_network(inputs, train=False)
         targets = self._build_inference_targets(inputs, outputs)
         return targets
@@ -274,7 +281,7 @@ class UnPIE():
         # Add weight decay to the loss.
         l2_loss = weight_decay * tf.add_n(
                 [tf.nn.l2_loss(tf.cast(v, tf.float32))
-                    for v in self.unpie_network.trainable_variables])
+                    for v in self.model.trainable_variables])
         loss_all = tf.add(loss, l2_loss)
         return loss_all
     
@@ -287,7 +294,7 @@ class UnPIE():
             init_lr, target_lr, ramp_up_epoch,
             num_batches_per_epoch):
         curr_epoch  = tf.math.divide(
-                tf.cast(self.global_step, tf.float32), 
+                tf.cast(self.checkpoint.step, tf.float32), 
                 tf.cast(num_batches_per_epoch, tf.float32))
         curr_phase = (tf.minimum(curr_epoch/float(ramp_up_epoch), 1))
         curr_lr = init_lr + (target_lr-init_lr) * curr_phase
@@ -301,7 +308,7 @@ class UnPIE():
                     for drop_level in range(len(boundaries) + 1)]
 
             curr_lr = tf.compat.v1.train.piecewise_constant(
-                    x=self.global_step,
+                    x=self.checkpoint.step,
                     boundaries=boundaries, values=all_lrs)
         return curr_lr
 
@@ -324,33 +331,23 @@ class UnPIE():
             k, inference_num_clips,
             num_classes):
         curr_dist, all_labels = output
-        print("curr_dist: ", curr_dist)
-        print("all_labels: ", all_labels)
         all_labels = tuple_get_one(all_labels)
-        print("all_labels: ", all_labels)
         top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
-        print("top_dist: ", top_dist)
-        print("top_indices: ", top_indices)
         top_labels = tf.gather(all_labels, top_indices)
-        print("top_labels: ", top_labels)
         top_labels_one_hot = tf.one_hot(top_labels, num_classes)
-        print("top_labels_one_hot: ", top_labels_one_hot)
         top_prob = tf.exp(top_dist / instance_t)
-        print("top_prob: ", top_prob)
         top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1)
-        print("top_labels_one_hot: ", top_labels_one_hot)
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
-        print("top_labels_one_hot: ", top_labels_one_hot)
-        print("top_labels_one_hot shape: ", top_labels_one_hot.shape)
         top_labels_one_hot = tf.reshape(
                 top_labels_one_hot,
                 [-1, inference_num_clips, num_classes])
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
-        imagenet_top1 = tf.reduce_mean(
+        print("curr_pred: ", curr_pred)
+        accuracy = tf.reduce_mean(
                 tf.cast(
                     tf.equal(curr_pred, inputs['y']),
                     tf.float32))
-        return {'top1_{k}NN'.format(k=k): imagenet_top1}
+        return {'top1_{k}NN'.format(k=k): accuracy}
 
