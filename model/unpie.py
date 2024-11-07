@@ -37,7 +37,7 @@ class UnPIE():
             self.params['model_params']['model_func_params']['emb_dim'],
         )
 
-        self.nn_clusterings = []
+        self.nn_clustering = None
 
         # Checkpoint
         self.checkpoint = tf.train.Checkpoint(
@@ -66,7 +66,7 @@ class UnPIE():
         if not train:
             return res
         outputs, clustering = res
-        self.nn_clusterings.append(clustering)
+        self.nn_clustering == clustering
         return outputs
     
     def _build_output(
@@ -197,15 +197,6 @@ class UnPIE():
 
                 duration = time.time() - self.start_time
 
-                # Recompute clusters
-                if (self.checkpoint.step % update_fre == 0 or first_flag) and (nn_clusterings[0] is not None):
-                    if first_flag:
-                        first_step.append(1)
-                    print("Recomputing clusters...")
-                    new_clust_labels = nn_clusterings[0].recompute_clusters()
-                    for clustering in nn_clusterings:
-                        clustering.apply_clusters(new_clust_labels)
-
                 self.checkpoint.epoch.assign_add(1)
 
                 message = 'Epoch {}, Step {} ({:.0f} ms) -- Loss {}'.format(
@@ -214,10 +205,19 @@ class UnPIE():
 
                 self.log_writer.write(message + '\n')
 
+                # TODO: Remove/Use this code
+                # # Recompute clusters
+                # if self.nn_clustering is not None:
+                #     print("Recomputing clusters...")
+                #     new_clust_labels = self.nn_clusterings.recompute_clusters()
+                #     self.nn_clustering.apply_clusters(new_clust_labels)
+
+            # Save checkpoint
             if epoch % self.params['save_params']['fre_save_model'] == 0:
                 print('Saving model...')
                 self.check_manager.save(checkpoint_number=epoch)
             
+            # Compute validation
             if epoch % self.params['save_params']['save_valid_freq'] == 0:
                 val_result = self._run_inference('validation_params')
                 self.val_log_writer.write(

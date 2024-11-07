@@ -5,7 +5,7 @@ from utils.pie_utils import update_progress
 
 class PIEGraphDataset():
     def __init__(self, features, normalize_bbox, batch_size, shuffle, transform_a=None):
-        self.dataset = self._compute_graphs(features, normalize_bbox, batch_size, shuffle, transform_a)
+        self.dataset, self.len = self._compute_graphs(features, normalize_bbox, batch_size, shuffle, transform_a)
 
     def _compute_graphs(self, features, normalize_bbox, batch_size, shuffle, transform_a):
         '''
@@ -84,9 +84,12 @@ class PIEGraphDataset():
         )
 
         if shuffle:
-            return dataset.shuffle(buffer_size=num_seq).batch(batch_size=batch_size)
+            return dataset.shuffle(buffer_size=num_seq).batch(batch_size=batch_size), num_seq
         else:
-            return dataset.batch(batch_size=batch_size)
+            return dataset.batch(batch_size=batch_size), num_seq
 
     def get_dataset(self):
         return self.dataset
+    
+    def get_len(self):
+        return self.len

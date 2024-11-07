@@ -209,14 +209,10 @@ class ParamsLoader:
         train_data_loader = data_loaders['train']
         val_data_loader = data_loaders['val']
 
-        train_dataset_len = train_data_loader.dataset.__len__()
+        train_dataset_len = train_data_loader.get_len()
         train_num_steps = train_dataset_len // self.args['batch_size']
 
-        loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)
-
-        first_step = []
-        data_enumerator = [enumerate(train_data_loader)]
-        
+        loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)        
 
         train_params = {
             'validate_first': False,
@@ -270,7 +266,7 @@ class ParamsLoader:
         self.args['kmeans_k'] = [self.args['num_classes']]
         self.args['input_shape'] = self._get_input_shape()
 
-        model_func_params = self._get_model_func_params(data_loaders['train'].dataset.__len__())
+        model_func_params = self._get_model_func_params(data_loaders['train'].get_len())
         model_params = {
             'model_func_params': model_func_params
         }
