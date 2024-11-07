@@ -43,7 +43,7 @@ class UnPIE():
             model=self.model, 
             step=tf.Variable(0))
 
-        self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=5)
+        self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
 
         self._init_and_restore()
 
@@ -185,8 +185,35 @@ class UnPIE():
         train_targets = self._build_train_targets(outputs, loss_retval, learning_rate, train_opt)
         return train_targets
 
+    def _train_loop(self, train_function, nn_clusterings):
+        data_loader_restore_fre = train_num_steps
+
+        # TODO: make this smart
+        if self.checkpoint.step % data_loader_restore_fre == 0:
+            data_enumerator.pop()
+            data_enumerator.append(enumerate(train_data_loader))
+        _, (x, a, y, i) = next(data_enumerator[0])
+        inputs = {
+            'x': x,
+            'a': a,
+            'y': y,
+            'i': i,
+        }
+        res = train_function(inputs)
+
+        first_flag = len(first_step) == 0
+        update_fre = self.args['clstr_update_fre'] or train_num_steps
+        if (self.checkpoint.step % update_fre == 0 or first_flag) and (nn_clusterings[0] is not None):
+            if first_flag:
+                first_step.append(1)
+            print("Recomputing clusters...")
+            new_clust_labels = nn_clusterings[0].recompute_clusters()
+            for clustering in nn_clusterings:
+                clustering.apply_clusters(new_clust_labels)
+
+        return res
+
     def _run_train_loop(self):
-        train_loop = self.params['train_params'].get('train_loop')
         train_num_epochs = self.params['train_params']['num_epochs']
         train_num_steps = self.params['train_params']['num_steps']
         train_func = self._train_func
@@ -197,7 +224,7 @@ class UnPIE():
                 int(train_num_epochs*train_num_steps)+1):
             self.start_time = time.time()
 
-            train_res = train_loop['func'](train_func, self.nn_clusterings, self.checkpoint.step)
+            train_res = self._train_loop(train_func, self.nn_clusterings, self.checkpoint.step)
 
             duration = time.time() - self.start_time
 

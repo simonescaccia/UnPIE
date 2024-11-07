@@ -1,15 +1,13 @@
 import numpy as np
+import tensorflow as tf
 
-from torch.utils.data import Dataset
 from utils.pie_utils import update_progress
-from spektral.data import Dataset
 
-class PIEGraphDataset(Dataset):
-    def __init__(self, features, normalize_bbox, transform_a=None):
-        self.compute_graphs(features, normalize_bbox, transform_a)
+class PIEGraphDataset():
+    def __init__(self, features, normalize_bbox, batch_size, shuffle, transform_a=None):
+        self.dataset = self._compute_graphs(features, normalize_bbox, batch_size, shuffle, transform_a)
 
-
-    def compute_graphs(self, features, normalize_bbox, transform_a):
+    def _compute_graphs(self, features, normalize_bbox, batch_size, shuffle, transform_a):
         '''
         Compute the graph structure of the dataset:
         - The pedestrian node is the center node
@@ -80,8 +78,14 @@ class PIEGraphDataset(Dataset):
         self.a = a_seq
         self.y = y_seq
 
-    def __len__(self):
-        return len(self.x)
-    
-    def __getitem__(self, idx):
-        return self.x[idx], self.a[idx], self.y[idx], idx
+        dataset = tf.data.Dataset.from_tensor_slices(
+            dict(x=self.x, a=self.a, y=self.y)
+        )
+
+        if shuffle:
+            return dataset.shuffle(buffer_size=num_seq).batch(batch_size=batch_size)
+        else:
+            return dataset.batch(batch_size=batch_size)
+
+    def get_dataset(self):
+        return self.dataset
