@@ -223,7 +223,6 @@ class ParamsLoader:
             'queue_params': None,
             'thres_loss': float('Inf'),
             'num_epochs': self.args[self.setting]['train_num_epochs'],
-            'train_loop': {'func': train_loop},
             'num_steps': train_num_steps,
         }
         
