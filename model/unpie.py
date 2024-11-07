@@ -39,11 +39,23 @@ class UnPIE():
 
         self.nn_clusterings = []
 
+        # Checkpoint
         self.checkpoint = tf.train.Checkpoint(
             model=self.model, 
             epoch=tf.Variable(0))
 
         self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
+
+        # Optimizer: TODO support rump up
+        lr_rate_params = self.params['learning_rate_params']
+        self.learning_rate = self._get_lr_from_boundary_and_ramp_up(
+            **lr_rate_params)
+
+        opt_params = self.params['optimizer_params']
+        self.optimizer = tf.keras.optimizers.SGD(
+            learning_rate=self.learning_rate, 
+            **opt_params)
+
 
         self._init_and_restore()
 
@@ -146,75 +158,23 @@ class UnPIE():
             self._load_from_ckpt(ckpt_path)
 
     # Training functions
-    def _build_train_opt(self, outputs):
+    def _build_loss(self, outputs):
         loss_params = self.params['loss_params']
 
-        loss_retval = self._loss_func(
-            outputs,
-            **loss_params.get('loss_func_kwargs', {}))
+        loss_retval = outputs['loss']
         loss_retval = self._reg_loss(
             loss_retval,
             **loss_params.get('agg_func_kwargs', {}))
         
-        lr_rate_params = self.params['learning_rate_params']
-        learning_rate = self._get_lr_from_boundary_and_ramp_up(
-            **lr_rate_params)
+        return loss_retval
 
-        opt_params = self.params['optimizer_params']
-        train_opt = tf.keras.optimizers.SGD(
-            learning_rate=learning_rate, 
-            **opt_params)
-
-        return loss_retval, learning_rate, train_opt
-            
-    def _build_train_targets(self, outputs, loss_retval, learning_rate, train_opt):
-        extra_targets_params = self.params['train_params']['targets']
-        train_targets = self._rep_loss_func(
-            outputs, 
-            **extra_targets_params)
-
-        train_targets['train_op'] = train_opt
-        train_targets['loss'] = loss_retval
-        train_targets['learning_rate'] = learning_rate
-
-        return train_targets
-
-    def _train_func(self, inputs):
-        outputs = self._build_network(inputs, train=True)
-        loss_retval, learning_rate, train_opt = self._build_train_opt(outputs) 
-        train_targets = self._build_train_targets(outputs, loss_retval, learning_rate, train_opt)
-        return train_targets
-
-    def _train_loop(self, train_function, nn_clusterings):
-        data_loader_restore_fre = train_num_steps
-
-        # TODO: make this smart
-        if self.checkpoint.step % data_loader_restore_fre == 0:
-            data_enumerator.pop()
-            data_enumerator.append(enumerate(train_data_loader))
-        _, (x, a, y, i) = next(data_enumerator[0])
-
-        res = train_function(inputs)
-
-        first_flag = len(first_step) == 0
-        update_fre = self.args['clstr_update_fre'] or train_num_steps
-        if (self.checkpoint.step % update_fre == 0 or first_flag) and (nn_clusterings[0] is not None):
-            if first_flag:
-                first_step.append(1)
-            print("Recomputing clusters...")
-            new_clust_labels = nn_clusterings[0].recompute_clusters()
-            for clustering in nn_clusterings:
-                clustering.apply_clusters(new_clust_labels)
-
-        return res
-
-    def loss(self, x, a, y, i):
+    def _loss(self, x, a, y, i):
         # training=training is needed only if there are layers with different
         # behavior during training versus inference (e.g. Dropout).
         y_ = self._build_network(x, a, i, train=True)
-        
+        loss = self._build_loss(y_)
 
-        return loss_object(y_true=y, y_pred=y_)
+        return loss
 
     def _grad(self, x, a, y, i):
         with tf.GradientTape() as tape:
@@ -222,45 +182,49 @@ class UnPIE():
         return loss_value, tape.gradient(loss_value, self.unpie_network.trainable_variables)
 
     def _run_train_loop(self):
-        train_num_epochs = self.params['train_params']['num_epochs']
-        train_func = self._train_func
 
-        for _ in range(self.checkpoint.epoch+1, train_num_epochs+1):
-                
+        for epoch in range(self.checkpoint.epoch+1, self.params['train_params']['num_epochs']+1):
+
+            train_step = 0
+
             for x, a, y, i in self.params['data_loader']['train']:
+                train_step += 1
                 self.start_time = time.time()
                 
                 # Optimize the model
                 loss_value, grads = self._grad(x, a, y, i)
-
-                train_res = self._train_loop(train_func, self.nn_clusterings)
+                self.optimizer.apply_gradients(zip(grads, self.unpie_network.trainable_variables))
 
                 duration = time.time() - self.start_time
 
+                # Recompute clusters
+                if (self.checkpoint.step % update_fre == 0 or first_flag) and (nn_clusterings[0] is not None):
+                    if first_flag:
+                        first_step.append(1)
+                    print("Recomputing clusters...")
+                    new_clust_labels = nn_clusterings[0].recompute_clusters()
+                    for clustering in nn_clusterings:
+                        clustering.apply_clusters(new_clust_labels)
+
                 self.checkpoint.epoch.assign_add(1)
 
-                epoch = ((self.checkpoint.step.numpy()-1)//train_num_steps)+1
-                message = 'Epoch {}, Step {} ({:.0f} ms) -- '\
-                        .format(epoch, self.checkpoint.step.numpy(), 1000 * duration)
-                rep_msg = ['{}: {:.4f}'.format(k, v) \
-                        for k, v in train_res.items()
-                        if k != 'train_op']
-                message += ', '.join(rep_msg)
+                message = 'Epoch {}, Step {} ({:.0f} ms) -- Loss {}'.format(
+                    epoch, train_step, 1000 * duration, loss_value)
                 print(message)
 
-                if self.checkpoint.step % (train_num_steps*self.params['save_params']['fre_save_model']) == 0 \
-                        and self.checkpoint.step > 0:
-                    print('Saving model...')
-                    self.check_manager.save(checkpoint_number=epoch)
-
                 self.log_writer.write(message + '\n')
-                if self.checkpoint.step % (train_num_steps*self.params['save_params']['save_valid_freq']) == 0:
-                    val_result = self._run_inference('validation_params')
-                    self.val_log_writer.write(
-                            '%s: %s\n' % ('validation results: ', str(val_result)))
-                    print(val_result)
-                    self.val_log_writer.close()
-                    self.val_log_writer = open(self.val_log_file_path, 'a+')
+
+            if epoch % self.params['save_params']['fre_save_model'] == 0:
+                print('Saving model...')
+                self.check_manager.save(checkpoint_number=epoch)
+            
+            if epoch % self.params['save_params']['save_valid_freq'] == 0:
+                val_result = self._run_inference('validation_params')
+                self.val_log_writer.write(
+                        '%s: %s\n' % ('validation results: ', str(val_result)))
+                print(val_result)
+                self.val_log_writer.close()
+                self.val_log_writer = open(self.val_log_file_path, 'a+')
 
 
     def train(self):
@@ -323,9 +287,6 @@ class UnPIE():
                     for v in self.model.trainable_variables])
         loss_all = tf.add(loss, l2_loss)
         return loss_all
-    
-    def _loss_func(self, output):
-        return output['loss']
 
     def _get_lr_from_boundary_and_ramp_up(
             self, 
