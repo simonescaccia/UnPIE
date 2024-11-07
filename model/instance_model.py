@@ -9,13 +9,13 @@ def repeat_1d_tensor(t, num_reps):
 
 class InstanceModel(object):
     def __init__(self,
-                 inputs, output,
+                 i, output,
                  memory_bank,
                  instance_k,
                  instance_t=0.07,
                  instance_m=0.5,
                  **kwargs):
-        self.inputs = inputs
+        self.i = i
         self.embed_output = output
         self.batch_size, self.out_dim = self.embed_output.get_shape().as_list()
         self.memory_bank = memory_bank
@@ -32,7 +32,7 @@ class InstanceModel(object):
         return tf.exp(dot_prods / self.instance_t) / instance_Z
 
     def updated_new_data_memory(self):
-        data_indx = self.inputs['i'] # [bs]
+        data_indx = self.i # [bs]
         data_memory = self.memory_bank.at_idxs(data_indx)
         new_data_memory = (data_memory * self.instance_m
                            + (1 - self.instance_m) * self.embed_output)
@@ -41,7 +41,7 @@ class InstanceModel(object):
     def __get_lbl_equal(self, each_k_idx, cluster_labels, top_idxs, k):
         batch_labels = tf.gather(
                 cluster_labels[each_k_idx], 
-                self.inputs['i'])
+                self.i)
         if k > 0:
             top_cluster_labels = tf.gather(cluster_labels[each_k_idx], top_idxs)
             batch_labels = repeat_1d_tensor(batch_labels, k)
@@ -88,10 +88,10 @@ class InstanceModel(object):
 
         assert_shape(probs, [self.batch_size])
         loss = -tf.reduce_mean(tf.math.log(probs + 1e-7))
-        return loss, self.inputs['i']
+        return loss, self.i
 
     def compute_data_prob(self, selfloss):
-        data_indx = self.inputs['i']
+        data_indx = self.i
         logits = selfloss.get_closeness(data_indx, self.embed_output)
         return self._softmax(logits)
 
