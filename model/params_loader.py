@@ -24,14 +24,8 @@ class ParamsLoader:
     def _set_environment(self):
         if not self.config['IS_GPU']:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-        # else:
-        #     physical_devices = tf.config.list_physical_devices('GPU')
-        #     try:
-        #         tf.config.experimental.set_memory_growth(physical_devices[0], True)
-        #     except:
-        #         # Invalid device or cannot modify virtual devices once initialized.
-        #         print("Cannot set memory growth for GPU")
-        #         pass
+        else:
+            os.environ['TF_GPU_ALLOCATOR'] = 'cuda_malloc_async'
 
 
     def _get_loss_lr_opt_params_from_arg(self, dataset_len):
@@ -222,34 +216,7 @@ class ParamsLoader:
 
         first_step = []
         data_enumerator = [enumerate(train_data_loader)]
-        def train_loop(train_function, nn_clusterings, global_step):
-            data_loader_restore_fre = train_num_steps
-
-            # TODO: make this smart
-            if global_step % data_loader_restore_fre == 0:
-                data_enumerator.pop()
-                data_enumerator.append(enumerate(train_data_loader))
-            _, (x, a, y, i) = next(data_enumerator[0])
-            inputs = {
-                'x': x,
-                'a': a,
-                'y': y,
-                'i': i,
-            }
-            res = train_function(inputs)
-
-            first_flag = len(first_step) == 0
-            update_fre = self.args['clstr_update_fre'] or train_num_steps
-            if (global_step % update_fre == 0 or first_flag) \
-                    and (nn_clusterings[0] is not None):
-                if first_flag:
-                    first_step.append(1)
-                print("Recomputing clusters...")
-                new_clust_labels = nn_clusterings[0].recompute_clusters()
-                for clustering in nn_clusterings:
-                    clustering.apply_clusters(new_clust_labels)
-
-            return res
+        
 
         train_params = {
             'validate_first': False,

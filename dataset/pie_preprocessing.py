@@ -10,7 +10,6 @@ from dataset.pie_dataset import PIEGraphDataset
 from model.unpie_gcn import UnPIEGCN
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
-from torch.utils.data import DataLoader
 
 
 class PIEPreprocessing(object):
@@ -93,17 +92,28 @@ class PIEPreprocessing(object):
         '''
         Create a dataloader for the clustering computation
         '''
-        dataset = PIEGraphDataset(features, transform_a=UnPIEGCN.transform, normalize_bbox=self._normalize_bbox)
         return { # switch statement, python < 3.10 support
             'train':
-                DataLoader(
-                    dataset, batch_size=self.batch_size, shuffle=True),
+                PIEGraphDataset(
+                    features, 
+                    transform_a=UnPIEGCN.transform, 
+                    batch_size=self.batch_size, 
+                    shuffle=True, 
+                    normalize_bbox=self._normalize_bbox),
             'val':
-                DataLoader(
-                    dataset, batch_size=self.inference_batch_size, shuffle=False),
+                PIEGraphDataset(
+                    features, 
+                    transform_a=UnPIEGCN.transform, 
+                    batch_size=self.inference_batch_size, 
+                    shuffle=False, 
+                    normalize_bbox=self._normalize_bbox),
             'test':
-                DataLoader(
-                    dataset, batch_size=self.inference_batch_size, shuffle=False)
+                PIEGraphDataset(
+                    features, 
+                    transform_a=UnPIEGCN.transform, 
+                    batch_size=self.inference_batch_size, 
+                    shuffle=False, 
+                    normalize_bbox=self._normalize_bbox),
         }[features['data_split']]
 
         
