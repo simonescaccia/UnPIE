@@ -41,16 +41,16 @@ class UnPIE():
 
         self.checkpoint = tf.train.Checkpoint(
             model=self.model, 
-            step=tf.Variable(0))
+            epoch=tf.Variable(0))
 
         self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
 
         self._init_and_restore()
 
-    def _build_network(self, inputs, train):
+    def _build_network(self, x, a, i, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
-        res = self._build_output(inputs, train, **model_func_params)
+        res = self._build_output(x, a, i, train, **model_func_params)
         if not train:
             return res
         outputs, clustering = res
@@ -59,13 +59,13 @@ class UnPIE():
     
     def _build_output(
         self,
-        inputs, train,
+        x, a, i, train,
         kmeans_k,
         task,
         **kwargs):
 
-        inputs['a'] = tf.cast(inputs['a'], tf.float32)
-        inputs['i'] = tf.cast(inputs['i'], tf.int32)
+        a = tf.cast(a, tf.float32)
+        i = tf.cast(i, tf.int32)
 
         data_len = kwargs.get('data_len')
         all_labels = tf.Variable(
@@ -90,15 +90,15 @@ class UnPIE():
             )
 
         output = self.model(
-            inputs['x'], 
-            inputs['a']
+            x, 
+            a
         )
         output = tf.nn.l2_normalize(output, axis=1)
         if not train:
             all_dist = memory_bank.get_all_dot_products(output)
             return [all_dist, all_labels]
         model_class = InstanceModel(
-            inputs=inputs, output=output,
+            i=i, output=output,
             memory_bank=memory_bank,
             **kwargs)
         nn_clustering = None
@@ -120,7 +120,7 @@ class UnPIE():
         new_data_memory = model_class.updated_new_data_memory()
         ret_dict = {
             "loss": loss,
-            "data_indx": inputs['i'],
+            "data_indx": i,
             "memory_bank": memory_bank,
             "new_data_memory": new_data_memory,
             "all_labels": all_labels,
@@ -193,12 +193,7 @@ class UnPIE():
             data_enumerator.pop()
             data_enumerator.append(enumerate(train_data_loader))
         _, (x, a, y, i) = next(data_enumerator[0])
-        inputs = {
-            'x': x,
-            'a': a,
-            'y': y,
-            'i': i,
-        }
+
         res = train_function(inputs)
 
         first_flag = len(first_step) == 0
@@ -213,45 +208,59 @@ class UnPIE():
 
         return res
 
+    def loss(self, x, a, y, i):
+        # training=training is needed only if there are layers with different
+        # behavior during training versus inference (e.g. Dropout).
+        y_ = self._build_network(x, a, i, train=True)
+        
+
+        return loss_object(y_true=y, y_pred=y_)
+
+    def _grad(self, x, a, y, i):
+        with tf.GradientTape() as tape:
+            loss_value = self._loss(x, a, y, i)
+        return loss_value, tape.gradient(loss_value, self.unpie_network.trainable_variables)
+
     def _run_train_loop(self):
         train_num_epochs = self.params['train_params']['num_epochs']
-        train_num_steps = self.params['train_params']['num_steps']
         train_func = self._train_func
 
+        for _ in range(self.checkpoint.epoch+1, train_num_epochs+1):
+                
+            for x, a, y, i in self.params['data_loader']['train']:
+                self.start_time = time.time()
+                
+                # Optimize the model
+                loss_value, grads = self._grad(x, a, y, i)
 
-        for _ in range(
-                self.checkpoint.step+1, 
-                int(train_num_epochs*train_num_steps)+1):
-            self.start_time = time.time()
+                train_res = self._train_loop(train_func, self.nn_clusterings)
 
-            train_res = self._train_loop(train_func, self.nn_clusterings, self.checkpoint.step)
+                duration = time.time() - self.start_time
 
-            duration = time.time() - self.start_time
+                self.checkpoint.epoch.assign_add(1)
 
-            self.checkpoint.step.assign_add(1)
+                epoch = ((self.checkpoint.step.numpy()-1)//train_num_steps)+1
+                message = 'Epoch {}, Step {} ({:.0f} ms) -- '\
+                        .format(epoch, self.checkpoint.step.numpy(), 1000 * duration)
+                rep_msg = ['{}: {:.4f}'.format(k, v) \
+                        for k, v in train_res.items()
+                        if k != 'train_op']
+                message += ', '.join(rep_msg)
+                print(message)
 
-            epoch = ((self.checkpoint.step.numpy()-1)//train_num_steps)+1
-            message = 'Epoch {}, Step {} ({:.0f} ms) -- '\
-                    .format(epoch, self.checkpoint.step.numpy(), 1000 * duration)
-            rep_msg = ['{}: {:.4f}'.format(k, v) \
-                    for k, v in train_res.items()
-                    if k != 'train_op']
-            message += ', '.join(rep_msg)
-            print(message)
+                if self.checkpoint.step % (train_num_steps*self.params['save_params']['fre_save_model']) == 0 \
+                        and self.checkpoint.step > 0:
+                    print('Saving model...')
+                    self.check_manager.save(checkpoint_number=epoch)
 
-            if self.checkpoint.step % (train_num_steps*self.params['save_params']['fre_save_model']) == 0 \
-                    and self.checkpoint.step > 0:
-                print('Saving model...')
-                self.check_manager.save(checkpoint_number=epoch)
-
-            self.log_writer.write(message + '\n')
-            if self.checkpoint.step % (train_num_steps*self.params['save_params']['save_valid_freq']) == 0:
-                val_result = self._run_inference('validation_params')
-                self.val_log_writer.write(
-                        '%s: %s\n' % ('validation results: ', str(val_result)))
-                print(val_result)
-                self.val_log_writer.close()
-                self.val_log_writer = open(self.val_log_file_path, 'a+')
+                self.log_writer.write(message + '\n')
+                if self.checkpoint.step % (train_num_steps*self.params['save_params']['save_valid_freq']) == 0:
+                    val_result = self._run_inference('validation_params')
+                    self.val_log_writer.write(
+                            '%s: %s\n' % ('validation results: ', str(val_result)))
+                    print(val_result)
+                    self.val_log_writer.close()
+                    self.val_log_writer = open(self.val_log_file_path, 'a+')
 
 
     def train(self):

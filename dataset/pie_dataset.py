@@ -77,9 +77,10 @@ class PIEGraphDataset():
         self.x = x_seq
         self.a = a_seq
         self.y = y_seq
+        self.i = np.arange(num_seq)
 
         dataset = tf.data.Dataset.from_tensor_slices(
-            dict(x=self.x, a=self.a, y=self.y)
+            dict(x=self.x, a=self.a, y=self.y, i=self.i)
         )
 
         if shuffle:

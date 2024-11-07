@@ -283,6 +283,7 @@ class ParamsLoader:
             'load_params': load_params,
             'data_opts': pie_params['data_opts'],
             'model_params': model_params,
+            'data_loaders': data_loaders,
         }
         train_params = self.get_train_params(data_loaders)
 
