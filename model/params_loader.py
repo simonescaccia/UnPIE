@@ -88,7 +88,6 @@ class ParamsLoader:
 
         return save_params, load_params
 
-
     def _get_model_func_params(self, dataset_len):
         model_params = {
             "instance_t": self.args['instance_t'],
@@ -100,35 +99,6 @@ class ParamsLoader:
             "middle_dim": self.args['middle_dim'],
         }
         return model_params
-
-
-    def _online_agg(self, agg_res, res, step):
-        if agg_res is None:
-            agg_res = {k: [] for k in res}
-        for k, v in res.items():
-            agg_res[k].append(np.mean(v))
-            # agg_res[k].append(v)
-        return agg_res
-
-    def _get_inference_loop_from_arg(self, data_loader):
-        counter = [0]
-        num_steps = data_loader.dataset.__len__() // self.args['inference_batch_size']
-        data_enumerator = [enumerate(data_loader)]
-        def inference_loop(inference_func):
-            counter[0] += 1
-            if counter[0] % num_steps == 0:
-                data_enumerator.pop()
-                data_enumerator.append(enumerate(data_loader))
-            _, (x, a, y, i) = next(data_enumerator[0])
-            inputs = {
-                'x': x,
-                'a': a,
-                'y': y,
-                'i': i,
-            }
-            res = inference_func(inputs)
-            return res
-        return inference_loop, num_steps    
 
     def _get_input_shape(self):
         num_channels = int(self.args['vgg_out_shape'])
@@ -184,32 +154,10 @@ class ParamsLoader:
             'img_width': img_width,
         }
         return pie_params
-    
-    def get_test_params(self, data_loaders):
-        test_data_loader = data_loaders['test']
-
-        test_loop, test_num_steps = self._get_inference_loop_from_arg(test_data_loader)
-
-        test_params = {
-            'num_steps': test_num_steps,
-            'inference_loop': {'func': test_loop}
-        }
-
-        params = {
-            'test_params': test_params,
-        }
-
-        return params
-    
-    def _get_num_nodes(self, data_loader):
-        _, (x, _, _, _) = next(enumerate(data_loader))
-        return x.shape[2]
 
     def get_train_params(self, data_loaders):
-        train_data_loader = data_loaders['train']
-        val_data_loader = data_loaders['val']
+        train_dataset_len = data_loaders['train'].get_len()
 
-        train_dataset_len = train_data_loader.get_len()
         train_num_steps = train_dataset_len // self.args['batch_size']
 
         loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)        
@@ -226,8 +174,6 @@ class ParamsLoader:
             ## Add other loss reports (loss_model, loss_noise)
             train_params['targets'] = {}
 
-        valid_loop, val_num_steps = self._get_inference_loop_from_arg(val_data_loader)
-
         inference_targets = {
             'k': self.args['kNN_inference'],
             'instance_t': self.args['instance_t'],
@@ -236,16 +182,8 @@ class ParamsLoader:
         }
 
         inference_params = {
-            'queue_params': None,
             'targets': inference_targets,
-            'agg_func': lambda x: {k: np.mean(v) for k, v in x.items()},
-            'online_agg_func': self._online_agg,
             'inference_batch_size': self.args['inference_batch_size'],
-        }
-
-        validation_params = {
-            'inference_loop': {'func': valid_loop},
-            'num_steps': val_num_steps,
         }
 
         params = {
@@ -254,7 +192,6 @@ class ParamsLoader:
             'optimizer_params': optimizer_params,
             'train_params': train_params,
             'inference_params': inference_params,
-            'validation_params': validation_params,
         }
 
         return params
@@ -282,9 +219,5 @@ class ParamsLoader:
         }
         train_params = self.get_train_params(data_loaders)
 
-        test_params = {}
-        if is_test:
-            test_params = self.get_test_params(data_loaders)
-
-        all_params = {**gen_params, **train_params, **test_params}
+        all_params = {**gen_params, **train_params}
         return all_params
