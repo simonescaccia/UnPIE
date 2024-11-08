@@ -1,6 +1,7 @@
 import os
 import time
 import tqdm
+import numpy as np
 import tensorflow as tf
 
 from model.instance_model import InstanceModel
@@ -37,7 +38,34 @@ class UnPIE():
             self.params['model_params']['model_func_params']['emb_dim'],
         )
 
+        # Memory bank and clustering
+        self.data_len = self.params['model_params']['model_func_params']['data_len']
+        self.emb_dim = self.params['model_params']['model_func_params']['emb_dim']
+        self.task = self.params['model_params']['model_func_params']['task']
+        self.kmeans_k = self.params['model_params']['model_func_params']['kmeans_k']
+        self.memory_bank = MemoryBank(self.data_len, self.emb_dim)
         self.nn_clustering = None
+
+        self.all_labels = tf.Variable(
+            initial_value=tf.zeros(shape=(self.data_len,), dtype=tf.int64),
+            trainable=False,
+            dtype=tf.int64,
+            name='all_labels'
+        )
+        if self.task == 'LA':
+            from .cluster_km import Kmeans
+            lbl_init_values = tf.range(self.data_len, dtype=tf.int64)
+            no_kmeans_k = len(self.kmeans_k)
+            lbl_init_values = tf.tile(
+                    tf.expand_dims(lbl_init_values, axis=0),
+                    [no_kmeans_k, 1])
+            cluster_labels = tf.Variable(
+                initial_value=lbl_init_values,
+                trainable=False,
+                dtype=tf.int64,
+                name='cluster_labels'
+            )
+            self.nn_clustering = Kmeans(self.kmeans_k, self.memory_bank, cluster_labels)
 
         # Checkpoint
         self.checkpoint = tf.train.Checkpoint(
@@ -63,65 +91,35 @@ class UnPIE():
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
         res = self._build_output(x, a, i, train, **model_func_params)
-        if not train:
-            return res
-        outputs, clustering = res
-        self.nn_clustering == clustering
-        return outputs
+        return res
     
     def _build_output(
         self,
         x, a, i, train,
-        kmeans_k,
-        task,
         **kwargs):
 
         a = tf.cast(a, tf.float32)
         i = tf.cast(i, tf.int32)
-
-        data_len = kwargs.get('data_len')
-        all_labels = tf.Variable(
-            initial_value=tf.zeros(shape=(data_len,), dtype=tf.int64),
-            trainable=False,
-            dtype=tf.int64,
-            name='all_labels'
-        )
-
-        memory_bank = MemoryBank(data_len, kwargs.get('emb_dim'))
-        if task == 'LA':
-            lbl_init_values = tf.range(data_len, dtype=tf.int64)
-            no_kmeans_k = len(kmeans_k)
-            lbl_init_values = tf.tile(
-                    tf.expand_dims(lbl_init_values, axis=0),
-                    [no_kmeans_k, 1])
-            cluster_labels = tf.Variable(
-                initial_value=lbl_init_values,
-                trainable=False,
-                dtype=tf.int64,
-                name='cluster_labels'
-            )
 
         output = self.model(
             x, 
             a
         )
         output = tf.nn.l2_normalize(output, axis=1)
+
         if not train:
-            all_dist = memory_bank.get_all_dot_products(output)
-            return [all_dist, all_labels]
+            all_dist = self.memory_bank.get_all_dot_products(output)
+            return all_dist
+        
         model_class = InstanceModel(
             i=i, output=output,
-            memory_bank=memory_bank,
+            memory_bank=self.memory_bank,
             **kwargs)
-        nn_clustering = None
         other_losses = {}
-        if task == 'LA':
-            from .cluster_km import Kmeans
-            nn_clustering = Kmeans(kmeans_k, memory_bank, cluster_labels)
-            loss, _ = model_class.get_cluster_classification_loss(
-                    cluster_labels)
+        if self.task == 'LA':
+            loss, _ = model_class.get_cluster_classification_loss(self.nn_clustering.cluster_labels)
         else:
-            selfloss = get_selfloss(memory_bank, **kwargs)
+            selfloss = get_selfloss(self.memory_bank, **kwargs)
             data_prob = model_class.compute_data_prob(selfloss)
             noise_prob = model_class.compute_noise_prob()
             losses = model_class.get_losses(data_prob, noise_prob)
@@ -133,12 +131,11 @@ class UnPIE():
         ret_dict = {
             "loss": loss,
             "data_indx": i,
-            "memory_bank": memory_bank,
+            "memory_bank": self.memory_bank,
             "new_data_memory": new_data_memory,
-            "all_labels": all_labels,
         }
         ret_dict.update(other_losses)
-        return ret_dict, nn_clustering
+        return ret_dict
 
     def _load_from_ckpt(self, ckpt_path):
         print('\nRestore from %s' % ckpt_path)
@@ -187,7 +184,7 @@ class UnPIE():
 
             train_step = 0
 
-            for x, a, y, i in self.params['data_loader']['train']:
+            for x, a, y, i in self.params['data_loader']['train'].get_dataset():
                 train_step += 1
                 self.start_time = time.time()
                 
@@ -219,7 +216,7 @@ class UnPIE():
             
             # Compute validation
             if epoch % self.params['save_params']['save_valid_freq'] == 0:
-                val_result = self._run_inference('validation_params')
+                val_result = self._run_inference_loop('val')
                 self.val_log_writer.write(
                         '%s: %s\n' % ('validation results: ', str(val_result)))
                 print(val_result)
@@ -239,35 +236,42 @@ class UnPIE():
         targets = self._perf_func_kNN(inputs, outputs, **target_params)
         return targets
 
-    def _inference_func(self, inputs):
+    def _inference_func(self, x, a, y, i):
         inference_num_clips = self.params['inference_params']['targets']['inference_num_clips']
-        x_shape = inputs['x'].shape
-        inputs['x'] = tf.reshape(inputs['x'], 
+        x_shape = x.shape
+        x = tf.reshape(x, 
             [x_shape[0]*inference_num_clips, x_shape[1]//inference_num_clips, x_shape[2], x_shape[3]])
         
-        outputs = self._build_network(inputs, train=False)
-        targets = self._build_inference_targets(inputs, outputs)
+        outputs = self._build_network(x, a, i, train=False)
+        targets = self._build_inference_targets(y, outputs)
         return targets
 
-    def _run_inference(self, params_type):
+    def _run_inference_loop(self, dataloader_type):
         agg_res = None
-        num_steps = self.params[params_type]['num_steps']
 
-        for _step in tqdm.trange(num_steps):
-            res = self.params[params_type]['inference_loop']['func'](
-                    self._inference_func)
-            online_func = self.params['inference_params']['online_agg_func']
-            agg_res = online_func(agg_res, res, _step)
+        for x, a, y, i in self.params['data_loader'][dataloader_type].get_dataset():
+            res = self._inference_func(x, a, y, i)
+            agg_res = self._online_agg(agg_res, res)
 
-        agg_func = self.params['inference_params']['agg_func']
-        val_result = agg_func(agg_res)
+        val_result = self._agg_func(agg_res)
         
         return val_result
+    
+    def _agg_func(self, x):
+        return {k: np.mean(v) for k, v in x.items()}
+    
+    def _online_agg(self, agg_res, res):
+        if agg_res is None:
+            agg_res = {k: [] for k in res}
+        for k, v in res.items():
+            agg_res[k].append(np.mean(v))
+            # agg_res[k].append(v)
+        return agg_res 
 
 
     # Testing functions
     def _run_test_loop(self):
-        test_result = self._run_inference('test_params')
+        test_result = self._run_inference_loop('test')
         self.test_log_writer.write(
                 '%s: %s\n' % ('test results: ', str(test_result)))
         print(test_result)
@@ -281,10 +285,13 @@ class UnPIE():
 
     # Loss functions
     def _reg_loss(self, loss, weight_decay):
+        def exclude_batch_norm(name):
+            return 'batch_normalization' not in name
         # Add weight decay to the loss.
         l2_loss = weight_decay * tf.add_n(
                 [tf.nn.l2_loss(tf.cast(v, tf.float32))
-                    for v in self.model.trainable_variables])
+                    for v in self.model.trainable_variables
+                    if exclude_batch_norm(v.name)])
         loss_all = tf.add(loss, l2_loss)
         return loss_all
 
@@ -329,7 +336,7 @@ class UnPIE():
     # Clustering functions
     def _perf_func_kNN(
             self,
-            inputs, output, 
+            y, output, 
             instance_t,
             k, inference_num_clips,
             num_classes):
@@ -350,7 +357,6 @@ class UnPIE():
         print("curr_pred: ", curr_pred)
         accuracy = tf.reduce_mean(
                 tf.cast(
-                    tf.equal(curr_pred, inputs['y']),
+                    tf.equal(curr_pred, y),
                     tf.float32))
         return {'top1_{k}NN'.format(k=k): accuracy}
-
