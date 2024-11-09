@@ -65,7 +65,7 @@ class UnPIE():
                 dtype=tf.int64,
                 name='cluster_labels'
             )
-            self.nn_clustering = Kmeans(self.kmeans_k, self.memory_bank, cluster_labels)
+            self.nn_clustering = Kmeans(self.kmeans_k, self.get_memory_bank(), cluster_labels)
 
         # Checkpoint
         self.checkpoint = tf.train.Checkpoint(
@@ -86,6 +86,9 @@ class UnPIE():
 
 
         self._init_and_restore()
+
+    def get_memory_bank(self):
+        return self.memory_bank
 
     def _build_network(self, x, a, i, train):
         model_params = self.params['model_params']
@@ -131,7 +134,6 @@ class UnPIE():
         ret_dict = {
             "loss": loss,
             "data_indx": i,
-            "memory_bank": self.memory_bank,
             "new_data_memory": new_data_memory,
         }
         ret_dict.update(other_losses)
@@ -326,12 +328,55 @@ class UnPIE():
             self,
             output
             ):
+        
+
+
         ret_dict = {'loss_pure': output['loss']}
         for key, value in output.items():
             if key.startswith('loss_'):
                 ret_dict[key] = value
         return ret_dict
     
+
+    def rep_loss_func(
+        inputs,
+        output,
+        gpu_offset=0,
+        **kwargs
+        ):
+        data_indx = output['data_indx']
+        new_data_memory = output['new_data_memory']
+        loss_pure = output['loss']
+
+        memory_bank_list = output['memory_bank']
+        all_labels_list = output['all_labels']
+        if isinstance(memory_bank_list, tf.Variable):
+            memory_bank_list = [memory_bank_list]
+            all_labels_list = [all_labels_list]
+
+        devices = ['/gpu:%i' \
+                % (idx + gpu_offset) for idx in range(len(memory_bank_list))]
+        update_ops = []
+        for device, memory_bank, all_labels \
+                in zip(devices, memory_bank_list, all_labels_list):
+            with tf.device(device):
+                mb_update_op = tf.scatter_update(
+                        memory_bank, data_indx, new_data_memory)
+                update_ops.append(mb_update_op)
+                lb_update_op = tf.scatter_update(
+                        all_labels, data_indx,
+                        inputs['label'])
+                update_ops.append(lb_update_op)
+
+        with tf.control_dependencies(update_ops):
+            # Force the updates to happen before the next batch.
+            loss_pure = tf.identity(loss_pure)
+
+        ret_dict = {'loss_pure': loss_pure}
+        for key, value in output.items():
+            if key.startswith('loss_'):
+                ret_dict[key] = value
+        return ret_dict
 
     # Clustering functions
     def _perf_func_kNN(
