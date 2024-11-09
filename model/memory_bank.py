@@ -36,7 +36,7 @@ class MemoryBank(object):
         vec_shape = vec.get_shape().as_list()
         # [bs, dim]
         assert len(vec_shape) == 2
-        return tf.matmul(vec, tf.transpose(self._bank, [1, 0]))
+        return tf.matmul(vec, tf.transpose(self._bank, [1, 0])) # [bs, size] = [bs, dim] * [dim, size]
 
     def get_dot_products(self, vec, idxs):
         vec_shape = vec.get_shape().as_list()

@@ -51,10 +51,10 @@ def run_kmeans(x, nmb_clusters, verbose=False):
 
 
 class Kmeans:
-    def __init__(self, k, memory_bank, cluster_labels):
+    def __init__(self, k, cluster_labels, memory_bank_callback):
         self.k = k
-        self.memory_bank = memory_bank
         self.cluster_labels = tf.Variable(cluster_labels, dtype=tf.int64)
+        self.memory_bank_callback = memory_bank_callback
 
     def recompute_clusters(self, verbose=True):
         """Performs k-means clustering.
@@ -63,7 +63,7 @@ class Kmeans:
         """
         end = time.time()
 
-        data = self.memory_bank.as_tensor()
+        data = self.memory_bank_callback().as_tensor()
 
         all_lables = []
         for k_idx, each_k in enumerate(self.k):
