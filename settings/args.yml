@@ -28,7 +28,7 @@ IR:
   lr_boundaries: null # learning rate boundaries
   train_num_workers': 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 10 # number of training epochs
+  train_num_epochs: 50 # number of training epochs
   load_task: null # load task
   load_step: null # load step
 LA:
@@ -36,5 +36,5 @@ LA:
   lr_boundaries: '974946,1304998'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_epochs: 20
+  train_num_epochs: 100
   load_task: 'IR'
