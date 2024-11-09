@@ -45,12 +45,14 @@ class UnPIE():
         self.kmeans_k = self.params['model_params']['model_func_params']['kmeans_k']
         self.memory_bank = MemoryBank(self.data_len, self.emb_dim)
         self.nn_clustering = None
+        self.cluster_labels = None
 
-        self.all_labels = tf.Variable(
-            initial_value=tf.zeros(shape=(self.data_len,), dtype=tf.int64),
+        self.all_labels = tf.get_variable( # labels for validation
+            'all_labels',
+            initializer=tf.zeros_initializer,
+            shape=(self.data_len,),
             trainable=False,
             dtype=tf.int64,
-            name='all_labels'
         )
         if self.task == 'LA':
             from .cluster_km import Kmeans
@@ -59,17 +61,18 @@ class UnPIE():
             lbl_init_values = tf.tile(
                     tf.expand_dims(lbl_init_values, axis=0),
                     [no_kmeans_k, 1])
-            cluster_labels = tf.Variable(
-                initial_value=lbl_init_values,
-                trainable=False,
-                dtype=tf.int64,
-                name='cluster_labels'
+            self.cluster_labels = tf.get_variable(
+                'cluster_labels',
+                initializer=lbl_init_values,
+                trainable=False, dtype=tf.int64,
             )
-            self.nn_clustering = Kmeans(self.kmeans_k, self.get_memory_bank(), cluster_labels)
+            self.nn_clustering = Kmeans(self.kmeans_k, self.get_cluster_labels, self.get_memory_bank)
 
         # Checkpoint
         self.checkpoint = tf.train.Checkpoint(
-            model=self.model, 
+            model=self.model,
+            all_labels = self.all_labels,
+            cluster_labels=self.cluster_labels,
             epoch=tf.Variable(0))
 
         self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
@@ -89,6 +92,9 @@ class UnPIE():
 
     def get_memory_bank(self):
         return self.memory_bank
+    
+    def get_cluster_labels(self):
+        return self.cluster_labels
 
     def _build_network(self, x, a, i, train):
         model_params = self.params['model_params']
@@ -98,7 +104,7 @@ class UnPIE():
     
     def _build_output(
         self,
-        x, a, i, train,
+        x, a, y, i, train,
         **kwargs):
 
         a = tf.cast(a, tf.float32)
@@ -111,16 +117,21 @@ class UnPIE():
         output = tf.nn.l2_normalize(output, axis=1)
 
         if not train:
-            all_dist = self.memory_bank.get_all_dot_products(output)
+            # Validation and test: compute distance
+            self.all_labels = tf.scatter_update( # collect all validation labels: first validation matric is not accurate
+                self.all_labels, i, y)
+
+            all_dist = self.memory_bank.get_all_dot_products(output) # cosine similarity (via matrix multiplication): similarity of a test sample to every training sample.
             return all_dist
         
+        # Training: compute loss
         model_class = InstanceModel(
             i=i, output=output,
             memory_bank=self.memory_bank,
             **kwargs)
         other_losses = {}
         if self.task == 'LA':
-            loss, _ = model_class.get_cluster_classification_loss(self.nn_clustering.cluster_labels)
+            loss, _ = model_class.get_cluster_classification_loss(self.cluster_labels)
         else:
             selfloss = get_selfloss(self.memory_bank, **kwargs)
             data_prob = model_class.compute_data_prob(selfloss)
@@ -130,11 +141,11 @@ class UnPIE():
             other_losses['loss_model'] = loss_model
             other_losses['loss_noise'] = loss_noise
 
-        new_data_memory = model_class.updated_new_data_memory()
+        self.memory_bank = tf.scatter_update(
+                    self.memory_bank, i, model_class.updated_new_data_memory())
+
         ret_dict = {
             "loss": loss,
-            "data_indx": i,
-            "new_data_memory": new_data_memory,
         }
         ret_dict.update(other_losses)
         return ret_dict
@@ -204,12 +215,10 @@ class UnPIE():
 
                 self.log_writer.write(message + '\n')
 
-                # TODO: Remove/Use this code
-                # # Recompute clusters
-                # if self.nn_clustering is not None:
-                #     print("Recomputing clusters...")
-                #     new_clust_labels = self.nn_clusterings.recompute_clusters()
-                #     self.nn_clustering.apply_clusters(new_clust_labels)
+                # Recompute clusters for LA task: TODO choose right frequency, epoch/batch/multi-batch
+                if self.nn_clustering is not None:
+                    print("Recomputing clusters...")
+                    self.nn_clusterings.recompute_clusters()
 
             # Save checkpoint
             if epoch % self.params['save_params']['fre_save_model'] == 0:
@@ -378,17 +387,18 @@ class UnPIE():
                 ret_dict[key] = value
         return ret_dict
 
-    # Clustering functions
+    # Inference function to compute metrics
     def _perf_func_kNN(
             self,
             y, output, 
             instance_t,
             k, inference_num_clips,
             num_classes):
-        curr_dist, all_labels = output
+        all_labels = self.all_labels
+        curr_dist = output
         all_labels = tuple_get_one(all_labels)
-        top_dist, top_indices = tf.nn.top_k(curr_dist, k=k)
-        top_labels = tf.gather(all_labels, top_indices)
+        top_dist, top_indices = tf.nn.top_k(curr_dist, k=k) # top k closest neighbor (highest similarity) for each test sample, top_dist: similarity score, top_indices: index of the closest neighbor
+        top_labels = tf.gather(all_labels, top_indices) # retrieve the labels of the nearest neighbors
         top_labels_one_hot = tf.one_hot(top_labels, num_classes)
         top_prob = tf.exp(top_dist / instance_t)
         top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1)

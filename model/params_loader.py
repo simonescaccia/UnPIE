@@ -200,7 +200,7 @@ class ParamsLoader:
         save_params, load_params = self._get_save_load_params_from_arg()
         pie_params = self.get_pie_params()
 
-        self.args['kmeans_k'] = [self.args['num_classes']]
+        self.args['kmeans_k'] = self.args['num_classes']
         self.args['input_shape'] = self._get_input_shape()
 
         model_func_params = self._get_model_func_params(data_loaders['train'].get_len())

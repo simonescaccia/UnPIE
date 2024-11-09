@@ -51,9 +51,9 @@ def run_kmeans(x, nmb_clusters, verbose=False):
 
 
 class Kmeans:
-    def __init__(self, k, cluster_labels, memory_bank_callback):
+    def __init__(self, k, cluster_labels_callback, memory_bank_callback):
         self.k = k
-        self.cluster_labels = tf.Variable(cluster_labels, dtype=tf.int64)
+        self.cluster_labels_callback = cluster_labels_callback
         self.memory_bank_callback = memory_bank_callback
 
     def recompute_clusters(self, verbose=True):
@@ -76,7 +76,6 @@ class Kmeans:
 
         if verbose:
             print('k-means time: {0:.0f} s'.format(time.time() - end))
-        return new_clust_labels
+        
+        self.cluster_labels_callback().assign(new_clust_labels)
 
-    def apply_clusters(self, new_clust_labels):
-        self.cluster_labels.assign(new_clust_labels)
