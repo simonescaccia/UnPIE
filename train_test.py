@@ -11,8 +11,8 @@ def get_unpie(training_step, train_test):
 
     params_loader = ParamsLoader(training_step)
     pie_preprocessing = PIEPreprocessing(params_loader.get_pie_params())
-    data_loaders = pie_preprocessing.get_data_loaders(is_test)
-    params = params_loader.get_params(data_loaders, is_test)
+    datasets = pie_preprocessing.get_datasets(is_test)
+    params = params_loader.get_params(datasets, is_test)
     unpie = UnPIE(params)
     return unpie
 

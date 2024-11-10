@@ -45,27 +45,32 @@ class UnPIE():
         self.kmeans_k = self.params['model_params']['model_func_params']['kmeans_k']
         self.memory_bank = MemoryBank(self.data_len, self.emb_dim)
         self.nn_clustering = None
-        self.cluster_labels = None
 
-        self.all_labels = tf.get_variable( # labels for validation
-            'all_labels',
-            initializer=tf.zeros_initializer,
-            shape=(self.data_len,),
+        self.all_labels = tf.Variable(
+            initial_value=tf.zeros(shape=(self.data_len,), dtype=tf.int64),
             trainable=False,
             dtype=tf.int64,
+            name='all_labels'
         )
+        # Initialize lbl_init_values with a range
+        lbl_init_values = tf.range(self.data_len, dtype=tf.int64)
+        no_kmeans_k = len(self.kmeans_k)
+        # Expand and tile lbl_init_values
+        lbl_init_values = tf.tile(
+            tf.expand_dims(lbl_init_values, axis=0),
+            [no_kmeans_k, 1]
+        )
+        
+        # Cluster labels variable
+        self.cluster_labels = tf.Variable(
+            initial_value=lbl_init_values,
+            trainable=False,
+            dtype=tf.int64,
+            name='cluster_labels'
+        )
+
         if self.task == 'LA':
             from .cluster_km import Kmeans
-            lbl_init_values = tf.range(self.data_len, dtype=tf.int64)
-            no_kmeans_k = len(self.kmeans_k)
-            lbl_init_values = tf.tile(
-                    tf.expand_dims(lbl_init_values, axis=0),
-                    [no_kmeans_k, 1])
-            self.cluster_labels = tf.get_variable(
-                'cluster_labels',
-                initializer=lbl_init_values,
-                trainable=False, dtype=tf.int64,
-            )
             self.nn_clustering = Kmeans(self.kmeans_k, self.get_cluster_labels, self.get_memory_bank)
 
         # Checkpoint
@@ -96,10 +101,10 @@ class UnPIE():
     def get_cluster_labels(self):
         return self.cluster_labels
 
-    def _build_network(self, x, a, i, train):
+    def _build_network(self, x, a, y, i, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
-        res = self._build_output(x, a, i, train, **model_func_params)
+        res = self._build_output(x, a, y, i, train, **model_func_params)
         return res
     
     def _build_output(
@@ -107,8 +112,8 @@ class UnPIE():
         x, a, y, i, train,
         **kwargs):
 
-        # a = tf.cast(a, tf.float32)
-        # i = tf.cast(i, tf.int32)
+        a = tf.cast(a, tf.float32)
+        i = tf.cast(i, tf.int32)
 
         output = self.model(
             x, 
@@ -197,7 +202,7 @@ class UnPIE():
 
             train_step = 0
 
-            for x, a, y, i in self.params['data_loader']['train'].get_dataset():
+            for x, a, y, i in iter(self.params['datasets']['train']['dataloader']):
                 train_step += 1
                 self.start_time = time.time()
                 
@@ -260,7 +265,7 @@ class UnPIE():
     def _run_inference_loop(self, dataloader_type):
         agg_res = None
 
-        for x, a, y, i in self.params['data_loader'][dataloader_type].get_dataset():
+        for x, a, y, i in iter(self.params['datasets'][dataloader_type]['dataloader']):
             res = self._inference_func(x, a, y, i)
             agg_res = self._online_agg(agg_res, res)
 
@@ -312,7 +317,7 @@ class UnPIE():
             init_lr, target_lr, ramp_up_epoch,
             num_batches_per_epoch):
         curr_epoch  = tf.math.divide(
-                tf.cast(self.checkpoint.step, tf.float32), 
+                tf.cast(self.checkpoint.epoch, tf.float32), 
                 tf.cast(num_batches_per_epoch, tf.float32))
         curr_phase = (tf.minimum(curr_epoch/float(ramp_up_epoch), 1))
         curr_lr = init_lr + (target_lr-init_lr) * curr_phase
@@ -332,60 +337,6 @@ class UnPIE():
             curr_lr = curr_lr() # eager execution compatibility
 
         return curr_lr
-
-    def _rep_loss_func(
-            self,
-            output
-            ):
-        
-
-
-        ret_dict = {'loss_pure': output['loss']}
-        for key, value in output.items():
-            if key.startswith('loss_'):
-                ret_dict[key] = value
-        return ret_dict
-    
-
-    def rep_loss_func(
-        inputs,
-        output,
-        gpu_offset=0,
-        **kwargs
-        ):
-        data_indx = output['data_indx']
-        new_data_memory = output['new_data_memory']
-        loss_pure = output['loss']
-
-        memory_bank_list = output['memory_bank']
-        all_labels_list = output['all_labels']
-        if isinstance(memory_bank_list, tf.Variable):
-            memory_bank_list = [memory_bank_list]
-            all_labels_list = [all_labels_list]
-
-        devices = ['/gpu:%i' \
-                % (idx + gpu_offset) for idx in range(len(memory_bank_list))]
-        update_ops = []
-        for device, memory_bank, all_labels \
-                in zip(devices, memory_bank_list, all_labels_list):
-            with tf.device(device):
-                mb_update_op = tf.scatter_update(
-                        memory_bank, data_indx, new_data_memory)
-                update_ops.append(mb_update_op)
-                lb_update_op = tf.scatter_update(
-                        all_labels, data_indx,
-                        inputs['label'])
-                update_ops.append(lb_update_op)
-
-        with tf.control_dependencies(update_ops):
-            # Force the updates to happen before the next batch.
-            loss_pure = tf.identity(loss_pure)
-
-        ret_dict = {'loss_pure': loss_pure}
-        for key, value in output.items():
-            if key.startswith('loss_'):
-                ret_dict[key] = value
-        return ret_dict
 
     # Inference function to compute metrics
     def _perf_func_kNN(

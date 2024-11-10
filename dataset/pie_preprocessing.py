@@ -1,4 +1,5 @@
 import os
+import torch
 import numpy as np
 import pickle5 as pickle
 import tensorflow as tf
@@ -30,7 +31,7 @@ class PIEPreprocessing(object):
 
         self.pie = PIE(data_path=self.pie_path)
 
-    def get_data_loaders(self, is_test):
+    def get_datasets(self, is_test):
         '''
         Build the inputs for the clustering computation
         '''
@@ -39,15 +40,25 @@ class PIEPreprocessing(object):
 
         # Load the data
         test_dataset = None
-        train_dataset = self._get_tfrecord('train')
-        val_dataset = self._get_tfrecord('val')
+        test_len = 0
+        train_dataloader, train_len = self._get_dataloader('train')
+        val_dataloader, val_len = self._get_dataloader('val')
         if is_test:
-            test_dataset = self._get_tfrecord('test')
+            test_dataset, test_len = self._get_dataloader('test')
 
         return {
-            'train': train_dataset,
-            'val': val_dataset,
-            'test': test_dataset
+            'train': {
+                'dataloader': train_dataloader,
+                'len': train_len
+            },
+            'val': {
+                'dataloader': val_dataloader,
+                'len': val_len
+            },
+            'test': {
+                'dataloader': test_dataset,
+                'len': test_len
+            }
         }
 
     def _normalize_bbox(self, bbox):
@@ -64,7 +75,7 @@ class PIEPreprocessing(object):
 
         return bbox
     
-    def _get_tfrecord(self, data_split):
+    def _get_dataloader(self, data_split):
         # Check if the tfrecord file exists
         # tfrecord_file = self.tfrecord_file[data_split]
         # if not os.path.exists(tfrecord_file):
@@ -91,20 +102,11 @@ class PIEPreprocessing(object):
             transform_a=UnPIEGCN.transform,
             normalize_bbox=self._normalize_bbox
         )
-        gen = pie_dataset.gen
-        output_signature = pie_dataset.output_signature
 
-            # write_pie_tfrecord(tfrecord_file, x, a, i, y)
-
-        dataset = tf.data.Dataset.from_generator(gen, output_signature=output_signature)
-
-        # # Load the tfrecord file
-        # print("Loading tfrecord file for {} data".format(data_split))
-        # dataset = read_pie_tfrecord(tfrecord_file)
         if data_split == 'train':
-            return dataset.shuffle(buffer_size=dataset.cardinality()).batch(batch_size=self.batch_size)
+            return torch.utils.data.DataLoader(pie_dataset, batch_size=self.batch_size, shuffle=True), pie_dataset.__len__()
         else:
-            return dataset.batch(batch_size=self.batch_size)
+            return torch.utils.data.DataLoader(pie_dataset, batch_size=self.inference_batch_size, shuffle=False), pie_dataset.__len__()
             
     def _get_data(self, dataset, seq_length, overlap):
         """
