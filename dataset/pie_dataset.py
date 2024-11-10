@@ -4,10 +4,25 @@ import tensorflow as tf
 from utils.pie_utils import update_progress
 
 class PIEGraphDataset():
-    def __init__(self, features, normalize_bbox, batch_size, shuffle, transform_a=None):
-        self.dataset, self.len = self._compute_graphs(features, normalize_bbox, batch_size, shuffle, transform_a)
+    def __init__(self, features, normalize_bbox, transform_a=None):
+        # self.x, self.a, self.i, self.y = self._compute_graphs(features, normalize_bbox, transform_a)
+        self.features = features
+        self.normalize_bbox = normalize_bbox
+        self.transform_a = transform_a
+        self.gen = self._compute_graphs
 
-    def _compute_graphs(self, features, normalize_bbox, batch_size, shuffle, transform_a):
+        num_seq = len(features['ped_feats'])
+        num_frames = len(features['ped_feats'][0])
+        max_num_nodes = features['max_num_nodes']
+        len_features = features['ped_feats'][0][0].shape[0] + features['ped_bboxes'][0][0].shape[0]
+        self.output_signature = (
+            tf.TensorSpec(shape=(num_seq, num_frames, max_num_nodes, len_features), dtype=tf.float32),
+            tf.TensorSpec(shape=(num_seq, num_frames, max_num_nodes, max_num_nodes), dtype=tf.uint8),
+            tf.TensorSpec(shape=(num_seq,), dtype=tf.uint32),
+            tf.TensorSpec(shape=(num_seq,), dtype=tf.uint8),
+        )
+
+    def _compute_graphs(self):
         '''
         Compute the graph structure of the dataset:
         - The pedestrian node is the center node
@@ -16,6 +31,10 @@ class PIEGraphDataset():
         - The final graph is a star graph
         - The node features are the concatenation of the features and the bounding boxes
         '''
+        features = self.features
+        normalize_bbox = self.normalize_bbox
+        transform_a = self.transform_a
+
         ped_feats = features['ped_feats'] # [num_seq, num_frames, emb_dim]
         ped_bboxes = features['ped_bboxes'] # [num_seq, num_frames, 4]
         ped_labels = features['intention_binary'] # [num_seq, 1]
@@ -26,7 +45,7 @@ class PIEGraphDataset():
         data_split = features['data_split']
         max_num_nodes = features['max_num_nodes']
 
-        print('\nComputing {} graphs...'.format(data_split))
+        print('Computing {} graphs...'.format(data_split))
 
         num_seq = len(ped_feats)
         num_frames = len(ped_feats[0])
@@ -71,25 +90,23 @@ class PIEGraphDataset():
                     if transform_a is not None:
                         a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
 
+            yield x_seq, a_seq, i, y_seq
+
         update_progress(1)
         print('')
 
-        self.x = x_seq
-        self.a = a_seq
-        self.y = y_seq
-        self.i = np.arange(num_seq)
+        # x = x_seq
+        # a = a_seq
+        # y = y_seq
+        # i = np.arange(num_seq)
 
-        dataset = tf.data.Dataset.from_tensor_slices(
-            dict(x=self.x, a=self.a, y=self.y, i=self.i)
-        )
+        # return x, a, i, y
 
-        if shuffle:
-            return dataset.shuffle(buffer_size=num_seq).batch(batch_size=batch_size), num_seq
-        else:
-            return dataset.batch(batch_size=batch_size), num_seq
-
-    def get_dataset(self):
-        return self.dataset
+    # def get_dataset(self):
+    #     return self.x, self.a, self.i, self.y
     
-    def get_len(self):
-        return self.len
+    def get_dataset(self):
+        return self.gen
+    
+    # def get_len(self):
+    #     return self.x.shape[0]

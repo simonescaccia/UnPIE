@@ -107,8 +107,8 @@ class UnPIE():
         x, a, y, i, train,
         **kwargs):
 
-        a = tf.cast(a, tf.float32)
-        i = tf.cast(i, tf.int32)
+        # a = tf.cast(a, tf.float32)
+        # i = tf.cast(i, tf.int32)
 
         output = self.model(
             x, 
