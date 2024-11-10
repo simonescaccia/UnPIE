@@ -1,26 +1,17 @@
+import torch
 import numpy as np
 import tensorflow as tf
 
 from utils.pie_utils import update_progress
 
-class PIEGraphDataset():
+class PIEGraphDataset(torch.utils.data.Dataset):
     def __init__(self, features, normalize_bbox, transform_a=None):
         # self.x, self.a, self.i, self.y = self._compute_graphs(features, normalize_bbox, transform_a)
         self.features = features
         self.normalize_bbox = normalize_bbox
         self.transform_a = transform_a
-        self.gen = self._compute_graphs
+        self.x, self.a, self.y, self.i = self._compute_graphs()
 
-        num_seq = len(features['ped_feats'])
-        num_frames = len(features['ped_feats'][0])
-        max_num_nodes = features['max_num_nodes']
-        len_features = features['ped_feats'][0][0].shape[0] + features['ped_bboxes'][0][0].shape[0]
-        self.output_signature = (
-            tf.TensorSpec(shape=(num_seq, num_frames, max_num_nodes, len_features), dtype=tf.float32),
-            tf.TensorSpec(shape=(num_seq, num_frames, max_num_nodes, max_num_nodes), dtype=tf.uint8),
-            tf.TensorSpec(shape=(num_seq,), dtype=tf.uint32),
-            tf.TensorSpec(shape=(num_seq,), dtype=tf.uint8),
-        )
 
     def _compute_graphs(self):
         '''
@@ -90,23 +81,18 @@ class PIEGraphDataset():
                     if transform_a is not None:
                         a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
 
-            yield x_seq, a_seq, i, y_seq
-
         update_progress(1)
         print('')
 
-        # x = x_seq
-        # a = a_seq
-        # y = y_seq
-        # i = np.arange(num_seq)
+        x = x_seq
+        a = a_seq
+        y = y_seq
+        i = np.arange(num_seq)
 
-        # return x, a, i, y
+        return x, a, y, i
 
-    # def get_dataset(self):
-    #     return self.x, self.a, self.i, self.y
+    def __getitem__(self, index):
+        return self.x[index], self.a[index], self.y[index], self.i[index]
     
-    def get_dataset(self):
-        return self.gen
-    
-    # def get_len(self):
-    #     return self.x.shape[0]
+    def __len__(self):
+        return self.x.shape[0]

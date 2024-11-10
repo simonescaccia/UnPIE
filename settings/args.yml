@@ -36,7 +36,7 @@ IR:
   load_step: null # load step
 LA:
   task: 'LA'
-  lr_boundaries: '974946,1304998'
+  lr_boundaries: '1000,2000'
   train_num_workers': 1
   val_num_workers: 1
   train_num_epochs: 100

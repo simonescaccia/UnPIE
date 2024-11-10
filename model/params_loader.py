@@ -154,8 +154,8 @@ class ParamsLoader:
         }
         return pie_params
 
-    def get_train_params(self, data_loaders):
-        train_dataset_len = data_loaders['train'].get_len()
+    def get_train_params(self, datasets):
+        train_dataset_len = datasets['train']['len']
 
         train_num_steps = train_dataset_len // self.args['batch_size']
 
@@ -195,14 +195,14 @@ class ParamsLoader:
 
         return params
 
-    def get_params(self, data_loaders, is_test):
+    def get_params(self, datasets, is_test):
         save_params, load_params = self._get_save_load_params_from_arg()
         pie_params = self.get_pie_params()
 
-        self.args['kmeans_k'] = self.args['num_classes']
+        self.args['kmeans_k'] = [self.args['num_classes']]
         self.args['input_shape'] = self._get_input_shape()
 
-        model_func_params = self._get_model_func_params(data_loaders['train'].get_len())
+        model_func_params = self._get_model_func_params(datasets['train']['len'])
         model_params = {
             'model_func_params': model_func_params
         }
@@ -214,9 +214,9 @@ class ParamsLoader:
             'load_params': load_params,
             'data_opts': pie_params['data_opts'],
             'model_params': model_params,
-            'data_loaders': data_loaders,
+            'datasets': datasets,
         }
-        train_params = self.get_train_params(data_loaders)
+        train_params = self.get_train_params(datasets)
 
         all_params = {**gen_params, **train_params}
         return all_params
