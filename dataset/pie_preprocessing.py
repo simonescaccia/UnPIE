@@ -1,12 +1,13 @@
 import os
 import numpy as np
 import pickle5 as pickle
-# import pickle (tensorflow 2)
+import tensorflow as tf
 
 from pathlib import PurePath
 
 from dataset.pie_data import PIE
 from dataset.pie_dataset import PIEGraphDataset
+from dataset.pie_tfrecord import read_pie_tfrecord, write_pie_tfrecord
 from model.unpie_gcn import UnPIEGCN
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
@@ -25,6 +26,7 @@ class PIEPreprocessing(object):
         self.inference_num_clips = params['inference_num_clips']
         self.img_height = params['img_height']
         self.img_width = params['img_width']
+        self.tfrecord_file = params['tfrecord_file']
 
         self.pie = PIE(data_path=self.pie_path)
 
@@ -33,45 +35,19 @@ class PIEPreprocessing(object):
         Build the inputs for the clustering computation
         '''
         # PIE preprocessing
-        print_separator('PIE preprocessing',bottom_new_line=False)
+        print_separator('PIE preprocessing')
 
-        # Generate data sequences
-        train_d = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
-        val_d = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
+        # Load the data
+        test_dataset = None
+        train_dataset = self._get_tfrecord('train')
+        val_dataset = self._get_tfrecord('val')
         if is_test:
-            test_d = self.pie.generate_data_trajectory_sequence('test', **self.data_opts)
-
-        # Generate data mini sequences
-        seq_length = self.data_opts['max_size_observe']
-        seq_ovelap_rate = self.data_opts['seq_overlap_rate']
-        train_d = self._get_data(train_d, seq_length, seq_ovelap_rate)
-        val_d = self._get_data(val_d, seq_length*self.inference_num_clips, seq_ovelap_rate)
-        if is_test:
-            test_d = self._get_data(test_d, seq_length*self.inference_num_clips, seq_ovelap_rate)
-
-        # Balance the number of samples in each split
-        train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
-        val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
-        if is_test:
-            test_d = self.pie.balance_samples_count(test_d, label_type='intention_binary')
-
-        # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
-        train_d = self._load_features(train_d, data_split='train')
-        val_d = self._load_features(val_d, data_split='val')
-        if is_test:
-            test_d = self._load_features(test_d, data_split='test')
-
-        # Create dataloaders
-        test_loader = None
-        train_loader = self._get_dataloader(train_d)
-        val_loader = self._get_dataloader(val_d)
-        if is_test:
-            test_loader = self._get_dataloader(test_d)
+            test_dataset = self._get_tfrecord('test')
 
         return {
-            'train': train_loader,
-            'val': val_loader,
-            'test': test_loader
+            'train': train_dataset,
+            'val': val_dataset,
+            'test': test_dataset
         }
 
     def _normalize_bbox(self, bbox):
@@ -87,36 +63,49 @@ class PIEPreprocessing(object):
         bbox[3] = bbox[3] / img_height
 
         return bbox
+    
+    def _get_tfrecord(self, data_split):
+        # Check if the tfrecord file exists
+        # tfrecord_file = self.tfrecord_file[data_split]
+        # if not os.path.exists(tfrecord_file):
+        #     print("Creating tfrecord file for {} data".format(data_split))
 
-    def _get_dataloader(self, features):
-        '''
-        Create a dataloader for the clustering computation
-        '''
-        return { # switch statement, python < 3.10 support
-            'train':
-                PIEGraphDataset(
-                    features, 
-                    transform_a=UnPIEGCN.transform, 
-                    batch_size=self.batch_size, 
-                    shuffle=True, 
-                    normalize_bbox=self._normalize_bbox),
-            'val':
-                PIEGraphDataset(
-                    features, 
-                    transform_a=UnPIEGCN.transform, 
-                    batch_size=self.inference_batch_size, 
-                    shuffle=False, 
-                    normalize_bbox=self._normalize_bbox),
-            'test':
-                PIEGraphDataset(
-                    features, 
-                    transform_a=UnPIEGCN.transform, 
-                    batch_size=self.inference_batch_size, 
-                    shuffle=False, 
-                    normalize_bbox=self._normalize_bbox),
-        }[features['data_split']]
+        # Generate data sequences
+        features_d = self.pie.generate_data_trajectory_sequence(data_split, **self.data_opts)
 
-        
+        # Generate data mini sequences
+        seq_length = self.data_opts['max_size_observe']
+        seq_length = seq_length * self.inference_num_clips if data_split != 'train' else seq_length
+        seq_ovelap_rate = self.data_opts['seq_overlap_rate']
+        features_d = self._get_data(features_d, seq_length, seq_ovelap_rate)
+
+        # Balance the number of samples in each split
+        features_d = self.pie.balance_samples_count(features_d, label_type='intention_binary')
+
+        # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
+        features_d = self._load_features(features_d, data_split=data_split)
+
+        # x, a, i, y = PIEGraphDataset(
+        pie_dataset = PIEGraphDataset(
+            features_d, 
+            transform_a=UnPIEGCN.transform,
+            normalize_bbox=self._normalize_bbox
+        )
+        gen = pie_dataset.gen
+        output_signature = pie_dataset.output_signature
+
+            # write_pie_tfrecord(tfrecord_file, x, a, i, y)
+
+        dataset = tf.data.Dataset.from_generator(gen, output_signature=output_signature)
+
+        # # Load the tfrecord file
+        # print("Loading tfrecord file for {} data".format(data_split))
+        # dataset = read_pie_tfrecord(tfrecord_file)
+        if data_split == 'train':
+            return dataset.shuffle(buffer_size=dataset.cardinality()).batch(batch_size=self.batch_size)
+        else:
+            return dataset.batch(batch_size=self.batch_size)
+            
     def _get_data(self, dataset, seq_length, overlap):
         """
         A helper function for data generation that combines different data types into a single

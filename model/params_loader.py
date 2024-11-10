@@ -118,13 +118,6 @@ class ParamsLoader:
 
 
     def get_pie_params(self):
-        pie_path = self.config['PIE_PATH']
-        batch_size = self.args['batch_size']
-        inference_batch_size = self.args['inference_batch_size']
-        inference_num_clips = self.args['inference_num_clips']
-        emb_dim = self.args['emb_dim']
-        img_height = self.args['img_height']
-        img_width = self.args['img_width']
         data_opts = {
             'fstride': 1,
             'sample_type': 'all', 
@@ -143,15 +136,21 @@ class ParamsLoader:
             'decoder_input_type': ['bbox'],
             'output_type': ['intention_binary']
         }
+        tfrecord_file = {
+            'train': self.args['train_tfrecord'],
+            'val': self.args['val_tfrecord'],
+            'test': self.args['test_tfrecord'],
+        }
         pie_params = {
             'data_opts': data_opts,
-            'pie_path': pie_path,
-            'batch_size': batch_size,
-            'inference_batch_size': inference_batch_size,
-            'inference_num_clips': inference_num_clips,
-            'emb_dim': emb_dim,
-            'img_height': img_height,
-            'img_width': img_width,
+            'pie_path': self.config['PIE_PATH'],
+            'batch_size': self.args['batch_size'],
+            'inference_batch_size': self.args['inference_batch_size'],
+            'inference_num_clips': self.args['inference_num_clips'],
+            'emb_dim': self.args['emb_dim'],
+            'img_height': self.args['img_height'],
+            'img_width': self.args['img_width'],
+            'tfrecord_file': tfrecord_file,
         }
         return pie_params
 
