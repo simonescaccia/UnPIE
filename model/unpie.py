@@ -11,6 +11,9 @@ from model.unpie_network import UnPIENetwork
 from utils.print_utils import print_separator
 from utils.vie_utils import tuple_get_one
 
+import sys
+np.set_printoptions(threshold=sys.maxsize)
+
 class UnPIE():
     def __init__(self, params):
 
@@ -123,8 +126,11 @@ class UnPIE():
 
         if not train:
             # Validation and test: compute distance
-            self.all_labels = tf.scatter_update( # collect all validation labels: first validation matric is not accurate
-                self.all_labels, i, y)
+            print("i: ", i)
+            print("all_labels: ", self.all_labels)
+            tf.compat.v1.scatter_update(self.all_labels, i, y) # collect all validation labels: first validation matric is not accurate    
+            print("all_labels: ", self.all_labels)
+            sys.exit()
 
             all_dist = self.memory_bank.get_all_dot_products(output) # cosine similarity (via matrix multiplication): similarity of a test sample to every training sample.
             return all_dist
@@ -146,9 +152,9 @@ class UnPIE():
             other_losses['loss_model'] = loss_model
             other_losses['loss_noise'] = loss_noise
 
-        self.memory_bank = tf.scatter_update(
-                    self.memory_bank, i, model_class.updated_new_data_memory())
-
+        tf.compat.v1.scatter_update(
+                    self.memory_bank.as_tensor(), i, model_class.updated_new_data_memory())
+        
         ret_dict = {
             "loss": loss,
         }
@@ -186,7 +192,7 @@ class UnPIE():
     def _loss(self, x, a, y, i):
         # training=training is needed only if there are layers with different
         # behavior during training versus inference (e.g. Dropout).
-        y_ = self._build_network(x, a, i, train=True)
+        y_ = self._build_network(x, a, y, i, train=True)
         loss = self._build_loss(y_)
 
         return loss
@@ -194,7 +200,7 @@ class UnPIE():
     def _grad(self, x, a, y, i):
         with tf.GradientTape() as tape:
             loss_value = self._loss(x, a, y, i)
-        return loss_value, tape.gradient(loss_value, self.unpie_network.trainable_variables)
+        return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
 
     def _run_train_loop(self):
 
@@ -208,11 +214,9 @@ class UnPIE():
                 
                 # Optimize the model
                 loss_value, grads = self._grad(x, a, y, i)
-                self.optimizer.apply_gradients(zip(grads, self.unpie_network.trainable_variables))
+                self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
                 duration = time.time() - self.start_time
-
-                self.checkpoint.epoch.assign_add(1)
 
                 message = 'Epoch {}, Step {} ({:.0f} ms) -- Loss {}'.format(
                     epoch, train_step, 1000 * duration, loss_value)
@@ -224,6 +228,8 @@ class UnPIE():
                 if self.nn_clustering is not None:
                     print("Recomputing clusters...")
                     self.nn_clusterings.recompute_clusters()
+
+            self.checkpoint.epoch.assign_add(1)
 
             # Save checkpoint
             if epoch % self.params['save_params']['fre_save_model'] == 0:
@@ -258,7 +264,7 @@ class UnPIE():
         x = tf.reshape(x, 
             [x_shape[0]*inference_num_clips, x_shape[1]//inference_num_clips, x_shape[2], x_shape[3]])
         
-        outputs = self._build_network(x, a, i, train=False)
+        outputs = self._build_network(x, a, y, i, train=False)
         targets = self._build_inference_targets(y, outputs)
         return targets
 
