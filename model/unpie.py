@@ -125,16 +125,9 @@ class UnPIE():
         output = tf.nn.l2_normalize(output, axis=1)
 
         if not train:
-            # Validation and test: compute distance
-            print("i: ", i)
-            print("all_labels: ", self.all_labels)
-            tf.compat.v1.scatter_update(self.all_labels, i, y) # collect all validation labels: first validation matric is not accurate    
-            print("all_labels: ", self.all_labels)
-            sys.exit()
-
             all_dist = self.memory_bank.get_all_dot_products(output) # cosine similarity (via matrix multiplication): similarity of a test sample to every training sample.
             return all_dist
-        
+
         # Training: compute loss
         model_class = InstanceModel(
             i=i, output=output,
@@ -205,10 +198,16 @@ class UnPIE():
     def _run_train_loop(self):
 
         for epoch in range(self.checkpoint.epoch+1, self.params['train_params']['num_epochs']+1):
-
+            if epoch == 2:
+                print("self.all_labels: ", self.all_labels)
             train_step = 0
 
             for x, a, y, i in iter(self.params['datasets']['train']['dataloader']):
+
+                if epoch == 1:                  
+                    # Validation and test purpose: compute distance
+                    tf.compat.v1.scatter_update(self.all_labels, i, y) # collect all validation labels: first validation matric is not accurate
+
                 train_step += 1
                 self.start_time = time.time()
                 
