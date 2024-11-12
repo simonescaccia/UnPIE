@@ -245,7 +245,7 @@ class UnPIE():
             # Compute validation
             if epoch % save_valid_freq == 0:
                 val_result = self._run_inference_loop('val')
-                val_result['epoch'] = epoch
+                val_result['Epoch'] = epoch
                 self.val_log_writer.write(str(val_result) + '\n')
                 print(val_result)
                 self.val_log_writer.close()
