@@ -8,7 +8,6 @@ from pathlib import PurePath
 
 from dataset.pie_data import PIE
 from dataset.pie_dataset import PIEGraphDataset
-from dataset.pie_tfrecord import read_pie_tfrecord, write_pie_tfrecord
 from model.unpie_gcn import UnPIEGCN
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
@@ -27,7 +26,6 @@ class PIEPreprocessing(object):
         self.inference_num_clips = params['inference_num_clips']
         self.img_height = params['img_height']
         self.img_width = params['img_width']
-        self.tfrecord_file = params['tfrecord_file']
 
         self.pie = PIE(data_path=self.pie_path)
 
@@ -76,11 +74,6 @@ class PIEPreprocessing(object):
         return bbox
     
     def _get_dataloader(self, data_split):
-        # Check if the tfrecord file exists
-        # tfrecord_file = self.tfrecord_file[data_split]
-        # if not os.path.exists(tfrecord_file):
-        #     print("Creating tfrecord file for {} data".format(data_split))
-
         # Generate data sequences
         features_d = self.pie.generate_data_trajectory_sequence(data_split, **self.data_opts)
 

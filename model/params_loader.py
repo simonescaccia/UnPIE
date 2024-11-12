@@ -70,6 +70,7 @@ class ParamsLoader:
                 'cache_dir': cache_dir,
                 'train_log_file': self.args['train_log_file'],
                 'val_log_file': self.args['val_log_file'],
+                'val_prediction_file': self.args['val_prediction_file'],
                 'test_log_file': self.args['test_log_file'],
                 }
         
@@ -136,11 +137,6 @@ class ParamsLoader:
             'decoder_input_type': ['bbox'],
             'output_type': ['intention_binary']
         }
-        tfrecord_file = {
-            'train': self.args['train_tfrecord'],
-            'val': self.args['val_tfrecord'],
-            'test': self.args['test_tfrecord'],
-        }
         pie_params = {
             'data_opts': data_opts,
             'pie_path': self.config['PIE_PATH'],
@@ -150,7 +146,6 @@ class ParamsLoader:
             'emb_dim': self.args['emb_dim'],
             'img_height': self.args['img_height'],
             'img_width': self.args['img_width'],
-            'tfrecord_file': tfrecord_file,
         }
         return pie_params
 

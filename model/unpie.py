@@ -23,14 +23,17 @@ class UnPIE():
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
         self.log_file_path = os.path.join(self.cache_dir, self.params['save_params']['train_log_file'])
         self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
+        self.val_prediction_file = os.path.join(self.cache_dir, self.params['save_params']['val_prediction_file'])
         os.system('mkdir -p %s' % self.cache_dir)
         self.load_from_curr_exp = tf.train.latest_checkpoint(self.cache_dir)
         if not self.load_from_curr_exp: # if no checkpoint is found then create a new log file
             self.log_writer = open(self.log_file_path, 'w')
             self.val_log_writer = open(self.val_log_file_path, 'w')
+            self.val_prediction_file_writer = open(self.val_prediction_file, 'w')
         else: # if checkpoint is found then append to the existing log file
             self.log_writer = open(self.log_file_path, 'a+')
             self.val_log_writer = open(self.val_log_file_path, 'a+')
+            self.val_prediction_file_writer = open(self.val_prediction_file, 'a+')
         if self.params['is_test']:
             self.test_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['test_log_file'])
             self.test_log_writer = open(self.test_log_file_path, 'w')
@@ -242,9 +245,11 @@ class UnPIE():
             
             # Compute validation
             if epoch % save_valid_freq == 0:
+                self.val_prediction_file_writer.write(
+                    '\nEpoch %d\n' % epoch)
                 val_result = self._run_inference_loop('val')
                 self.val_log_writer.write(
-                        '%s: %s\n' % ('validation results', str(val_result)))
+                    '%s: %s\n' % ('validation results', str(val_result)))
                 print(val_result)
                 self.val_log_writer.close()
                 self.val_log_writer = open(self.val_log_file_path, 'a+')
@@ -376,6 +381,8 @@ class UnPIE():
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
+        self.val_prediction_file_writer.write(
+            'curr_pred: %s\n' % str(curr_pred))
         print("curr_pred: ", curr_pred)
         accuracy = tf.reduce_mean(
                 tf.cast(
