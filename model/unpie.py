@@ -1,5 +1,6 @@
 import os
 import time
+import sklearn
 import tqdm
 import numpy as np
 import tensorflow as tf
@@ -23,13 +24,11 @@ class UnPIE():
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
         self.log_file_path = os.path.join(self.cache_dir, self.params['save_params']['train_log_file'])
         self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
-        self.val_prediction_file = os.path.join(self.cache_dir, self.params['save_params']['val_prediction_file'])
         os.system('mkdir -p %s' % self.cache_dir)
         self.load_from_curr_exp = tf.train.latest_checkpoint(self.cache_dir)
         if not self.load_from_curr_exp: # if no checkpoint is found then create a new log file
             self.log_writer = open(self.log_file_path, 'w')
             self.val_log_writer = open(self.val_log_file_path, 'w')
-            self.val_prediction_file_writer = open(self.val_prediction_file, 'w')
         else: # if checkpoint is found then append to the existing log file
             self.log_writer = open(self.log_file_path, 'a+')
             self.val_log_writer = open(self.val_log_file_path, 'a+')
@@ -225,8 +224,8 @@ class UnPIE():
 
                 duration = time.time() - self.start_time
 
-                message = 'Epoch {}, Step {} ({:.0f} ms) -- Loss {}'.format(
-                    epoch, train_step, 1000 * duration, loss_value)
+                message = "{{'Epoch': {}, 'Step': {}, 'Time (ms)': {:.0f}, 'Loss': {}, 'Learning rate': {}}}".format(
+                    epoch, train_step, 1000 * duration, loss_value, self.learning_rate)
                 print(message)
 
                 self.log_writer.write(message + '\n')
@@ -245,11 +244,9 @@ class UnPIE():
             
             # Compute validation
             if epoch % save_valid_freq == 0:
-                self.val_prediction_file_writer.write(
-                    '\nEpoch %d\n' % epoch)
                 val_result = self._run_inference_loop('val')
-                self.val_log_writer.write(
-                    '%s: %s\n' % ('validation results', str(val_result)))
+                val_result['epoch'] = epoch
+                self.val_log_writer.write(str(val_result) + '\n')
                 print(val_result)
                 self.val_log_writer.close()
                 self.val_log_writer = open(self.val_log_file_path, 'a+')
@@ -381,11 +378,9 @@ class UnPIE():
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
-        self.val_prediction_file_writer.write(
-            'curr_pred: %s\n' % str(curr_pred))
         print("curr_pred: ", curr_pred)
-        accuracy = tf.reduce_mean(
-                tf.cast(
-                    tf.equal(curr_pred, y),
-                    tf.float32))
-        return {'top1_{k}NN'.format(k=k): accuracy}
+        accuracy = sklearn.metrics.accuracy_score(y, curr_pred)
+        f1_score = sklearn.metrics.f1_score(y, curr_pred, zero_division=1)
+        auc = sklearn.metrics.roc_auc_score(y, curr_pred)
+        precision = sklearn.metrics.precision_score(y, curr_pred, zero_division=1)
+        return {'Accuracy': accuracy, 'F1': f1_score, 'AUC': auc, 'Precision': precision}
