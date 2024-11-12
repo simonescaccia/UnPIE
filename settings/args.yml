@@ -1,6 +1,6 @@
 vgg_out_shape: '4096' # output shape of feature extractor
 weight_decay: 0.0001 # loss function weight decay
-init_lr: 0.03 # optimizer initial learning rate
+init_lr: 0.0003 # optimizer initial learning rate
 target_lr: null # optimizer target learning rate
 ramp_up_epoch: 1 # learning rate ramp up epoch
 cache_dir: 'checkpoints' # directory to save model checkpoints
@@ -14,7 +14,7 @@ img_width: 1920 # video frame width
 batch_size: 32 # training batch size
 inference_batch_size: 32 # val/test batch size
 inference_num_clips: 5 # number of clips to sample from each video
-clstr_update_fre: null # frequency to recompute clusters, default is 1 epoch
+clstr_update_per_epoch: 10 # number of cluster updates per epoch
 kNN_inference: 50 # number of nearest neighbors to consider
 instance_k: 4096 # background neighbors to sample
 fre_save_model: 1 # frequency to save model checkpoint (epochs)

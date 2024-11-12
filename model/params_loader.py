@@ -39,7 +39,7 @@ class ParamsLoader:
         learning_rate_params = {
             'init_lr': self.args['init_lr'],
             'target_lr': self.args['target_lr'] or self.args['init_lr'],
-            'num_batches_per_epoch': dataset_len // self.args['batch_size'],
+            'num_batches_per_epoch': (dataset_len // self.args['batch_size']) + (dataset_len % self.args['batch_size'] > 0),
             'boundaries': self.args[self.setting]['lr_boundaries'],
             'ramp_up_epoch': self.args['ramp_up_epoch'],
         }
@@ -157,7 +157,7 @@ class ParamsLoader:
     def get_train_params(self, datasets):
         train_dataset_len = datasets['train']['len']
 
-        train_num_steps = train_dataset_len // self.args['batch_size']
+        train_num_steps = (train_dataset_len // self.args['batch_size']) + (train_dataset_len % self.args['batch_size'] > 0)
 
         loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)        
 
@@ -167,6 +167,7 @@ class ParamsLoader:
             'thres_loss': float('Inf'),
             'num_epochs': self.args[self.setting]['train_num_epochs'],
             'num_steps': train_num_steps,
+            'clstr_update_per_epoch': self.args['clstr_update_per_epoch'],
         }
         
         if not self.args[self.setting]['task'] == 'SUP':
@@ -207,7 +208,7 @@ class ParamsLoader:
             'model_func_params': model_func_params
         }
 
-        gen_params = {
+        generic_params = {
             'is_test': is_test,
             'pie_path': pie_params['pie_path'],
             'save_params': save_params,
@@ -218,5 +219,5 @@ class ParamsLoader:
         }
         train_params = self.get_train_params(datasets)
 
-        all_params = {**gen_params, **train_params}
+        all_params = {**generic_params, **train_params}
         return all_params

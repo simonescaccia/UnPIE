@@ -28,12 +28,12 @@ def save_plot(df, x_col, y_col, title, xlabel, ylabel, save_path):
     plt.close()
 
 print_separator('Plotting training results', bottom_new_line=False)
-df_tot_val = pd.DataFrame(columns=['step', 'top1'])
+df_tot_val = pd.DataFrame(columns=['epoch', 'top1'])
 
-val_step = 0
+val_epoch = 0
 training_steps = sys.argv[1:]
 for i in tqdm(range(len(training_steps))):
-    df_val = pd.DataFrame(columns=['step', 'top1'])
+    df_val = pd.DataFrame(columns=['epoch', 'top1'])
     df_train = pd.DataFrame(columns=['step', 'loss'])
 
     params_loader = ParamsLoader(training_steps[i])
@@ -47,7 +47,7 @@ for i in tqdm(range(len(training_steps))):
         with open(log_file_path, 'r') as file:
             for line in file:
                 pbar.update(len(line))
-                match = re.search(r'Step (\d+).*loss: ([\d\.]+)', line)
+                match = re.search(r'Epoch \d+, Step (\d+) .*-- Loss ([\d\.]+)', line)
                 step = int(match.group(1))
                 loss = float(match.group(2))
                 df_train = pd.concat([
@@ -59,15 +59,15 @@ for i in tqdm(range(len(training_steps))):
             for line in file:
                 pbar.update(len(line))
                 line_strip = line.strip()
-                line_split = line_strip.split('topn: ')[1]
+                line_split = line_strip.split('validation results: ')[1]
                 topn_dict = ast.literal_eval(line_split)
                 key = list(topn_dict.keys())[0]
-                frequency = int(key.split('_')[1].split('NN')[0])
+                num_neighbors = int(key.split('_')[1].split('NN')[0])
                 top1 = float(list(topn_dict.values())[0])
                 df_val = pd.concat([
                     df_val if not df_val.empty else None, 
-                    pd.DataFrame({'step': [val_step], 'top1': [top1]})], ignore_index=True)
-                val_step += frequency
+                    pd.DataFrame({'epoch': [val_epoch], 'top1': [top1]})], ignore_index=True)
+                val_epoch += 1
     df_tot_val = pd.concat([
         df_tot_val if not df_tot_val.empty else None, 
         df_val], ignore_index=True)
