@@ -50,9 +50,9 @@ class UnPIE():
         self.nn_clustering = None
 
         self.all_labels = tf.Variable(
-            initial_value=tf.zeros(shape=(self.data_len,), dtype=tf.int64),
+            initial_value=tf.zeros(shape=(self.data_len,), dtype=tf.int32),
             trainable=False,
-            dtype=tf.int64,
+            dtype=tf.int32,
             name='all_labels'
         )
         # Initialize lbl_init_values with a range
@@ -104,19 +104,16 @@ class UnPIE():
     def get_cluster_labels(self):
         return self.cluster_labels
 
-    def _build_network(self, x, a, y, i, train):
+    def _build_network(self, x, a, i, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
-        res = self._build_output(x, a, y, i, train, **model_func_params)
+        res = self._build_output(x, a, i, train, **model_func_params)
         return res
     
     def _build_output(
         self,
-        x, a, y, i, train,
+        x, a, i, train,
         **kwargs):
-
-        a = tf.cast(a, tf.float32)
-        i = tf.cast(i, tf.int32)
 
         output = self.model(
             x, 
@@ -185,7 +182,7 @@ class UnPIE():
     def _loss(self, x, a, y, i):
         # training=training is needed only if there are layers with different
         # behavior during training versus inference (e.g. Dropout).
-        y_ = self._build_network(x, a, y, i, train=True)
+        y_ = self._build_network(x, a, i, train=True)
         loss = self._build_loss(y_)
 
         return loss
@@ -196,13 +193,21 @@ class UnPIE():
         return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
 
     def _run_train_loop(self):
+        clstr_update_per_epoch = self.params['train_params']['clstr_update_per_epoch']
+        fre_save_model = self.params['save_params']['fre_save_model']
+        save_valid_freq = self.params['save_params']['save_valid_freq']
+        train_dataloader = self.params['datasets']['train']['dataloader']
+        num_steps = self.params['train_params']['num_steps']
+        train_step = num_steps * self.checkpoint.epoch
 
         for epoch in range(self.checkpoint.epoch+1, self.params['train_params']['num_epochs']+1):
-            if epoch == 2:
-                print("self.all_labels: ", self.all_labels)
-            train_step = 0
 
-            for x, a, y, i in iter(self.params['datasets']['train']['dataloader']):
+            for x, a, y, i in iter(train_dataloader):
+
+                x = tf.cast(x, tf.float32)
+                a = tf.cast(a, tf.float32)
+                y = tf.cast(y, tf.int32)
+                i = tf.cast(i, tf.int32)
 
                 if epoch == 1:                  
                     # Validation and test purpose: compute distance
@@ -224,22 +229,22 @@ class UnPIE():
                 self.log_writer.write(message + '\n')
 
                 # Recompute clusters for LA task: TODO choose right frequency, epoch/batch/multi-batch
-                if self.nn_clustering is not None:
+                if self.nn_clustering is not None and train_step % (num_steps // clstr_update_per_epoch) == 0:
                     print("Recomputing clusters...")
-                    self.nn_clusterings.recompute_clusters()
+                    self.nn_clustering.recompute_clusters()
 
             self.checkpoint.epoch.assign_add(1)
 
             # Save checkpoint
-            if epoch % self.params['save_params']['fre_save_model'] == 0:
+            if epoch % fre_save_model == 0:
                 print('Saving model...')
                 self.check_manager.save(checkpoint_number=epoch)
             
             # Compute validation
-            if epoch % self.params['save_params']['save_valid_freq'] == 0:
+            if epoch % save_valid_freq == 0:
                 val_result = self._run_inference_loop('val')
                 self.val_log_writer.write(
-                        '%s: %s\n' % ('validation results: ', str(val_result)))
+                        '%s: %s\n' % ('validation results', str(val_result)))
                 print(val_result)
                 self.val_log_writer.close()
                 self.val_log_writer = open(self.val_log_file_path, 'a+')
@@ -263,7 +268,7 @@ class UnPIE():
         x = tf.reshape(x, 
             [x_shape[0]*inference_num_clips, x_shape[1]//inference_num_clips, x_shape[2], x_shape[3]])
         
-        outputs = self._build_network(x, a, y, i, train=False)
+        outputs = self._build_network(x, a, i, train=False)
         targets = self._build_inference_targets(y, outputs)
         return targets
 
@@ -271,6 +276,12 @@ class UnPIE():
         agg_res = None
 
         for x, a, y, i in iter(self.params['datasets'][dataloader_type]['dataloader']):
+
+            x = tf.cast(x, tf.float32)
+            a = tf.cast(a, tf.float32)
+            y = tf.cast(y, tf.int32)
+            i = tf.cast(i, tf.int32)
+
             res = self._inference_func(x, a, y, i)
             agg_res = self._online_agg(agg_res, res)
 
@@ -336,7 +347,7 @@ class UnPIE():
                     for drop_level in range(len(boundaries) + 1)]
 
             curr_lr = tf.compat.v1.train.piecewise_constant(
-                    x=self.checkpoint.step,
+                    x=self.checkpoint.epoch,
                     boundaries=boundaries, values=all_lrs)
         
             curr_lr = curr_lr() # eager execution compatibility
@@ -364,7 +375,7 @@ class UnPIE():
                 [-1, inference_num_clips, num_classes])
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
-        curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int64), axis=1)
+        curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
         print("curr_pred: ", curr_pred)
         accuracy = tf.reduce_mean(
                 tf.cast(
