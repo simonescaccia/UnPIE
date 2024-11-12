@@ -76,11 +76,11 @@ for i in tqdm(range(len(training_steps))):
     save_plot(df_train, 'step', 'loss', 'Training loss', 'Step', 'Loss', os.path.join(cache_dir, 'train_loss.png'))
 
     # save the plot of df_val
-    save_plot(df_val, 'step', 'top1', 'Validation metric', 'Step', 'Top1', os.path.join(cache_dir, 'val_metric.png'))
+    save_plot(df_val, 'epoch', 'top1', 'Validation metric', 'Epoch', 'Top1', os.path.join(cache_dir, 'val_metric.png'))
 
 # save the plot of df_val
 if len(training_steps) > 0:
     tot_cache_dir = os.path.join(os.path.split(cache_dir)[0], 'tot_metrics')
     os.makedirs(tot_cache_dir, exist_ok=True)
-    save_plot(df_tot_val, 'step', 'top1', 'Validation metric', 'Step', 'Top1', os.path.join(tot_cache_dir, 'tot_val_metric.png'))
+    save_plot(df_tot_val, 'epoch', 'top1', 'Validation metric', 'Epoch', 'Top1', os.path.join(tot_cache_dir, 'tot_val_metric.png'))
 

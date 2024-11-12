@@ -21,11 +21,9 @@ fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
 train_log_file: 'log.txt' # training log file
 val_log_file: 'val_log.txt' # validation log file
+val_prediction_file: 'val_predictions.txt' # validation prediction file
 test_log_file: 'test_log.txt' # test log file
 train_steps: 'IR,LA' # training steps
-train_tfrecord: 'train.tfrecord' # training tfrecord file
-val_tfrecord: 'val.tfrecord' # validation tfrecord file
-test_tfrecord: 'test.tfrecord' # test tfrecord file
 IR:
   task: 'IR' # task name
   lr_boundaries: null # learning rate boundaries
