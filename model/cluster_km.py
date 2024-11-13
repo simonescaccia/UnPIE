@@ -51,24 +51,19 @@ def run_kmeans(x, nmb_clusters, verbose=False):
 
 
 class Kmeans:
-    def __init__(self, k, memory_bank, cluster_labels):
+    def __init__(self, k, cluster_labels_callback, memory_bank_callback):
         self.k = k
-        self.memory_bank = memory_bank
-        self.cluster_labels = cluster_labels
+        self.cluster_labels_callback = cluster_labels_callback
+        self.memory_bank_callback = memory_bank_callback
 
-        self.new_cluster_feed = tf.compat.v1.placeholder(
-            tf.int64, shape=self.cluster_labels.get_shape().as_list())
-        self.update_clusters_op = tf.compat.v1.assign(
-                self.cluster_labels, self.new_cluster_feed)
-
-    def recompute_clusters(self, sess, verbose=True):
+    def recompute_clusters(self, verbose=True):
         """Performs k-means clustering.
             Args:
                 x_data (np.array N * dim): data to cluster
         """
         end = time.time()
 
-        data = sess.run(self.memory_bank.as_tensor())
+        data = self.memory_bank_callback().as_tensor()
 
         all_lables = []
         for k_idx, each_k in enumerate(self.k):
@@ -81,9 +76,6 @@ class Kmeans:
 
         if verbose:
             print('k-means time: {0:.0f} s'.format(time.time() - end))
-        return new_clust_labels
+        
+        self.cluster_labels_callback().assign(new_clust_labels)
 
-    def apply_clusters(self, sess, new_clust_labels):
-        sess.run(self.update_clusters_op, feed_dict={
-            self.new_cluster_feed: new_clust_labels
-        })

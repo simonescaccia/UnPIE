@@ -1,9 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import tensorflow as tf
-from model.unpie_network import UnPIENetwork
-
-from .memory_bank import MemoryBank
-from .self_loss import get_selfloss, assert_shape
+from .self_loss import assert_shape
 
 def repeat_1d_tensor(t, num_reps):
     ret = tf.tile(tf.expand_dims(t, axis=1), (1, num_reps))
@@ -12,13 +9,13 @@ def repeat_1d_tensor(t, num_reps):
 
 class InstanceModel(object):
     def __init__(self,
-                 inputs, output,
+                 i, output,
                  memory_bank,
                  instance_k,
                  instance_t=0.07,
                  instance_m=0.5,
                  **kwargs):
-        self.inputs = inputs
+        self.i = i
         self.embed_output = output
         self.batch_size, self.out_dim = self.embed_output.get_shape().as_list()
         self.memory_bank = memory_bank
@@ -35,7 +32,7 @@ class InstanceModel(object):
         return tf.exp(dot_prods / self.instance_t) / instance_Z
 
     def updated_new_data_memory(self):
-        data_indx = self.inputs['index'] # [bs]
+        data_indx = self.i # [bs]
         data_memory = self.memory_bank.at_idxs(data_indx)
         new_data_memory = (data_memory * self.instance_m
                            + (1 - self.instance_m) * self.embed_output)
@@ -44,7 +41,7 @@ class InstanceModel(object):
     def __get_lbl_equal(self, each_k_idx, cluster_labels, top_idxs, k):
         batch_labels = tf.gather(
                 cluster_labels[each_k_idx], 
-                self.inputs['index'])
+                self.i)
         if k > 0:
             top_cluster_labels = tf.gather(cluster_labels[each_k_idx], top_idxs)
             batch_labels = repeat_1d_tensor(batch_labels, k)
@@ -91,10 +88,10 @@ class InstanceModel(object):
 
         assert_shape(probs, [self.batch_size])
         loss = -tf.reduce_mean(tf.math.log(probs + 1e-7))
-        return loss, self.inputs['index']
+        return loss, self.i
 
     def compute_data_prob(self, selfloss):
-        data_indx = self.inputs['index']
+        data_indx = self.i
         logits = selfloss.get_closeness(data_indx, self.embed_output)
         return self._softmax(logits)
 
@@ -126,80 +123,3 @@ class InstanceModel(object):
         return curr_loss, \
             -tf.reduce_sum(ln_data)/self.batch_size, \
             -tf.reduce_sum(ln_noise)/self.batch_size
-
-
-def build_output(
-        inputs, train,
-        trn_use_mean,
-        kmeans_k,
-        task,
-        **kwargs):
-    # This will be stored in the db
-    logged_cfg = {'kwargs': kwargs}
-    
-    data_len = kwargs.get('instance_data_len')
-    with tf.compat.v1.variable_scope('instance', reuse=tf.compat.v1.AUTO_REUSE):
-        all_labels = tf.compat.v1.get_variable(
-            'all_labels',
-            initializer=tf.zeros_initializer,
-            shape=(data_len,),
-            trainable=False,
-            dtype=tf.int64,
-        )
-        memory_bank = MemoryBank(data_len, kwargs.get('emb_dim'))
-
-        if task == 'LA':
-            lbl_init_values = tf.range(data_len, dtype=tf.int64)
-            no_kmeans_k = len(kmeans_k)
-            lbl_init_values = tf.tile(
-                    tf.expand_dims(lbl_init_values, axis=0),
-                    [no_kmeans_k, 1])
-            cluster_labels = tf.compat.v1.get_variable(
-                'cluster_labels',
-                initializer=lbl_init_values,
-                trainable=False, dtype=tf.int64,
-            )
-    
-    unpie_framework = UnPIENetwork(
-        kwargs.get('middle_dim'),
-        kwargs.get('emb_dim'),
-    )
-    output = unpie_framework(
-        inputs['x'], 
-        inputs['a']
-    )
-    output = tf.nn.l2_normalize(output, axis=1)
-
-    if not train:
-        all_dist = memory_bank.get_all_dot_products(output)
-        return [all_dist, all_labels], logged_cfg
-    model_class = InstanceModel(
-        inputs=inputs, output=output,
-        memory_bank=memory_bank,
-        **kwargs)
-    nn_clustering = None
-    other_losses = {}
-    if task == 'LA':
-        from .cluster_km import Kmeans
-        nn_clustering = Kmeans(kmeans_k, memory_bank, cluster_labels)
-        loss, new_nns = model_class.get_cluster_classification_loss(
-                cluster_labels)
-    else:
-        selfloss = get_selfloss(memory_bank, **kwargs)
-        data_prob = model_class.compute_data_prob(selfloss)
-        noise_prob = model_class.compute_noise_prob()
-        losses = model_class.get_losses(data_prob, noise_prob)
-        loss, loss_model, loss_noise = losses
-        other_losses['loss_model'] = loss_model
-        other_losses['loss_noise'] = loss_noise
-
-    new_data_memory = model_class.updated_new_data_memory()
-    ret_dict = {
-        "loss": loss,
-        "data_indx": inputs['index'],
-        "memory_bank": memory_bank.as_tensor(),
-        "new_data_memory": new_data_memory,
-        "all_labels": all_labels,
-    }
-    ret_dict.update(other_losses)
-    return ret_dict, logged_cfg, nn_clustering

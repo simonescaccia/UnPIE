@@ -17,12 +17,14 @@ class MemoryBank(object):
         )
         std_dev = 1. / np.sqrt(self.dim/3)
         mb_init = mb_init * (2*std_dev) - std_dev
-        return tf.compat.v1.get_variable(
-            'memory_bank',
-            initializer=mb_init,
+        memory_bank = tf.Variable(
+            initial_value=mb_init,
             dtype=tf.float32,
             trainable=False,
+            name='memory_bank'
         )
+
+        return memory_bank
 
     def as_tensor(self):
         return self._bank
@@ -34,7 +36,7 @@ class MemoryBank(object):
         vec_shape = vec.get_shape().as_list()
         # [bs, dim]
         assert len(vec_shape) == 2
-        return tf.matmul(vec, tf.transpose(self._bank, [1, 0]))
+        return tf.matmul(vec, tf.transpose(self._bank, [1, 0])) # [bs, size] = [bs, dim] * [dim, size]
 
     def get_dot_products(self, vec, idxs):
         vec_shape = vec.get_shape().as_list()

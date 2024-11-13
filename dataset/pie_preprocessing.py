@@ -1,7 +1,8 @@
 import os
+import torch
 import numpy as np
 import pickle5 as pickle
-# import pickle (tensorflow 2)
+import tensorflow as tf
 
 from pathlib import PurePath
 
@@ -10,7 +11,6 @@ from dataset.pie_dataset import PIEGraphDataset
 from model.unpie_gcn import UnPIEGCN
 from utils.pie_utils import update_progress
 from utils.print_utils import print_separator
-from torch.utils.data import DataLoader
 
 
 class PIEPreprocessing(object):
@@ -22,57 +22,41 @@ class PIEPreprocessing(object):
         self.pie_path = params['pie_path']
         self.data_opts = params['data_opts']
         self.batch_size = params['batch_size']
-        self.val_batch_size = params['val_batch_size']
-        self.val_num_clips = params['val_num_clips']
-        self.test_batch_size = params['test_batch_size']
-        self.test_num_clips = params['test_num_clips']
+        self.inference_batch_size = params['inference_batch_size']
+        self.inference_num_clips = params['inference_num_clips']
         self.img_height = params['img_height']
         self.img_width = params['img_width']
 
         self.pie = PIE(data_path=self.pie_path)
 
-    def get_data_loaders(self, is_test):
+    def get_datasets(self, is_test):
         '''
         Build the inputs for the clustering computation
         '''
         # PIE preprocessing
-        print_separator('PIE preprocessing',bottom_new_line=False)
+        print_separator('PIE preprocessing')
 
-        # Generate data sequences
-        train_d = self.pie.generate_data_trajectory_sequence('train', **self.data_opts)
-        val_d = self.pie.generate_data_trajectory_sequence('val', **self.data_opts)
+        # Load the data
+        test_dataset = None
+        test_len = 0
+        train_dataloader, train_len = self._get_dataloader('train')
+        val_dataloader, val_len = self._get_dataloader('val')
         if is_test:
-            test_d = self.pie.generate_data_trajectory_sequence('test', **self.data_opts)
-
-        # Generate data mini sequences
-        seq_length = self.data_opts['max_size_observe']
-        seq_ovelap_rate = self.data_opts['seq_overlap_rate']
-        train_d = self._get_data(train_d, seq_length, seq_ovelap_rate)
-        val_d = self._get_data(val_d, seq_length*self.val_num_clips, seq_ovelap_rate)
-        if is_test:
-            test_d = self._get_data(test_d, seq_length*self.test_num_clips, seq_ovelap_rate)
-
-        # Balance the number of samples in each split
-        train_d = self.pie.balance_samples_count(train_d, label_type='intention_binary')
-        val_d = self.pie.balance_samples_count(val_d, label_type='intention_binary')
-
-        # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
-        train_d = self._load_features(train_d, data_split='train')
-        val_d = self._load_features(val_d, data_split='val')
-        if is_test:
-            test_d = self._load_features(test_d, data_split='test')
-
-        # Create dataloaders
-        test_loader = None
-        train_loader = self._get_dataloader(train_d)
-        val_loader = self._get_dataloader(val_d)
-        if is_test:
-            test_loader = self._get_dataloader(test_d)
+            test_dataset, test_len = self._get_dataloader('test')
 
         return {
-            'train': train_loader,
-            'val': val_loader,
-            'test': test_loader
+            'train': {
+                'dataloader': train_dataloader,
+                'len': train_len
+            },
+            'val': {
+                'dataloader': val_dataloader,
+                'len': val_len
+            },
+            'test': {
+                'dataloader': test_dataset,
+                'len': test_len
+            }
         }
 
     def _normalize_bbox(self, bbox):
@@ -88,25 +72,35 @@ class PIEPreprocessing(object):
         bbox[3] = bbox[3] / img_height
 
         return bbox
+    
+    def _get_dataloader(self, data_split):
+        # Generate data sequences
+        features_d = self.pie.generate_data_trajectory_sequence(data_split, **self.data_opts)
 
-    def _get_dataloader(self, features):
-        '''
-        Create a dataloader for the clustering computation
-        '''
-        dataset = PIEGraphDataset(features, transform_a=UnPIEGCN.transform, normalize_bbox=self._normalize_bbox)
-        return { # switch statement, python < 3.10 support
-            'train':
-                DataLoader(
-                    dataset, batch_size=self.batch_size, shuffle=True),
-            'val':
-                DataLoader(
-                    dataset, batch_size=self.val_batch_size, shuffle=False),
-            'test':
-                DataLoader(
-                    dataset, batch_size=self.test_batch_size, shuffle=False)
-        }[features['data_split']]
+        # Generate data mini sequences
+        seq_length = self.data_opts['max_size_observe']
+        seq_length = seq_length * self.inference_num_clips if data_split != 'train' else seq_length
+        seq_ovelap_rate = self.data_opts['seq_overlap_rate']
+        features_d = self._get_data(features_d, seq_length, seq_ovelap_rate)
 
-        
+        # Balance the number of samples in each split
+        features_d = self.pie.balance_samples_count(features_d, label_type='intention_binary')
+
+        # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
+        features_d = self._load_features(features_d, data_split=data_split)
+
+        # x, a, i, y = PIEGraphDataset(
+        pie_dataset = PIEGraphDataset(
+            features_d, 
+            transform_a=UnPIEGCN.transform,
+            normalize_bbox=self._normalize_bbox
+        )
+
+        if data_split == 'train':
+            return torch.utils.data.DataLoader(pie_dataset, batch_size=self.batch_size, shuffle=True), pie_dataset.__len__()
+        else:
+            return torch.utils.data.DataLoader(pie_dataset, batch_size=self.inference_batch_size, shuffle=False), pie_dataset.__len__()
+            
     def _get_data(self, dataset, seq_length, overlap):
         """
         A helper function for data generation that combines different data types into a single
