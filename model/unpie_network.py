@@ -1,8 +1,12 @@
+import tensorflow as tf
+
 from model.unpie_gcn import UnPIEGCN
 from model.unpie_temporal_aggregator import UnPIETemporalAggregator
 
-class UnPIENetwork(object):
-    def __init__(self, middle_dim, emb_dim):
+class UnPIENetwork(tf.keras.Model):
+    def __init__(self, middle_dim, emb_dim, **kwargs):
+        super().__init__(**kwargs)
+
         self.gcn = UnPIEGCN(middle_dim, emb_dim)
         self.temporal_aggregator = UnPIETemporalAggregator(emb_dim)
     

@@ -1,15 +1,19 @@
+import torch
 import numpy as np
+import tensorflow as tf
 
-from torch.utils.data import Dataset
 from utils.pie_utils import update_progress
-from spektral.data import Dataset
 
-class PIEGraphDataset(Dataset):
+class PIEGraphDataset(torch.utils.data.Dataset):
     def __init__(self, features, normalize_bbox, transform_a=None):
-        self.compute_graphs(features, normalize_bbox, transform_a)
+        # self.x, self.a, self.i, self.y = self._compute_graphs(features, normalize_bbox, transform_a)
+        self.features = features
+        self.normalize_bbox = normalize_bbox
+        self.transform_a = transform_a
+        self.x, self.a, self.y, self.i = self._compute_graphs()
 
 
-    def compute_graphs(self, features, normalize_bbox, transform_a):
+    def _compute_graphs(self):
         '''
         Compute the graph structure of the dataset:
         - The pedestrian node is the center node
@@ -18,6 +22,10 @@ class PIEGraphDataset(Dataset):
         - The final graph is a star graph
         - The node features are the concatenation of the features and the bounding boxes
         '''
+        features = self.features
+        normalize_bbox = self.normalize_bbox
+        transform_a = self.transform_a
+
         ped_feats = features['ped_feats'] # [num_seq, num_frames, emb_dim]
         ped_bboxes = features['ped_bboxes'] # [num_seq, num_frames, 4]
         ped_labels = features['intention_binary'] # [num_seq, 1]
@@ -28,7 +36,7 @@ class PIEGraphDataset(Dataset):
         data_split = features['data_split']
         max_num_nodes = features['max_num_nodes']
 
-        print('\nComputing {} graphs...'.format(data_split))
+        print('Computing {} graphs...'.format(data_split))
 
         num_seq = len(ped_feats)
         num_frames = len(ped_feats[0])
@@ -76,12 +84,15 @@ class PIEGraphDataset(Dataset):
         update_progress(1)
         print('')
 
-        self.x = x_seq
-        self.a = a_seq
-        self.y = y_seq
+        x = x_seq
+        a = a_seq
+        y = y_seq
+        i = np.arange(num_seq)
 
-    def __len__(self):
-        return len(self.x)
+        return x, a, y, i
+
+    def __getitem__(self, index):
+        return self.x[index], self.a[index], self.y[index], self.i[index]
     
-    def __getitem__(self, idx):
-        return self.x[idx], self.a[idx], self.y[idx], idx
+    def __len__(self):
+        return self.x.shape[0]

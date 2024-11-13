@@ -2,10 +2,12 @@ from spektral.layers import GCSConv, GlobalAvgPool
 from spektral.utils.convolution import normalized_adjacency
 import tensorflow as tf
 
-class UnPIEGCN(object):
+class UnPIEGCN(tf.keras.Model):
     transform = normalized_adjacency
 
-    def __init__(self, middle_dim ,emb_dim):
+    def __init__(self, middle_dim ,emb_dim, **kwargs):
+        super().__init__(**kwargs)
+
         self.conv1 = GCSConv(channels=middle_dim, activation="relu")
         self.conv2 = GCSConv(channels=middle_dim, activation="relu")
         self.conv3 = GCSConv(channels=middle_dim, activation="relu")
