@@ -25,9 +25,6 @@ import PIL
 # from keras.utils import load_img (tensorflow 2)
 from tensorflow.keras.preprocessing.image import load_img
 
-from matplotlib import pyplot as plt
-import pandas as pd
-
 
 def update_progress(progress):
     barLength = 20 # Modify this to change the length of the progress bar
