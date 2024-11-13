@@ -32,7 +32,6 @@ class UnPIE():
         else: # if checkpoint is found then append to the existing log file
             self.log_writer = open(self.log_file_path, 'a+')
             self.val_log_writer = open(self.val_log_file_path, 'a+')
-            self.val_prediction_file_writer = open(self.val_prediction_file, 'a+')
         if self.params['is_test']:
             self.test_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['test_log_file'])
             self.test_log_writer = open(self.test_log_file_path, 'w')

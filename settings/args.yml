@@ -37,5 +37,5 @@ LA:
   lr_boundaries: '1000,2000'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_epochs: 5
+  train_num_epochs: 100
   load_task: 'IR'
