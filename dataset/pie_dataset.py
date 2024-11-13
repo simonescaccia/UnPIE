@@ -2,14 +2,16 @@ import torch
 import numpy as np
 import tensorflow as tf
 
-from utils.pie_utils import update_progress
+from utils.pie_utils import bbox_center, update_progress
+
+np.set_printoptions(linewidth=np.inf)
 
 class PIEGraphDataset(torch.utils.data.Dataset):
-    def __init__(self, features, normalize_bbox, transform_a=None):
+    def __init__(self, features, height, width, transform_a=None):
         # self.x, self.a, self.i, self.y = self._compute_graphs(features, normalize_bbox, transform_a)
         self.features = features
-        self.normalize_bbox = normalize_bbox
         self.transform_a = transform_a
+        self.normalization_factor = np.linalg.norm([height, width])
         self.x, self.a, self.y, self.i = self._compute_graphs()
 
 
@@ -23,7 +25,6 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         - The node features are the concatenation of the features and the bounding boxes
         '''
         features = self.features
-        normalize_bbox = self.normalize_bbox
         transform_a = self.transform_a
 
         ped_feats = features['ped_feats'] # [num_seq, num_frames, emb_dim]
@@ -40,15 +41,10 @@ class PIEGraphDataset(torch.utils.data.Dataset):
 
         num_seq = len(ped_feats)
         num_frames = len(ped_feats[0])
-        
-         # Precompute number of nodes and adjacency template to reduce redundant calculations
-        adj_template = np.zeros((max_num_nodes, max_num_nodes), dtype=int)
-        adj_template[0, 1:max_num_nodes] = 1  # Central node connected to others
-        adj_template[1:max_num_nodes, 0] = 1  # Other nodes connected to central node
 
         # Pre-allocate for the sequence
-        x_seq = np.zeros((num_seq, num_frames, max_num_nodes, ped_feats[0][0].shape[0] + ped_bboxes[0][0].shape[0]), dtype=np.float32)  
-        a_seq = np.zeros((num_seq, num_frames, max_num_nodes, max_num_nodes), dtype=np.uint8)
+        x_seq = np.zeros((num_seq, num_frames, max_num_nodes, ped_feats[0][0].shape[0]), dtype=np.float32)  
+        a_seq = np.zeros((num_seq, num_frames, max_num_nodes, max_num_nodes), dtype=np.float32)
         y_seq = np.zeros((num_seq,), dtype=np.uint8)
 
         for i in range(num_seq):
@@ -57,29 +53,31 @@ class PIEGraphDataset(torch.utils.data.Dataset):
 
             for j in range(num_frames):
                 # Pedestrian node
+                x_seq[i, j, 0, :] = ped_feats[i][j]
+                ped_position = bbox_center(ped_bboxes[i][j])
                 num_nodes = 1
-                ped_node = np.concatenate((ped_feats[i][j], normalize_bbox(ped_bboxes[i][j])))
-                x_seq[i, j, 0, :] = ped_node
+
+                edge_weights = np.zeros((max_num_nodes,), dtype=np.float32) 
 
                 # Object nodes
                 for k, obj_feat in enumerate(obj_feats[i][j]):
-                    obj_node = np.concatenate((obj_feat, normalize_bbox(obj_bboxes[i][j][k])))
-                    x_seq[i, j, num_nodes, :] = obj_node
+                    x_seq[i, j, num_nodes, :] = obj_feat
+                    edge_weights[num_nodes] = np.linalg.norm(np.array(ped_position) - np.array(bbox_center(obj_bboxes[i][j][k])))
                     num_nodes += 1
                 
                 # Other pedestrian nodes
                 for k, other_ped_feat in enumerate(other_ped_feats[i][j]):
-                    other_ped_node = np.concatenate((other_ped_feat, normalize_bbox(other_ped_bboxes[i][j][k])))
-                    x_seq[i, j, num_nodes, :] = other_ped_node
+                    x_seq[i, j, num_nodes, :] = other_ped_feat
+                    edge_weights[num_nodes] = np.linalg.norm(np.array(ped_position) - np.array(bbox_center(other_ped_bboxes[i][j][k])))
                     num_nodes += 1
 
                 # Adjacency matrix: Copy the precomputed adjacency template and adjust for number of nodes
-                a_seq[i, j, :, :] = adj_template
-                if num_nodes < max_num_nodes:
-                    a_seq[i, j, num_nodes:, :] = 0  # Zero out rows and columns beyond the active node count
-                    a_seq[i, j, :, num_nodes:] = 0  # Zero out rows and columns beyond the active node count
-                    if transform_a is not None:
-                        a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
+                edge_weights = 1 - (edge_weights / self.normalization_factor)
+                a_seq[i, j, 0, :] = edge_weights
+                a_seq[i, j, :, 0] = edge_weights
+
+                if transform_a is not None:
+                    a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
 
         update_progress(1)
         print('')
