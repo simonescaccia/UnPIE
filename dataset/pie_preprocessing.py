@@ -93,7 +93,8 @@ class PIEPreprocessing(object):
         pie_dataset = PIEGraphDataset(
             features_d, 
             transform_a=UnPIEGCN.transform,
-            normalize_bbox=self._normalize_bbox
+            height=self.img_height,
+            width=self.img_width,
         )
 
         if data_split == 'train':
