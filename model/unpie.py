@@ -38,6 +38,7 @@ class UnPIE():
         
         # Model
         self.model = UnPIENetwork(
+            self.params['model_params']['model_func_params']['input_dim'],
             self.params['model_params']['model_func_params']['middle_dim'],
             self.params['model_params']['model_func_params']['emb_dim'],
         )
