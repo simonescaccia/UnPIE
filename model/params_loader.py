@@ -23,9 +23,9 @@ class ParamsLoader:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
         else:
             os.environ['TF_GPU_ALLOCATOR'] = 'cuda_malloc_async'
-            gpus = tf.config.experimental.list_physical_devices('GPU')
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
+            # gpus = tf.config.experimental.list_physical_devices('GPU')
+            # for gpu in gpus:
+            #     tf.config.experimental.set_memory_growth(gpu, True)
 
 
     def _get_loss_lr_opt_params_from_arg(self, dataset_len):
@@ -98,11 +98,12 @@ class ParamsLoader:
             "data_len": dataset_len,
             "emb_dim": self.args['emb_dim'],
             "middle_dim": self.args['middle_dim'],
+            "input_dim": self.args['channel_dim']
         }
         return model_params
 
     def _get_input_shape(self):
-        num_channels = int(self.args['vgg_out_shape'])
+        num_channels = self.args['channel_dim']
         input_shape = {
             'num_channels': num_channels,
         }

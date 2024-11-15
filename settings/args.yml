@@ -1,4 +1,3 @@
-vgg_out_shape: '4096' # output shape of feature extractor
 weight_decay: 0.0001 # loss function weight decay
 init_lr: 0.0003 # optimizer initial learning rate
 target_lr: null # optimizer target learning rate
@@ -7,6 +6,7 @@ cache_dir: 'checkpoints' # directory to save model checkpoints
 instance_t: 0.07 # temperature for contrastive loss
 num_classes: 2 # number of different clusters
 num_frames: 15 # number of frames in each clip
+channel_dim: 4096 # output shape of feature extractor
 middle_dim: 512 # middle layer dimension in the unpie network
 emb_dim: 128 # final embedding dimension
 img_height: 1080 # video frame height
@@ -37,5 +37,5 @@ LA:
   lr_boundaries: '1000,2000'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_epochs: 100
+  train_num_epochs: 200
   load_task: 'IR'

@@ -33,5 +33,5 @@ class UnPIEGCN(tf.keras.Model):
         x = self.global_pool(x) # x shape: (batch_size * num_frames, middle_dim)
         x = self.dense(x) # x shape: (batch_size * num_frames, emb_dim)
 
-        x = tf.reshape(x, (x_shape[0], x_shape[1], -1))
+        x = tf.reshape(x, (x_shape[0], x_shape[1], -1)) # x shape: (batch_size, num_frames, emb_dim)
         return x
