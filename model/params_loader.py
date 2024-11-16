@@ -34,11 +34,9 @@ class ParamsLoader:
         # learning_rate_params: build the learning rate
         # For now, just stay the same
         learning_rate_params = {
-            'init_lr': self.args['init_lr'],
-            'target_lr': self.args['target_lr'] or self.args['init_lr'],
-            'num_batches_per_epoch': (dataset_len // self.args['batch_size']) + (dataset_len % self.args['batch_size'] > 0),
-            'boundaries': self.args[self.setting]['lr_boundaries'],
-            'ramp_up_epoch': self.args['ramp_up_epoch'],
+            'learning_rates': [float(rate) for rate in self.args['learning_rates'].split(",")],
+            'boundaries': [int(boundary) for boundary in self.args[self.setting]['lr_boundaries'].split(',')],
+            'steps_per_epoch': (dataset_len // self.args['batch_size']) + (dataset_len % self.args['batch_size'] > 0),
         }
 
         # optimizer_params: use tfutils optimizer,
@@ -152,7 +150,7 @@ class ParamsLoader:
 
         train_num_steps = (train_dataset_len // self.args['batch_size']) + (train_dataset_len % self.args['batch_size'] > 0)
 
-        loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)        
+        loss_params, learning_rate_params, optimizer_params = self._get_loss_lr_opt_params_from_arg(train_dataset_len)       
 
         train_params = {
             'validate_first': False,
