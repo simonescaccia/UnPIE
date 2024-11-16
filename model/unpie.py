@@ -119,7 +119,8 @@ class UnPIE():
 
         output = self.model(
             x, 
-            a
+            a,
+            train
         )
         output = tf.nn.l2_normalize(output, axis=1)
 
@@ -237,11 +238,6 @@ class UnPIE():
 
             self.checkpoint.epoch.assign_add(1)
 
-            # Save checkpoint
-            if epoch % fre_save_model == 0:
-                print('Saving model...')
-                self.check_manager.save(checkpoint_number=epoch)
-            
             # Compute validation
             if epoch % save_valid_freq == 0:
                 val_result = self._run_inference_loop('val')
@@ -250,6 +246,11 @@ class UnPIE():
                 print(val_result)
                 self.val_log_writer.close()
                 self.val_log_writer = open(self.val_log_file_path, 'a+')
+
+            # Save checkpoint
+            if epoch % fre_save_model == 0:
+                print('Saving model...')
+                self.check_manager.save(checkpoint_number=epoch)
 
 
     def train(self):
@@ -264,12 +265,7 @@ class UnPIE():
         targets = self._perf_func_kNN(inputs, outputs, **target_params)
         return targets
 
-    def _inference_func(self, x, a, y, i):
-        inference_num_clips = self.params['inference_params']['targets']['inference_num_clips']
-        x_shape = x.shape
-        x = tf.reshape(x, 
-            [x_shape[0]*inference_num_clips, x_shape[1]//inference_num_clips, x_shape[2], x_shape[3]])
-        
+    def _inference_func(self, x, a, y, i):        
         outputs = self._build_network(x, a, i, train=False)
         targets = self._build_inference_targets(y, outputs)
         return targets
@@ -372,13 +368,8 @@ class UnPIE():
         top_prob = tf.exp(top_dist / instance_t)
         top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1)
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
-        top_labels_one_hot = tf.reshape(
-                top_labels_one_hot,
-                [-1, inference_num_clips, num_classes])
-        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
-        print("curr_pred: ", curr_pred)
         accuracy = sklearn.metrics.accuracy_score(y, curr_pred)
         f1_score = sklearn.metrics.f1_score(y, curr_pred, zero_division=1)
         auc = sklearn.metrics.roc_auc_score(y, curr_pred)
