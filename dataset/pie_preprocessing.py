@@ -37,12 +37,25 @@ class PIEPreprocessing(object):
         print_separator('PIE preprocessing')
 
         # Load the data
+        test_features= None
+        train_features = self._get_features('train')
+        val_features = self._get_features('val')
+        if is_test:
+            test_features = self._get_features('test')
+
+        # Get max_num_nodes for padding
+        max_num_nodes = max(
+            train_features['max_num_nodes'], 
+            val_features['max_num_nodes'], 
+            test_features['max_num_nodes'] if is_test else 0)
+
+        # Load the data
         test_dataset = None
         test_len = 0
-        train_dataloader, train_len = self._get_dataloader('train')
-        val_dataloader, val_len = self._get_dataloader('val')
+        train_dataloader, train_len = self._get_dataloader('train', train_features, max_num_nodes)
+        val_dataloader, val_len = self._get_dataloader('val', val_features, max_num_nodes)
         if is_test:
-            test_dataset, test_len = self._get_dataloader('test')
+            test_dataset, test_len = self._get_dataloader('test', test_features, max_num_nodes)
 
         return {
             'train': {
@@ -73,7 +86,7 @@ class PIEPreprocessing(object):
 
         return bbox
     
-    def _get_dataloader(self, data_split):
+    def _get_features(self, data_split):
         # Generate data sequences
         features_d = self.pie.generate_data_trajectory_sequence(data_split, **self.data_opts)
 
@@ -89,9 +102,12 @@ class PIEPreprocessing(object):
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         features_d = self._load_features(features_d, data_split=data_split)
 
-        # x, a, i, y = PIEGraphDataset(
+        return features_d
+
+    def _get_dataloader(self, data_split, features_d, max_num_nodes):
         pie_dataset = PIEGraphDataset(
             features_d, 
+            max_num_nodes,
             transform_a=UnPIEGCN.transform,
             height=self.img_height,
             width=self.img_width,

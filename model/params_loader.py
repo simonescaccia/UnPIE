@@ -23,9 +23,6 @@ class ParamsLoader:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
         else:
             os.environ['TF_GPU_ALLOCATOR'] = 'cuda_malloc_async'
-            # gpus = tf.config.experimental.list_physical_devices('GPU')
-            # for gpu in gpus:
-            #     tf.config.experimental.set_memory_growth(gpu, True)
 
 
     def _get_loss_lr_opt_params_from_arg(self, dataset_len):

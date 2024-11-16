@@ -7,10 +7,11 @@ from utils.pie_utils import bbox_center, update_progress
 np.set_printoptions(linewidth=np.inf)
 
 class PIEGraphDataset(torch.utils.data.Dataset):
-    def __init__(self, features, height, width, transform_a=None):
+    def __init__(self, features, max_num_nodes, height, width, transform_a=None):
         # self.x, self.a, self.i, self.y = self._compute_graphs(features, normalize_bbox, transform_a)
         self.features = features
         self.transform_a = transform_a
+        self.max_num_nodes = max_num_nodes
         self.normalization_factor = np.linalg.norm([height, width])
         self.x, self.a, self.y, self.i = self._compute_graphs()
 
@@ -26,6 +27,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         '''
         features = self.features
         transform_a = self.transform_a
+        max_num_nodes = self.max_num_nodes
 
         ped_feats = features['ped_feats'] # [num_seq, num_frames, emb_dim]
         ped_bboxes = features['ped_bboxes'] # [num_seq, num_frames, 4]
@@ -35,7 +37,6 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         other_ped_feats = features['other_ped_feats'] # [num_seq, num_frames, num_other_ped, emb_dim]
         other_ped_bboxes = features['other_ped_bboxes'] # [num_seq, num_frames, num_other_ped, 4]
         data_split = features['data_split']
-        max_num_nodes = features['max_num_nodes']
 
         print('Computing {} graphs...'.format(data_split))
 

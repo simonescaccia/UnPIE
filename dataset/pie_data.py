@@ -472,6 +472,7 @@ class PIE(object):
                         'id': op_id_i,
                         'type': self.ped_type
                     })
+        update_progress(1)
 
         # Create dataframe once from the accumulated data
         df = pd.DataFrame(data)

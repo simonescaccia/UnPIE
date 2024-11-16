@@ -11,7 +11,7 @@ class UnPIENetwork(tf.keras.Model):
         self.gcn = UnPIESTGCN(input_dim, middle_dim, emb_dim)
         self.temporal_aggregator = UnPIETemporalAggregator(emb_dim)
     
-    def __call__(self, x, a): 
+    def __call__(self, x, a, training): 
         '''
         Args:
             x: tf.Tensor, shape=(batch_size, num_frames, num_nodes, num_channels + 4)
@@ -19,7 +19,7 @@ class UnPIENetwork(tf.keras.Model):
             y: tf.Tensor, shape=(batch_size)
         '''
         # Aggregate spatial features using a GNN
-        ped_feat = self.gcn(x, a) # ped_feat shape: (batch_size, num_frames, emb_dim)
+        ped_feat = self.gcn(x, a, training) # ped_feat shape: (batch_size, num_frames, emb_dim)
 
         # Aggregate temporal features
         ped_feat = self.temporal_aggregator(ped_feat) # ped_feat shape: (batch_size, emb_dim)
