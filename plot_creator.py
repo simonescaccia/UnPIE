@@ -1,7 +1,6 @@
 import ast
 import os
 import sys
-import re
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -58,6 +57,7 @@ for i in tqdm(range(len(training_steps))):
     
     # save train_df plot
     save_plot(train_df, 'Step', 'Loss', 'Training loss', 'Step', 'Loss', os.path.join(cache_dir, 'train_loss.png'))
+    save_plot(train_df, 'Step', 'Learning rate', 'Training learning rate', 'Step', 'Learning rate', os.path.join(cache_dir, 'train_lr.png'))
 
     # save val_df plot
     df_keys = list(val_df.keys())

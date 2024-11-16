@@ -87,16 +87,12 @@ class UnPIE():
 
         self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
 
-        # Optimizer: TODO support rump up
-        lr_rate_params = self.params['learning_rate_params']
-        self.learning_rate = self._get_lr_from_boundary_and_ramp_up(
-            **lr_rate_params)
-
+        # Optimizer
         opt_params = self.params['optimizer_params']
+        self.learning_rate = self._get_learning_rate()
         self.optimizer = tf.keras.optimizers.SGD(
             learning_rate=self.learning_rate, 
             **opt_params)
-
 
         self._init_and_restore()
 
@@ -171,6 +167,16 @@ class UnPIE():
             ckpt_path = tf.train.latest_checkpoint(load_dir)
             self._load_from_ckpt(ckpt_path)
 
+    def _get_learning_rate(self):
+        lrs = self.params['learning_rate_params']['learning_rates']
+        steps_per_epoch = self.params['learning_rate_params']['steps_per_epoch']
+        boundaries = self.params['learning_rate_params']['boundaries']
+        boundaries = [x * steps_per_epoch for x in boundaries]
+        return tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+            boundaries=boundaries,
+            values=lrs
+        )        
+
     # Training functions
     def _build_loss(self, outputs):
         loss_params = self.params['loss_params']
@@ -226,7 +232,7 @@ class UnPIE():
                 duration = time.time() - self.start_time
 
                 message = "{{'Epoch': {}, 'Step': {}, 'Time (ms)': {:.0f}, 'Loss': {}, 'Learning rate': {}}}".format(
-                    epoch, train_step, 1000 * duration, loss_value, self.learning_rate)
+                    epoch, train_step, 1000 * duration, loss_value, self.learning_rate(train_step))
                 print(message)
 
                 self.log_writer.write(message + '\n')
@@ -324,33 +330,7 @@ class UnPIE():
                     if exclude_batch_norm(v.name)])
         loss_all = tf.add(loss, l2_loss)
         return loss_all
-
-    def _get_lr_from_boundary_and_ramp_up(
-            self, 
-            boundaries, 
-            init_lr, target_lr, ramp_up_epoch,
-            num_batches_per_epoch):
-        curr_epoch  = tf.math.divide(
-                tf.cast(self.checkpoint.epoch, tf.float32), 
-                tf.cast(num_batches_per_epoch, tf.float32))
-        curr_phase = (tf.minimum(curr_epoch/float(ramp_up_epoch), 1))
-        curr_lr = init_lr + (target_lr-init_lr) * curr_phase
-
-        if boundaries is not None:
-            boundaries = boundaries.split(',')
-            boundaries = [int(each_boundary) for each_boundary in boundaries]
-
-            all_lrs = [
-                    curr_lr * (0.1 ** drop_level) \
-                    for drop_level in range(len(boundaries) + 1)]
-
-            curr_lr = tf.compat.v1.train.piecewise_constant(
-                    x=self.checkpoint.epoch,
-                    boundaries=boundaries, values=all_lrs)
-        
-            curr_lr = curr_lr() # eager execution compatibility
-
-        return curr_lr
+    
 
     # Inference function to compute metrics
     def _perf_func_kNN(
@@ -371,7 +351,7 @@ class UnPIE():
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
         accuracy = sklearn.metrics.accuracy_score(y, curr_pred)
-        f1_score = sklearn.metrics.f1_score(y, curr_pred, zero_division=1)
+        f1_score = sklearn.metrics.f1_score(y, curr_pred)
         auc = sklearn.metrics.roc_auc_score(y, curr_pred)
-        precision = sklearn.metrics.precision_score(y, curr_pred, zero_division=1)
+        precision = sklearn.metrics.precision_score(y, curr_pred)
         return {'Accuracy': accuracy, 'F1': f1_score, 'AUC': auc, 'Precision': precision}

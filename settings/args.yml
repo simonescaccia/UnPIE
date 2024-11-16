@@ -1,7 +1,5 @@
 weight_decay: 0.0001 # loss function weight decay
-init_lr: 0.0003 # optimizer initial learning rate
-target_lr: null # optimizer target learning rate
-ramp_up_epoch: 1 # learning rate ramp up epoch
+learning_rates: '0.01,0.003,0.0007,0.0002' # optimizer learning rates
 cache_dir: 'checkpoints' # directory to save model checkpoints
 instance_t: 0.07 # temperature for contrastive loss
 num_classes: 2 # number of different clusters
@@ -34,8 +32,8 @@ IR:
   load_step: null # load step
 LA:
   task: 'LA'
-  lr_boundaries: '1000,2000'
+  lr_boundaries: '100,200,300'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_epochs: 200
+  train_num_epochs: 9
   load_task: 'IR'
