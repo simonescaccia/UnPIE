@@ -131,7 +131,9 @@ class UnPIESTGCN(tf.keras.Model):
         self.STGCN_layers = []
         self.STGCN_layers.append(STGCN(input_dim, residual=False))
         self.STGCN_layers.append(STGCN(input_dim))
+        self.STGCN_layers.append(STGCN(input_dim))
         self.STGCN_layers.append(STGCN(middle_dim, downsample=True))
+        self.STGCN_layers.append(STGCN(middle_dim))
         self.STGCN_layers.append(STGCN(middle_dim))
         self.STGCN_layers.append(STGCN(emb_dim, downsample=True))
         self.STGCN_layers.append(STGCN(emb_dim))
