@@ -124,7 +124,7 @@ class UnPIESTGCN(tf.keras.Model):
     transform = normalize_undigraph
 
     def __init__(self, input_dim, middle_dim, emb_dim):
-        super().__init__()
+        super(UnPIESTGCN, self).__init__()
 
         self.data_bn = tf.keras.layers.BatchNormalization(axis=1)
 
