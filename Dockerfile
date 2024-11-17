@@ -3,9 +3,8 @@ FROM tensorflow/tensorflow:2.15.0 AS env
 WORKDIR /app
 
 COPY requirements_tf2.txt .
-COPY install.sh .
 
-RUN bash install.sh
+RUN pip install -r requirements_tf2.txt
 
 FROM env
 
