@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:2.15.0 as env
+FROM tensorflow/tensorflow:2.15.0 AS env
 
 WORKDIR /app
 
