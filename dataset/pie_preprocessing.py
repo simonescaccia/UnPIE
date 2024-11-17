@@ -1,8 +1,7 @@
 import os
 import torch
 import numpy as np
-import pickle5 as pickle
-import tensorflow as tf
+import pickle
 
 from pathlib import PurePath
 

@@ -28,7 +28,7 @@ SOFTWARE.
 
 Updated by: Simone Scaccia
 """
-import pickle5 as pickle
+import pickle
 # import pickle (tensorflow 2)
 import cv2
 import sys
