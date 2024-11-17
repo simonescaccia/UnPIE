@@ -75,7 +75,7 @@ class Kmeans:
         new_clust_labels = np.stack(all_lables, axis=0)
 
         if verbose:
-            print('k-means time: {0:.0f} s'.format(time.time() - end))
+            print('k-means time: {:.0f} ms'.format(1000* (time.time() - end)))
         
         self.cluster_labels_callback().assign(new_clust_labels)
 
