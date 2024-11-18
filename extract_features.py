@@ -6,6 +6,9 @@ import tensorflow as tf
 with open('settings/config.yml', 'r') as file:
     config_file = yaml.safe_load(file)
 
+if not config_file['IS_GPU']:
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 pie_path = config_file['PIE_PATH']
 
 os.chdir(pie_path)

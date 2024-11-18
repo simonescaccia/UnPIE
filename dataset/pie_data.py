@@ -90,15 +90,11 @@ class PIE(object):
         self.ped_type = 'peds'
         self.traffic_type = 'objs'
 
-        # self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
-        #                        'val': ['set05', 'set06'],
-        #                        'test': ['set03'],
-        #                        'all': ['set01', 'set02', 'set03',
-        #                                'set04', 'set05', 'set06']}
-        self.image_set_nums = {'train': ['set04'],
-                               'val': ['set06'],
+        self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
+                               'val': ['set05', 'set06'],
                                'test': ['set03'],
-                               'all': ['set03', 'set04', 'set06']}
+                               'all': ['set01', 'set02', 'set03',
+                                       'set04', 'set05', 'set06']}
 
     # Path generators
     @property
@@ -141,6 +137,7 @@ class PIE(object):
         for folder in self.image_set_nums:
             if set_id in self.image_set_nums[folder]:
                 return folder
+        print('\nSet id not found in the image set! Please check self.image_set_nums\n')
 
     def _get_image_path(self, sid, vid, fid):
         """
@@ -344,10 +341,10 @@ class PIE(object):
                 os.makedirs(save_path)
             return os.path.join(save_path, file_name), save_path
         else:
-            assert feature_type != ''
-            assert data_subset != ''
-            assert data_type != ''
-            assert model_name != ''
+            assert feature_type != '' and feature_type != None
+            assert data_subset != '' and data_subset != None
+            assert data_type != '' and data_type != None
+            assert model_name != '' and model_name != None
             save_path = os.path.join(root, 'pie', feature_type, data_subset, data_type, model_name)
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
