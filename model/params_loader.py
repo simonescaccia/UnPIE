@@ -83,7 +83,7 @@ class ParamsLoader:
 
         return save_params, load_params
 
-    def _get_model_func_params(self, dataset_len):
+    def _get_model_func_params(self, dataset_len, num_nodes):
         model_params = {
             "instance_t": self.args['instance_t'],
             "instance_k": self.args['instance_k'],
@@ -92,7 +92,9 @@ class ParamsLoader:
             "data_len": dataset_len,
             "emb_dim": self.args['emb_dim'],
             "middle_dim": self.args['middle_dim'],
-            "input_dim": self.args['channel_dim']
+            "input_dim": self.args['channel_dim'],
+            "seq_len": self.args['num_frames'],
+            "num_nodes": num_nodes,
         }
         return model_params
 
@@ -193,7 +195,7 @@ class ParamsLoader:
         self.args['kmeans_k'] = [self.args['num_classes']]
         self.args['input_shape'] = self._get_input_shape()
 
-        model_func_params = self._get_model_func_params(datasets['train']['len'])
+        model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])
         model_params = {
             'model_func_params': model_func_params
         }

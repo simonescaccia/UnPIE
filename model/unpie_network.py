@@ -5,10 +5,10 @@ from model.unpie_st_gcn import UnPIESTGCN
 from model.unpie_temporal_aggregator import UnPIETemporalAggregator
 
 class UnPIENetwork(tf.keras.Model):
-    def __init__(self, input_dim, middle_dim, emb_dim):
+    def __init__(self, input_dim, middle_dim, emb_dim, seq_len, num_nodes):
         super(UnPIENetwork, self).__init__()
 
-        self.gcn = UnPIESTGCN(input_dim, middle_dim, emb_dim)
+        self.gcn = UnPIESTGCN(input_dim, middle_dim, emb_dim, seq_len, num_nodes)
         self.temporal_aggregator = UnPIETemporalAggregator(emb_dim)
     
     def __call__(self, x, a, training): 
