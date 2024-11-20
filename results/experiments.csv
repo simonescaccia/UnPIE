@@ -1,11 +1,11 @@
 id, description, feat_extr_model, feat_extr_layer, bbox, feat_size, GCN, train_sets, val_sets, test_sets, IR_epochs, LA_epochs, test_accuracy, test_f1, test_auc, test_precision
-1.1, IR_LA_tasks, vgg16, fc1, concat, 4096, v1, set04, set06, set03, 50, 100, 0.4979708, , , ,
-1.2, LA_task, vgg16, fc1, concat, 4096, v1, set04, set06, set03, 0, 50, 0.59334415, , , ,
+1.1, IR_LA, vgg16, pool, adj_matrix, 512, st_gcn_v2, set04, set06, set03, 50, 100, 0.4979707792207792, 0.6619551749377152, 0.5, 0.4979707792207792
+1.2, LA_only, vgg16, fc1, concat, 4096, v1, set04, set06, set03, 0, 50, 0.59334415, , ,
 2.1, bbox_concat, vgg16, fc1, concat, 4096, v1, set04, set06, set03, 0, 100, 0.5949675324675325, 0.6028680654296419, 0.5875146270629463, 0.5820447409733125
 2.2, adj_edge_weight_complement, vgg16, fc1, adj_matrix, 4096, v1, set04, set06, set03, 0, 100, 0.4529220779220779, 0.25000206143063286, 0.4546924830538276, 0.5252485609628467
 2.3, adj_edge_weight_normalized, vgg16, fc1, adj_matrix, 4096, v1, set04, set06, set03, 0, 100, 0.5377435064935064, 0.6639518268191248, 0.5342111844737895, 0.5179807035855423
 2.4, adj_edge_weight_normalized_complement, vgg16, fc1, adj_matrix, 4096, v1, set04, set06, set03, 0, 100, 0.622564935064935, 0.6385098558826171, 0.613286450944014, 0.6006781174008066
 2.5, adj_edge_weight_not_normalized, vgg16, fc1, adj_matrix, 4096, v1, set04, set06, set03, 0, 100, 0.6152597402597403, 0.5584606433345929, 0.6112851201086495, 0.6715984412412983
-3.1, st_gcn_v1, vgg16, pool, adj_matrix, 4096, st_gcn_v1, set04, set06, set03, 0, 200, 0.6594967532467532, 0.6338943827460073, 0.6563389749839331, 0.6983465156397487
-3.2, st_gcn_v2, vgg16, pool, adj_matrix, 4096, st_gcn_v2, set04, set06, set03, 0, 200, 0.6619318181818182, 0.6450513107115293, 0.6601513332605771, 0.6642857142857144
-3.3, st_gcn_v2_var_lr, vgg16, pool, adj_matrix, 4096, st_gcn_v2, set04, set06, set03, 0, 1000, 0.6866883116883117, 0.6841938366938367, 0.6788028090023889, 'Precision': 0.6947770483484769
+3.1, st_gcn_v1, vgg16, pool, adj_matrix, 512, st_gcn_v1, set04, set06, set03, 0, 200, 0.6594967532467532, 0.6338943827460073, 0.6563389749839331, 0.6983465156397487
+3.2, st_gcn_v2, vgg16, pool, adj_matrix, 512, st_gcn_v2, set04, set06, set03, 0, 200, 0.6619318181818182, 0.6450513107115293, 0.6601513332605771, 0.6642857142857144
+3.3, st_gcn_v2_var_lr, vgg16, pool, adj_matrix, 512, st_gcn_v2, set04, set06, set03, 0, 1000, 0.6866883116883117, 0.6841938366938367, 0.6788028090023889, 0.6947770483484769
