@@ -57,15 +57,18 @@ class PIEPreprocessing(object):
         return {
             'train': {
                 'dataloader': train_dataloader,
-                'len': train_len
+                'len': train_len,
+                'num_nodes': max_num_nodes
             },
             'val': {
                 'dataloader': val_dataloader,
-                'len': val_len
+                'len': val_len,
+                'num_nodes': max_num_nodes
             },
             'test': {
                 'dataloader': test_dataset,
-                'len': test_len
+                'len': test_len,
+                'num_nodes': max_num_nodes
             }
         }
 

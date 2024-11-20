@@ -41,6 +41,8 @@ class UnPIE():
             self.params['model_params']['model_func_params']['input_dim'],
             self.params['model_params']['model_func_params']['middle_dim'],
             self.params['model_params']['model_func_params']['emb_dim'],
+            self.params['model_params']['model_func_params']['seq_len'],
+            self.params['model_params']['model_func_params']['num_nodes']
         )
 
         # Memory bank and clustering
@@ -270,9 +272,9 @@ class UnPIE():
 
 
     # Validation functions
-    def _build_inference_targets(self, inputs, outputs):
+    def _build_inference_targets(self, y, outputs):
         target_params = self.params['inference_params']['targets']
-        targets = self._perf_func_kNN(inputs, outputs, **target_params)
+        targets = self._perf_func_kNN(y, outputs, **target_params)
         return targets
 
     def _inference_func(self, x, a, y, i):        
@@ -355,7 +357,7 @@ class UnPIE():
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
         accuracy = sklearn.metrics.accuracy_score(y, curr_pred)
-        f1_score = sklearn.metrics.f1_score(y, curr_pred)
-        auc = sklearn.metrics.roc_auc_score(y, curr_pred)
-        precision = sklearn.metrics.precision_score(y, curr_pred)
-        return {'Accuracy': accuracy, 'F1': f1_score, 'AUC': auc, 'Precision': precision}
+        f1_score = sklearn.metrics.f1_score(y, curr_pred, zero_division=0)
+        # auc = sklearn.metrics.roc_auc_score(y, curr_pred)
+        precision = sklearn.metrics.precision_score(y, curr_pred, zero_division=0)
+        return {'Accuracy': accuracy, 'F1': f1_score, 'Precision': precision}
