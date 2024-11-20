@@ -1,6 +1,5 @@
 weight_decay: 0.0001 # loss function weight decay
-# learning_rates: '0.01,0.003,0.0007,0.0002' # optimizer learning rates
-learning_rates: '0.0003'
+learning_rates: '0.01,0.003,0.0007,0.0002' # optimizer learning rates
 cache_dir: 'checkpoints' # directory to save model checkpoints
 instance_t: 0.07 # temperature for contrastive loss
 num_classes: 2 # number of different clusters
@@ -28,14 +27,13 @@ IR:
   lr_boundaries: null # learning rate boundaries
   train_num_workers': 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 50 # number of training epochs
+  train_num_epochs: 0 # number of training epochs
   load_task: null # load task
   load_step: null # load step
 LA:
   task: 'LA'
-  # lr_boundaries: '200,400,600'
-  lr_boundaries: null
+  lr_boundaries: '200,400,600'
   train_num_workers': 1
   val_num_workers: 1
-  train_num_epochs: 100
+  train_num_epochs: 1000
   load_task: 'IR'
