@@ -45,7 +45,7 @@ class PIEPreprocessing(object):
         max_num_nodes = max(
             train_features['max_num_nodes'], 
             val_features['max_num_nodes'], 
-            test_features['max_num_nodes'] if is_test else 0)
+            test_features['max_num_nodes'])
 
         # Load the data
         test_dataset = None
