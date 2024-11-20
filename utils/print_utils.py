@@ -1,4 +1,3 @@
-import tensorflow as tf
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
@@ -26,20 +25,6 @@ def print_model_size(model, model_name):
     memory_mb = memory_bytes / (1024 ** 2)
     print('')
     print(model_name, f" memory: {memory_mb:.2f} MB\n")
-
-def print_memory_info(info):
-    with tf.Session() as sess:
-        bytesInUse = tf.contrib.memory_stats.BytesInUse()
-        bytesLimit = tf.contrib.memory_stats.BytesLimit()
-        maxBytesInUse = tf.contrib.memory_stats.MaxBytesInUse()
-        byteInUse_mb = sess.run(bytesInUse) / (1024 ** 2)
-        byteLimit_mb = sess.run(bytesLimit) / (1024 ** 2)
-        maxByteInUse_mb = sess.run(maxBytesInUse) / (1024 ** 2)
-        print(f"[ {info} ]")
-        print(f"Bytes in use: {byteInUse_mb:.2f} MB")
-        print(f"Bytes limit: {byteLimit_mb:.2f} MB")
-        print(f"Max bytes in use: {maxByteInUse_mb:.2f} MB")
-    print('')
 
 def print_image_with_bbox(image, df):
     # Convert CV image to PIL image
