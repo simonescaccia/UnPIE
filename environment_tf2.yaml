@@ -2,7 +2,7 @@ name: unpie-tf2-env
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
+  - python=3.10
   - cuda=12.3
   - cudnn=8.9
   - pip=24.2

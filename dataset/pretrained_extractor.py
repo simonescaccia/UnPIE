@@ -4,7 +4,7 @@ import tensorflow as tf
 class PretrainedExtractor(object):
     def __init__(self):
 
-        self.model = tf.keras.applications.VGG19(
+        self.model = tf.keras.applications.VGG16(
             weights='imagenet', 
             include_top=False,
             pooling='avg'
@@ -16,6 +16,6 @@ class PretrainedExtractor(object):
     
     def preprocess(self, inputs):
         image_array = tf.keras.utils.img_to_array(inputs)
-        preprocessed_img = tf.keras.applications.vgg19.preprocess_input(image_array)
+        preprocessed_img = tf.keras.applications.vgg16.preprocess_input(image_array)
         expanded_img = np.expand_dims(preprocessed_img, axis=0)
         return expanded_img

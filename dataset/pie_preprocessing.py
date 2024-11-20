@@ -39,8 +39,7 @@ class PIEPreprocessing(object):
         test_features= None
         train_features = self._get_features('train')
         val_features = self._get_features('val')
-        if is_test:
-            test_features = self._get_features('test')
+        test_features = self._get_features('test')
 
         # Get max_num_nodes for padding
         max_num_nodes = max(
@@ -53,8 +52,7 @@ class PIEPreprocessing(object):
         test_len = 0
         train_dataloader, train_len = self._get_dataloader('train', train_features, max_num_nodes)
         val_dataloader, val_len = self._get_dataloader('val', val_features, max_num_nodes)
-        if is_test:
-            test_dataset, test_len = self._get_dataloader('test', test_features, max_num_nodes)
+        test_dataset, test_len = self._get_dataloader('test', test_features, max_num_nodes)
 
         return {
             'train': {

@@ -1,8 +1,5 @@
 import os
 import yaml
-import tensorflow as tf
-
-
 
 class ParamsLoader:
     def __init__(self, training_step):
@@ -33,9 +30,11 @@ class ParamsLoader:
 
         # learning_rate_params: build the learning rate
         # For now, just stay the same
+        lrs = self.args['learning_rates']
+        b = self.args[self.setting]['lr_boundaries']
         learning_rate_params = {
-            'learning_rates': [float(rate) for rate in self.args['learning_rates'].split(",")],
-            'boundaries': [int(boundary) for boundary in self.args[self.setting]['lr_boundaries'].split(',')],
+            'learning_rates': [float(rate) for rate in lrs.split(",")],
+            'boundaries': [int(boundary) for boundary in b.split(',')] if b else None,
             'steps_per_epoch': (dataset_len // self.args['batch_size']) + (dataset_len % self.args['batch_size'] > 0),
         }
 

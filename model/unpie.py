@@ -48,6 +48,7 @@ class UnPIE():
         self.emb_dim = self.params['model_params']['model_func_params']['emb_dim']
         self.task = self.params['model_params']['model_func_params']['task']
         self.kmeans_k = self.params['model_params']['model_func_params']['kmeans_k']
+
         self.memory_bank = MemoryBank(self.data_len, self.emb_dim)
         self.nn_clustering = None
 
@@ -83,6 +84,7 @@ class UnPIE():
             model=self.model,
             all_labels = self.all_labels,
             cluster_labels=self.cluster_labels,
+            memory_bank=self.memory_bank._bank,
             epoch=tf.Variable(0))
 
         self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
@@ -141,8 +143,7 @@ class UnPIE():
             other_losses['loss_model'] = loss_model
             other_losses['loss_noise'] = loss_noise
 
-        tf.compat.v1.scatter_update(
-                    self.memory_bank.as_tensor(), i, model_class.updated_new_data_memory())
+        tf.compat.v1.scatter_update(self.memory_bank.as_tensor(), i, model_class.updated_new_data_memory())
         
         ret_dict = {
             "loss": loss,
@@ -171,6 +172,9 @@ class UnPIE():
         lrs = self.params['learning_rate_params']['learning_rates']
         steps_per_epoch = self.params['learning_rate_params']['steps_per_epoch']
         boundaries = self.params['learning_rate_params']['boundaries']
+
+        if boundaries is None:
+            return lambda *args: lrs[0]
         boundaries = [x * steps_per_epoch for x in boundaries]
         return tf.keras.optimizers.schedules.PiecewiseConstantDecay(
             boundaries=boundaries,

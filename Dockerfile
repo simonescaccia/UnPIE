@@ -1,13 +1,12 @@
-FROM tensorflow/tensorflow:2.15.0 AS env
+FROM nvcr.io/nvidia/tensorflow:24.02-tf2-py3 AS env
 
 WORKDIR /app
 
 COPY requirements_tf2.txt .
 
+RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
 RUN pip install -r requirements_tf2.txt
 
 FROM env
 
 COPY . .
-
-CMD ["sh", "run_training.sh"]
