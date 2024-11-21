@@ -73,7 +73,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                     num_nodes += 1
 
                 # Adjacency matrix: Copy the precomputed adjacency template and adjust for number of nodes
-                # edge_weights = edge_weights / self.normalization_factor # Normalize edge weights
+                edge_weights = 1 - (edge_weights / self.normalization_factor) # Normalize edge weights
                 a_seq[i, j, 0, :] = edge_weights
                 a_seq[i, j, :, 0] = edge_weights
 
