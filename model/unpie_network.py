@@ -9,7 +9,7 @@ class UnPIENetwork(tf.keras.Model):
         super(UnPIENetwork, self).__init__()
 
         self.gcn = UnPIESTGCN(input_dim, middle_dim, emb_dim, seq_len, num_nodes)
-        self.temporal_aggregator = UnPIETemporalAggregator(emb_dim)
+        self.temporal_aggregator = UnPIETemporalAggregator(seq_len, emb_dim)
     
     def __call__(self, x, a, training): 
         '''
