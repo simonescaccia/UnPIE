@@ -1,12 +1,12 @@
 weight_decay: 0.0001 # loss function weight decay
-# learning_rates: '0.01,0.003,0.0007,0.0002' # optimizer learning rates
-learning_rates: '0.003'
+learning_rates: '0.01,0.003,0.0007,0.0002' # optimizer learning rates
+#learning_rates: '0.003'
 cache_dir: 'checkpoints' # directory to save model checkpoints
 instance_t: 0.07 # temperature for contrastive loss
 num_classes: 2 # number of different clusters
 num_frames: 15 # number of frames in each clip
-channel_dim: 512 # output shape of feature extractor
-middle_dim: 256 # middle layer dimension in the unpie network
+channel_dim: 2048 # output shape of feature extractor
+middle_dim: 512 # middle layer dimension in the unpie network
 emb_dim: 128 # final embedding dimension
 img_height: 1080 # video frame height
 img_width: 1920 # video frame width
@@ -33,9 +33,9 @@ IR:
   load_step: null # load step
 LA:
   task: 'LA'
-#  lr_boundaries: '200,400,600'
-  lr_boundaries: null
+  lr_boundaries: '200,400,600'
+  # lr_boundaries: null
   train_num_workers': 1
   val_num_workers: 1
-  train_num_epochs: 200
+  train_num_epochs: 1000
   load_task: 'IR'
