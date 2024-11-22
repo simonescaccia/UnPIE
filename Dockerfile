@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/tensorflow:24.02-tf2-py3 AS env
+FROM nvcr.io/nvidia/tensorflow:24.01-tf2-py3 AS env
 
 WORKDIR /app
 
