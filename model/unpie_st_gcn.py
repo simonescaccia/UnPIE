@@ -144,17 +144,17 @@ class UnPIESTGCN(tf.keras.Model):
         self.STGCN_layers.append(STGCN(emb_dim))
         self.STGCN_layers.append(STGCN(emb_dim))
 
-        # Initialize edge_importance as a list of trainable variables
-        self.edge_importance = [
-            tf.Variable(
-                tf.random.normal(
-                    shape=(seq_len, num_nodes, num_nodes),
-                    stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
-                ),
-                trainable=True,
-            )
-            for _ in self.STGCN_layers
-        ]
+        # # Initialize edge_importance as a list of trainable variables
+        # self.edge_importance = [
+        #     tf.Variable(
+        #         tf.random.normal(
+        #             shape=(seq_len, num_nodes, num_nodes),
+        #             stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
+        #         ),
+        #         trainable=True,
+        #     )
+        #     for _ in self.STGCN_layers
+        # ]
 
     def call(self, x, a, training):
         # x: N, T, V, C
@@ -173,11 +173,15 @@ class UnPIESTGCN(tf.keras.Model):
         x = tf.transpose(x, perm=[0, 1, 3, 2])
         x = tf.reshape(x, [N, C, T, V])
 
-        for layer, importance in zip(self.STGCN_layers, self.edge_importance):
-            x, a = layer(x, a * importance, training)
+        # for layer, importance in zip(self.STGCN_layers, self.edge_importance):
+        #     x, a = layer(x, a * importance, training)
+        for layer in self.STGCN_layers:
+            x, a = layer(x, a, training)
 
         # x: N,C,T,V
         x = x[:, :, :, 0] # N,C,T, get the first node V (pedestrian) for each graph
         x = tf.transpose(x, perm=[0, 2, 1]) # N,T,C
+
+        print(x.shape)
 
         return x

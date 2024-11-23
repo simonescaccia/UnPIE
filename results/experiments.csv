@@ -11,3 +11,4 @@ id, description, feat_extr_model, feat_extr_layer, bbox, feat_size, GCN, train_s
 3.3, st_gcn_v2_var_lr, vgg16, pool, adj_matrix, 512, st_gcn_v2, set04, set06, set03, 0, 1000, 0.6866883116883117, 0.6841938366938367, 0.6947770483484769
 3.4, st_gcn_v3, vgg16, pool, adj_matrix, 512, st_gcn_v3, set04, set06, set03, 0, 200, 0.6484053497942387, 0.5686755085238054, 0.6131928687129206
 3.5, st_gcn_v3_edge_norm_compl, vgg16, pool, adj_matrix, 512, st_gcn_v3, set04, set06, set03, 0, 200, 0.6727109053497943, 0.5799181241803589, 0.6248519723861893
+3.6, st_gcn_v3_edge_norm_compl_var_lr, vgg16, pool, adj_matrix, 512, st_gcn_v3, set04, set06, set03, 0, 1000, 0.6864711934156378, 0.577524849692909, 0.6587281917639092}
