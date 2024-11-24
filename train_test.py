@@ -11,9 +11,10 @@ def get_unpie(training_step, train_test):
 
     params_loader = ParamsLoader(training_step)
     pie_preprocessing = PIEPreprocessing(params_loader.get_pie_params())
-    datasets = pie_preprocessing.get_datasets(is_test)
+    datasets = pie_preprocessing.get_datasets()
     params = params_loader.get_params(datasets, is_test)
-    unpie = UnPIE(params)
+    args = params_loader.get_args()
+    unpie = UnPIE(params, args)
     return unpie
 
 if __name__ == '__main__':

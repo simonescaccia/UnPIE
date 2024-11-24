@@ -9,14 +9,14 @@ from model.instance_model import InstanceModel
 from model.memory_bank import MemoryBank
 from model.self_loss import get_selfloss
 from model.unpie_network import UnPIENetwork
-from utils.print_utils import print_separator
+from utils.print_utils import print_separator, write_dict
 from utils.vie_utils import tuple_get_one
 
 import sys
 np.set_printoptions(threshold=sys.maxsize)
 
 class UnPIE():
-    def __init__(self, params):
+    def __init__(self, params, args):
 
         self.params = params
 
@@ -35,14 +35,18 @@ class UnPIE():
         if self.params['is_test']:
             self.test_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['test_log_file'])
             self.test_log_writer = open(self.test_log_file_path, 'w')
+        # Write args
+        write_dict(args, os.path.join(self.cache_dir, 'args.txt'))      
         
         # Model
         self.model = UnPIENetwork(
             self.params['model_params']['model_func_params']['input_dim'],
             self.params['model_params']['model_func_params']['middle_dim'],
             self.params['model_params']['model_func_params']['emb_dim'],
+            self.params['model_params']['model_func_params']['scene_dim'],
             self.params['model_params']['model_func_params']['seq_len'],
-            self.params['model_params']['model_func_params']['num_nodes']
+            self.params['model_params']['model_func_params']['num_nodes'],
+            self.params['model_params']['model_func_params']['edge_importance']
         )
 
         # Memory bank and clustering
@@ -106,22 +110,18 @@ class UnPIE():
     def get_cluster_labels(self):
         return self.cluster_labels
 
-    def _build_network(self, x, a, i, train):
+    def _build_network(self, x, b, a, i, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
-        res = self._build_output(x, a, i, train, **model_func_params)
+        res = self._build_output(x, b, a, i, train, **model_func_params)
         return res
     
     def _build_output(
         self,
-        x, a, i, train,
+        x, b, a, i, train,
         **kwargs):
 
-        output = self.model(
-            x, 
-            a,
-            train
-        )
+        output = self.model(x, b, a, train)
         output = tf.nn.l2_normalize(output, axis=1)
 
         if not train:
@@ -194,17 +194,17 @@ class UnPIE():
         
         return loss_retval
 
-    def _loss(self, x, a, y, i):
+    def _loss(self, x, b, a, i):
         # training=training is needed only if there are layers with different
         # behavior during training versus inference (e.g. Dropout).
-        y_ = self._build_network(x, a, i, train=True)
+        y_ = self._build_network(x, b, a, i, train=True)
         loss = self._build_loss(y_)
 
         return loss
 
-    def _grad(self, x, a, y, i):
+    def _grad(self, x, b, a, y, i):
         with tf.GradientTape() as tape:
-            loss_value = self._loss(x, a, y, i)
+            loss_value = self._loss(x, b, a, i)
         return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
 
     def _run_train_loop(self):
@@ -217,9 +217,10 @@ class UnPIE():
 
         for epoch in range(self.checkpoint.epoch+1, self.params['train_params']['num_epochs']+1):
 
-            for x, a, y, i in iter(train_dataloader):
+            for x, b, a, y, i in iter(train_dataloader):
 
                 x = tf.cast(x, tf.float32)
+                b = tf.cast(b, tf.float32)
                 a = tf.cast(a, tf.float32)
                 y = tf.cast(y, tf.int32)
                 i = tf.cast(i, tf.int32)
@@ -232,7 +233,7 @@ class UnPIE():
                 self.start_time = time.time()
                 
                 # Optimize the model
-                loss_value, grads = self._grad(x, a, y, i)
+                loss_value, grads = self._grad(x, b, a, y, i)
                 self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
                 duration = time.time() - self.start_time
@@ -277,22 +278,23 @@ class UnPIE():
         targets = self._perf_func_kNN(y, outputs, **target_params)
         return targets
 
-    def _inference_func(self, x, a, y, i):        
-        outputs = self._build_network(x, a, i, train=False)
+    def _inference_func(self, x, b, a, y, i):        
+        outputs = self._build_network(x, b, a, i, train=False)
         targets = self._build_inference_targets(y, outputs)
         return targets
 
     def _run_inference_loop(self, dataloader_type):
         agg_res = None
 
-        for x, a, y, i in iter(self.params['datasets'][dataloader_type]['dataloader']):
+        for x, b, a, y, i in iter(self.params['datasets'][dataloader_type]['dataloader']):
 
             x = tf.cast(x, tf.float32)
+            b = tf.cast(b, tf.float32)
             a = tf.cast(a, tf.float32)
             y = tf.cast(y, tf.int32)
             i = tf.cast(i, tf.int32)
 
-            res = self._inference_func(x, a, y, i)
+            res = self._inference_func(x, b, a, y, i)
             agg_res = self._online_agg(agg_res, res)
 
         val_result = self._agg_func(agg_res)

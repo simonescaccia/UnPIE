@@ -1530,7 +1530,7 @@ class PIE(object):
         image_seq, pids_seq = [], []
         box_seq, center_seq, occ_seq = [], [], []
         set_ids, _pids = self._get_data_ids(image_set, params) if type(image_set) == str else (image_set, None)
-        obj_boxes_seq, other_ped_boxes_seq = [], []
+        obj_classes_seq, obj_boxes_seq, other_ped_boxes_seq = [], [], []
         obj_ids_seq, other_ped_ids_seq = [], []
 
         print("set_ids", set_ids)
@@ -1571,6 +1571,7 @@ class PIE(object):
                     # Get the objects in the frame
                     objs_bbox = [[] for _ in range(len(boxes))]
                     objs_ids = [[] for _ in range(len(boxes))]
+                    objs_classes = [[] for _ in range(len(boxes))]
                     for obj, obj_data in trff_annots.items():
                         obj_frames = obj_data['frames']
                         frame_to_idx = {f: idx for idx, f in enumerate(obj_frames)}  # Precompute frame-to-index mapping
@@ -1578,6 +1579,7 @@ class PIE(object):
                             if f in frame_to_idx:
                                 obj_idx = frame_to_idx[f]  # Get the index directly from precomputed mapping
                                 objs_bbox[idx].append(obj_data['bbox'][obj_idx])
+                                objs_classes[idx].append(obj_data['obj_class'][obj_idx])
                                 objs_ids[idx].append(obj)
                     # Get the other pedestrians in the frame
                     other_peds_bbox = [[] for _ in range(len(boxes))]
@@ -1602,6 +1604,7 @@ class PIE(object):
                     ped_ids = [[pid]] * len(boxes)
                     pids_seq.append(ped_ids[::seq_stride])
 
+                    obj_classes_seq.append(objs_classes[::seq_stride])
                     obj_boxes_seq.append(objs_bbox[::seq_stride])
                     obj_ids_seq.append(objs_ids[::seq_stride])
                     other_ped_boxes_seq.append(other_peds_bbox[::seq_stride])
@@ -1613,6 +1616,7 @@ class PIE(object):
 
         return {'image': image_seq,
                 'bbox': box_seq,
+                'obj_classes': obj_classes_seq,
                 'obj_bboxes': obj_boxes_seq,
                 'obj_ids': obj_ids_seq,
                 'other_ped_bboxes': other_ped_boxes_seq,

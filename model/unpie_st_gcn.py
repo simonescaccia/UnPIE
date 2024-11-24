@@ -24,7 +24,7 @@ INITIALIZER = tf.keras.initializers.VarianceScaling(scale=2.,
             :math:`C` is the number of incoming channels
 """
 class SGCN(tf.keras.Model):
-    def __init__(self, filters):
+    def __init__(self, filters, dropout_conv):
         super().__init__()
         self.conv = tf.keras.layers.Conv2D(filters,
                                            kernel_size=1,
@@ -32,11 +32,12 @@ class SGCN(tf.keras.Model):
                                            kernel_initializer=INITIALIZER,
                                            data_format='channels_first',
                                            kernel_regularizer=REGULARIZER)
+        self.drop = tf.keras.layers.Dropout(dropout_conv)
 
     def call(self, x, a):
         # x: N, C, T, V
         # a: N, T, V, V
-        x = self.conv(x)
+        x = self.drop(self.conv(x))
         x = tf.einsum('nctv,ntvw->nctw', x, a)
         return x, a
 
@@ -68,13 +69,16 @@ class STGCN(tf.keras.Model):
                  stride=1, 
                  activation='relu',
                  residual=True, 
-                 downsample=False):
+                 downsample=False,
+                 dropout_conv=0,
+                 dropout_tcn=0):
         super().__init__()
-        self.sgcn = SGCN(filters)
+        self.sgcn = SGCN(filters, dropout_conv)
 
         self.tgcn = tf.keras.Sequential()
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
-        self.tgcn.add(tf.keras.layers.Activation(activation))
+        # self.tgcn.add(tf.keras.layers.Activation(activation))
+        self.tgcn.add(tf.keras.layers.PReLU())
         self.tgcn.add(tf.keras.layers.Conv2D(filters,
                                              kernel_size=[kernel_size[0], 1],
                                              strides=[stride, 1],
@@ -83,8 +87,10 @@ class STGCN(tf.keras.Model):
                                              data_format='channels_first',
                                              kernel_regularizer=REGULARIZER))
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
+        self.tgcn.add(tf.keras.layers.Dropout(dropout_tcn))
 
-        self.act = tf.keras.layers.Activation(activation)
+        # self.act = tf.keras.layers.Activation(activation)
+        self.act = tf.keras.layers.PReLU()
 
         if not residual:
             self.residual = lambda x, training=False: 0
@@ -127,61 +133,94 @@ class UnPIESTGCN(tf.keras.Model):
                  input_dim, 
                  middle_dim, 
                  emb_dim,
+                 scene_dim,
                  seq_len,
-                 num_nodes):
+                 num_nodes,
+                 edge_importance):
         super(UnPIESTGCN, self).__init__()
 
-        self.data_bn = tf.keras.layers.BatchNormalization(axis=1)
+        self.edge_importance = edge_importance
+        self.data_bn_x = tf.keras.layers.BatchNormalization(axis=1)
+        self.data_bn_b = tf.keras.layers.BatchNormalization(axis=1)
 
-        self.STGCN_layers = []
-        self.STGCN_layers.append(STGCN(input_dim, residual=False))
-        self.STGCN_layers.append(STGCN(input_dim))
-        self.STGCN_layers.append(STGCN(input_dim))
-        self.STGCN_layers.append(STGCN(middle_dim, downsample=True))
-        self.STGCN_layers.append(STGCN(middle_dim))
-        self.STGCN_layers.append(STGCN(middle_dim))
-        self.STGCN_layers.append(STGCN(emb_dim, downsample=True))
-        self.STGCN_layers.append(STGCN(emb_dim))
-        self.STGCN_layers.append(STGCN(emb_dim))
+        self.STGCN_layers_x = []
+        self.STGCN_layers_x.append(STGCN(middle_dim, residual=False, downsample=True, dropout_tcn=0.5, dropout_conv=0.5))
+        self.STGCN_layers_x.append(STGCN(middle_dim, dropout_tcn=0.5, dropout_conv=0.2))
+        self.STGCN_layers_x.append(STGCN(middle_dim, dropout_tcn=0.5, dropout_conv=0.2))
+        self.STGCN_layers_x.append(STGCN(middle_dim, dropout_tcn=0.5, dropout_conv=0.2))
+        # self.STGCN_layers_x.append(STGCN(middle_dim))
+        # self.STGCN_layers_x.append(STGCN(middle_dim))
+        # self.STGCN_layers_x.append(STGCN(emb_dim, downsample=True))
+        # self.STGCN_layers_x.append(STGCN(emb_dim))
+        # self.STGCN_layers_x.append(STGCN(emb_dim))
 
-        # # Initialize edge_importance as a list of trainable variables
-        # self.edge_importance = [
-        #     tf.Variable(
-        #         tf.random.normal(
-        #             shape=(seq_len, num_nodes, num_nodes),
-        #             stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
-        #         ),
-        #         trainable=True,
-        #     )
-        #     for _ in self.STGCN_layers
-        # ]
+        self.STGCN_layers_b = []
+        self.STGCN_layers_b.append(STGCN(scene_dim, residual=False, dropout_tcn=0.5, dropout_conv=0))
+        self.STGCN_layers_b.append(STGCN(scene_dim, dropout_tcn=0.5, dropout_conv=0.2))
 
-    def call(self, x, a, training):
+        if self.edge_importance:
+            # Initialize edge_importance as a list of trainable variables
+            self.edge_importance_x = [
+                tf.Variable(
+                    tf.random.normal(
+                        shape=(seq_len, num_nodes, num_nodes),
+                        stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
+                    ),
+                    trainable=True,
+                )
+                for _ in self.STGCN_layers_x
+            ]
+            self.edge_importance_b = [
+                tf.Variable(
+                    tf.random.normal(
+                        shape=(seq_len, num_nodes, num_nodes),
+                        stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
+                    ),
+                    trainable=True,
+                )
+                for _ in self.STGCN_layers_b
+            ]
+
+    def call(self, x, b, a, training):
         # x: N, T, V, C
+        # b: N, T, V, 4
         # a: N, T, V, V
         x = tf.transpose(x, perm=[0, 3, 1, 2])
+        b = tf.transpose(b, perm=[0, 3, 1, 2])
 
-        N = tf.shape(x)[0]
-        C = tf.shape(x)[1]
-        T = tf.shape(x)[2]
-        V = tf.shape(x)[3]
+        NX, CX, TX, VX = x.shape
+        NB, CB, TB, VB = b.shape
 
         x = tf.transpose(x, perm=[0, 3, 1, 2])
-        x = tf.reshape(x, [N, V * C, T])
-        x = self.data_bn(x, training)
-        x = tf.reshape(x, [N, V, C, T])
+        x = tf.reshape(x, [NX, VX * CX, TX])
+        x = self.data_bn_x(x, training)
+        x = tf.reshape(x, [NX, VX, CX, TX])
         x = tf.transpose(x, perm=[0, 1, 3, 2])
-        x = tf.reshape(x, [N, C, T, V])
+        x = tf.reshape(x, [NX, CX, TX, VX])
 
-        # for layer, importance in zip(self.STGCN_layers, self.edge_importance):
-        #     x, a = layer(x, a * importance, training)
-        for layer in self.STGCN_layers:
-            x, a = layer(x, a, training)
+        b = tf.transpose(b, perm=[0, 3, 1, 2])
+        b = tf.reshape(b, [NB, VB * CB, TB])
+        b = self.data_bn_b(b, training)
+        b = tf.reshape(b, [NB, VB, CB, TB])
+        b = tf.transpose(b, perm=[0, 1, 3, 2])
+        b = tf.reshape(b, [NB, CB, TB, VB])
+
+        if self.edge_importance:
+            for layer, importance in zip(self.STGCN_layers_x, self.edge_importance_x):
+                x, _ = layer(x, a * importance, training)
+            for layer, importance in zip(self.STGCN_layers_b, self.edge_importance_b):
+                b, _ = layer(b, a * importance, training)
+        else:
+            for layer in self.STGCN_layers_x:
+                x, _ = layer(x, a, training)
+            for layer in self.STGCN_layers_b:
+                b, _ = layer(b, a, training)
 
         # x: N,C,T,V
         x = x[:, :, :, 0] # N,C,T, get the first node V (pedestrian) for each graph
-        x = tf.transpose(x, perm=[0, 2, 1]) # N,T,C
+        b = b[:, :, :, 0] # N,4,T, get the first node V (pedestrian) for each graph
 
-        print(x.shape)
+        x = tf.concat([x, b], axis=1) # N,C+4,T
+        x = tf.transpose(x, perm=[0, 2, 1]) # N,T,C+4
 
         return x

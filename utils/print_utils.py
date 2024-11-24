@@ -6,6 +6,18 @@ from utils.pie_utils import jitter_bbox, squarify
 
 num_dashes = 100
 
+def write_dict(d, filename):
+    with open(filename, 'w') as f:
+        _write_dict(d, f)
+        
+def _write_dict(d, f, indent=0):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            f.write('  '*indent + f"{k}:\n")
+            _write_dict(v, f, indent+1)
+        else:
+            f.write('  '*indent + f"{k}: {v}\n")
+
 def print_separator(message=None, space=True, top_new_line=True, bottom_new_line=True):
     if space and top_new_line:
         print()

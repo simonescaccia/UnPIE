@@ -6,6 +6,5 @@ class UnPIETemporalAggregator(tf.keras.Model):
         self.lstm = tf.keras.layers.LSTM(emb_dim)
     
     def __call__(self, x): # inputs shape: (batch_size, seq_len, emb_dim)
-        print(x.shape)
         x = self.lstm(x) # shape: (batch_size, emb_dim)
         return x

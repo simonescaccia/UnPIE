@@ -9,6 +9,11 @@ class ParamsLoader:
 
         self._set_environment()
 
+
+    def get_args(self):
+        return self.args
+
+
     def _get_yml_file(self, name):
         with open(name, 'r') as file:
             yml_file = yaml.safe_load(file)
@@ -93,8 +98,10 @@ class ParamsLoader:
             "emb_dim": self.args['emb_dim'],
             "middle_dim": self.args['middle_dim'],
             "input_dim": self.args['channel_dim'],
+            "scene_dim": self.args['scene_dim'],
             "seq_len": self.args['num_frames'],
             "num_nodes": num_nodes,
+            "edge_importance": self.args['edge_importance'],
         }
         return model_params
 
@@ -143,6 +150,7 @@ class ParamsLoader:
             'emb_dim': self.args['emb_dim'],
             'img_height': self.args['img_height'],
             'img_width': self.args['img_width'],
+            'edge_weigths': self.args['edge_weigths'],
         }
         return pie_params
 
