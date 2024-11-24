@@ -25,10 +25,14 @@ class PIEPreprocessing(object):
         self.inference_num_clips = params['inference_num_clips']
         self.img_height = params['img_height']
         self.img_width = params['img_width']
+        self.edge_weigths = params['edge_weigths']
+
+        self.ped_class = 'ped'
+        self.other_ped_class = 'other_ped'
 
         self.pie = PIE(data_path=self.pie_path)
 
-    def get_datasets(self, is_test):
+    def get_datasets(self):
         '''
         Build the inputs for the clustering computation
         '''
@@ -41,18 +45,19 @@ class PIEPreprocessing(object):
         val_features = self._get_features('val')
         test_features = self._get_features('test')
 
-        # Get max_num_nodes for padding
-        max_num_nodes = max(
-            train_features['max_num_nodes'], 
-            val_features['max_num_nodes'], 
-            test_features['max_num_nodes'])
+        # Get the max number of nodes for each class across all splits
+        max_nodes_dict, max_num_nodes = self._get_max_nodes_dict(
+            [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
+        )
+
+        print('Max number of nodes in a graph: {}'.format(max_num_nodes))
 
         # Load the data
         test_dataset = None
         test_len = 0
-        train_dataloader, train_len = self._get_dataloader('train', train_features, max_num_nodes)
-        val_dataloader, val_len = self._get_dataloader('val', val_features, max_num_nodes)
-        test_dataset, test_len = self._get_dataloader('test', test_features, max_num_nodes)
+        train_dataloader, train_len = self._get_dataloader('train', train_features, max_nodes_dict, max_num_nodes)
+        val_dataloader, val_len = self._get_dataloader('val', val_features, max_nodes_dict, max_num_nodes)
+        test_dataset, test_len = self._get_dataloader('test', test_features, max_nodes_dict, max_num_nodes)
 
         return {
             'train': {
@@ -104,13 +109,16 @@ class PIEPreprocessing(object):
 
         return features_d
 
-    def _get_dataloader(self, data_split, features_d, max_num_nodes):
+    def _get_dataloader(self, data_split, features_d, max_nodes_dict, max_num_nodes):
         pie_dataset = PIEGraphDataset(
-            features_d, 
+            features_d,
+            max_nodes_dict,
             max_num_nodes,
+            [self.ped_class, self.other_ped_class],
             transform_a=UnPIEGCN.transform,
             height=self.img_height,
             width=self.img_width,
+            edge_weigths=self.edge_weigths
         )
 
         if data_split == 'train':
@@ -129,6 +137,7 @@ class PIEPreprocessing(object):
         """
         images = dataset['image'].copy() # shape: (num_ped, num_frames, num_seq)
         bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, num_seq, 4)
+        obj_classes = dataset['obj_classes'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 1)
         obj_bboxes = dataset['obj_bboxes'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 4)
         obj_ids = dataset['obj_ids'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 1)
         other_ped_bboxes = dataset['other_ped_bboxes'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 4)
@@ -143,6 +152,7 @@ class PIEPreprocessing(object):
 
         bboxes = self._get_tracks(bboxes, seq_length, overlap_stride)
         images = self._get_tracks(images, seq_length, overlap_stride)
+        obj_classes = self._get_tracks(obj_classes, seq_length, overlap_stride)
         obj_bboxes = self._get_tracks(obj_bboxes, seq_length, overlap_stride)
         obj_ids = self._get_tracks(obj_ids, seq_length, overlap_stride)
         other_ped_bboxes = self._get_tracks(other_ped_bboxes, seq_length, overlap_stride)
@@ -156,6 +166,7 @@ class PIEPreprocessing(object):
 
         return {'images': images,
                 'bboxes': bboxes,
+                'obj_classes': obj_classes,
                 'obj_bboxes': obj_bboxes,
                 'obj_ids': obj_ids,
                 'other_ped_bboxes': other_ped_bboxes,
@@ -179,6 +190,7 @@ class PIEPreprocessing(object):
         img_sequences = data['images']
         ped_ids = data['ped_ids']
         obj_ids = data['obj_ids']
+        obj_classes = data['obj_classes']
         other_ped_ids = data['other_ped_ids']
 
         # load the feature files if exists
@@ -195,14 +207,16 @@ class PIEPreprocessing(object):
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_split, peds_load_path))
 
         ped_sequences, obj_sequences, other_ped_sequences = [], [], []
-        max_num_nodes = 0 # max number of nodes in a sequence, for padding
+        max_nodes_dict = {} # max number of nodes in a sequence, for padding
         i = -1
         for seq, pid in zip(img_sequences, ped_ids):
             i += 1
             update_progress(i / len(img_sequences))
             ped_seq, obj_seq, other_ped_seq = [], [], []
-            for imp, p, o, op in zip(seq, pid, obj_ids[i], other_ped_ids[i]):
-                num_nodes = 0
+            for imp, p, o, o_c, op in zip(seq, pid, obj_ids[i], obj_classes[i], other_ped_ids[i]):
+                # padding
+                nodes_dict = {}
+
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]
@@ -219,12 +233,12 @@ class PIEPreprocessing(object):
                         img_features = pickle.load(fid, encoding='bytes')
                 img_features = np.squeeze(img_features) # VGG16 output
                 ped_seq.append(img_features)
-                num_nodes += 1
+                nodes_dict[self.ped_class] = 1
 
                 # object image features
                 obj_seq_i = []
                 img_save_folder = os.path.join(objs_load_path, set_id, vid_id)
-                for obj_id in o:
+                for obj_id, obj_class in zip(o, o_c):
                     img_save_path = os.path.join(img_save_folder, img_name+'_'+obj_id+'.pkl')
                     if not os.path.exists(img_save_path):
                         Exception("Image features not found at {}".format(img_save_path))
@@ -235,7 +249,7 @@ class PIEPreprocessing(object):
                             img_features = pickle.load(fid, encoding='bytes')
                     img_features = np.squeeze(img_features)
                     obj_seq_i.append(img_features)
-                    num_nodes += 1
+                    nodes_dict[obj_class] = nodes_dict[obj_class] + 1 if obj_class in nodes_dict else 1
                 obj_seq.append(obj_seq_i)
 
                 # other pedestrian image features
@@ -252,10 +266,11 @@ class PIEPreprocessing(object):
                             img_features = pickle.load(fid, encoding='bytes')
                     img_features = np.squeeze(img_features)
                     other_ped_seq_i.append(img_features)
-                    num_nodes += 1
+                    nodes_dict[self.other_ped_class] = nodes_dict[self.other_ped_class] + 1 if self.other_ped_class in nodes_dict else 1
                 other_ped_seq.append(other_ped_seq_i)
 
-                max_num_nodes = max(max_num_nodes, num_nodes)
+                # update max_nodes_dict
+                max_nodes_dict, _ = self._get_max_nodes_dict([max_nodes_dict, nodes_dict])
 
             ped_sequences.append(ped_seq)
             obj_sequences.append(obj_seq)
@@ -271,7 +286,7 @@ class PIEPreprocessing(object):
             'other_ped_bboxes': data['other_ped_bboxes'],
             'intention_binary': data['intention_binary'], # shape: [num_seqs, 1]
             'data_split': data_split,
-            'max_num_nodes': max_num_nodes
+            'max_nodes_dict': max_nodes_dict
         }
         return features
 
@@ -286,3 +301,20 @@ class PIEPreprocessing(object):
                          range(0,len(seq)\
                         - seq_length + 1, overlap_stride)])
         return sub_seqs
+    
+    def _get_max_nodes_dict(self, dict_list):
+        # get the max number of nodes for each class in dict_list
+        max_nodes_dict = {}
+        for d in dict_list:
+            for k, v in d.items():
+                if k in max_nodes_dict:
+                    max_nodes_dict[k] = max(max_nodes_dict[k], v)
+                else:
+                    max_nodes_dict[k] = v
+
+        # count the number of nodes in the final dict
+        max_num_nodes = 0
+        for k, v in max_nodes_dict.items():
+            max_num_nodes += v
+
+        return max_nodes_dict, max_num_nodes 

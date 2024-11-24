@@ -1,27 +1,30 @@
-weight_decay: 0.0001 # loss function weight decay
 # learning_rates: '0.01,0.003,0.0007,0.0002' # optimizer learning rates
 learning_rates: '0.003'
-cache_dir: 'checkpoints' # directory to save model checkpoints
+weight_decay: 0.0001 # loss function weight decay
+edge_importance: False # weights for edges in the graph
+edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
 instance_t: 0.07 # temperature for contrastive loss
-num_classes: 2 # number of different clusters
 num_frames: 15 # number of frames in each clip
 channel_dim: 512 # output shape of feature extractor
-middle_dim: 256 # middle layer dimension in the unpie network
+middle_dim: 64 # middle layer dimension in the unpie network
 emb_dim: 128 # final embedding dimension
-img_height: 1080 # video frame height
-img_width: 1920 # video frame width
+scene_dim: 64 # final scene embedding dimension
 batch_size: 32 # training batch size
 inference_batch_size: 32 # val/test batch size
-inference_num_clips: 5 # number of clips to sample from each video
+inference_num_clips: 1 # number of clips to sample from each video: TODO assert 1 if edge_importance is True
 clstr_update_per_epoch: 10 # number of cluster updates per epoch
-kNN_inference: 50 # number of nearest neighbors to consider
-instance_k: 4096 # background neighbors to sample. If null, all training samples are considered
+kNN_inference: 10 # number of nearest neighbors to consider
+instance_k: 128 # background neighbors to sample. If null, all training samples are considered
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
+num_classes: 2 # number of different clusters
+img_height: 1080 # video frame height
+img_width: 1920 # video frame width
 train_log_file: 'log.txt' # training log file
 val_log_file: 'val_log.txt' # validation log file
 val_prediction_file: 'val_predictions.txt' # validation prediction file
 test_log_file: 'test_log.txt' # test log file
+cache_dir: 'checkpoints' # directory to save model checkpoints
 train_steps: 'IR,LA' # training steps
 IR:
   task: 'IR' # task name
