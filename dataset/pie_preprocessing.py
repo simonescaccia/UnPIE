@@ -26,6 +26,7 @@ class PIEPreprocessing(object):
         self.img_height = params['img_height']
         self.img_width = params['img_width']
         self.edge_weigths = params['edge_weigths']
+        self.edge_importance = params['edge_importance']
 
         self.ped_class = 'ped'
         self.other_ped_class = 'other_ped'
@@ -46,9 +47,13 @@ class PIEPreprocessing(object):
         test_features = self._get_features('test')
 
         # Get the max number of nodes for each class across all splits
-        max_nodes_dict, max_num_nodes = self._get_max_nodes_dict(
-            [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
-        )
+        if self.edge_importance:
+            max_nodes_dict, max_num_nodes = self._get_max_nodes_dict(
+                [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
+            )
+        else:
+            max_nodes_dict = {}
+            max_num_nodes = max(train_features['max_num_nodes'], val_features['max_num_nodes'], test_features['max_num_nodes'])
 
         print('Max number of nodes in a graph: {}'.format(max_num_nodes))
 
@@ -115,6 +120,7 @@ class PIEPreprocessing(object):
             max_nodes_dict,
             max_num_nodes,
             [self.ped_class, self.other_ped_class],
+            self.edge_importance,
             transform_a=UnPIEGCN.transform,
             height=self.img_height,
             width=self.img_width,
@@ -207,7 +213,8 @@ class PIEPreprocessing(object):
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_split, peds_load_path))
 
         ped_sequences, obj_sequences, other_ped_sequences = [], [], []
-        max_nodes_dict = {} # max number of nodes in a sequence, for padding
+        max_class_nodes = {} # max number of nodes in a sequence, for padding
+        max_num_nodes = 0
         i = -1
         for seq, pid in zip(img_sequences, ped_ids):
             i += 1
@@ -216,6 +223,7 @@ class PIEPreprocessing(object):
             for imp, p, o, o_c, op in zip(seq, pid, obj_ids[i], obj_classes[i], other_ped_ids[i]):
                 # padding
                 nodes_dict = {}
+                num_nodes = 0
 
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
@@ -234,6 +242,7 @@ class PIEPreprocessing(object):
                 img_features = np.squeeze(img_features) # VGG16 output
                 ped_seq.append(img_features)
                 nodes_dict[self.ped_class] = 1
+                num_nodes += 1
 
                 # object image features
                 obj_seq_i = []
@@ -250,6 +259,7 @@ class PIEPreprocessing(object):
                     img_features = np.squeeze(img_features)
                     obj_seq_i.append(img_features)
                     nodes_dict[obj_class] = nodes_dict[obj_class] + 1 if obj_class in nodes_dict else 1
+                    num_nodes += 1
                 obj_seq.append(obj_seq_i)
 
                 # other pedestrian image features
@@ -267,10 +277,12 @@ class PIEPreprocessing(object):
                     img_features = np.squeeze(img_features)
                     other_ped_seq_i.append(img_features)
                     nodes_dict[self.other_ped_class] = nodes_dict[self.other_ped_class] + 1 if self.other_ped_class in nodes_dict else 1
+                    num_nodes += 1
                 other_ped_seq.append(other_ped_seq_i)
 
                 # update max_nodes_dict
-                max_nodes_dict, _ = self._get_max_nodes_dict([max_nodes_dict, nodes_dict])
+                max_class_nodes, _ = self._get_max_nodes_dict([max_class_nodes, nodes_dict])
+                max_num_nodes = max(max_num_nodes, num_nodes)
 
             ped_sequences.append(ped_seq)
             obj_sequences.append(obj_seq)
@@ -287,7 +299,8 @@ class PIEPreprocessing(object):
             'other_ped_bboxes': data['other_ped_bboxes'],
             'intention_binary': data['intention_binary'], # shape: [num_seqs, 1]
             'data_split': data_split,
-            'max_nodes_dict': max_nodes_dict
+            'max_nodes_dict': max_class_nodes,
+            'max_num_nodes': max_num_nodes
         }
         return features
 

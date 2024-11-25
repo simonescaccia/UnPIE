@@ -108,6 +108,7 @@ class ParamsLoader:
             "seq_len": self.args['num_frames'],
             "num_nodes": num_nodes,
             "edge_importance": self.args['edge_importance'],
+            "is_scene": self.args['is_scene'],
         }
         return model_params
 
@@ -156,6 +157,7 @@ class ParamsLoader:
             'img_height': self.args['img_height'],
             'img_width': self.args['img_width'],
             'edge_weigths': self.args['edge_weigths'],
+            'edge_importance': self.args['edge_importance'],
         }
         return pie_params
 

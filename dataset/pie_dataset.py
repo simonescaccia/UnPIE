@@ -7,13 +7,14 @@ from utils.pie_utils import bbox_center, update_progress
 np.set_printoptions(linewidth=np.inf)
 
 class PIEGraphDataset(torch.utils.data.Dataset):
-    def __init__(self, features, max_nodes_dict, max_num_nodes, ped_classes, height, width, edge_weigths, transform_a=None):
+    def __init__(self, features, max_nodes_dict, max_num_nodes, ped_classes, edge_importance, height, width, edge_weigths, transform_a=None):
         self.edge_weigths = edge_weigths
         self.features = features
         self.transform_a = transform_a
         self.max_nodes_dict = max_nodes_dict
         self.max_num_nodes = max_num_nodes
         self.ped_classes = ped_classes
+        self.edge_importance = edge_importance
         self.normalization_factor = np.linalg.norm([height, width])
         self.x, self.b, self.a, self.y, self.i = self._compute_graphs()
 
@@ -32,6 +33,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         max_nodes_dict = self.max_nodes_dict
         max_num_nodes = self.max_num_nodes
         ped_classes = self.ped_classes
+        edge_importance = self.edge_importance
 
         ped_feats = features['ped_feats'] # [num_seqs, seq_len, emb_dim]
         ped_bboxes = features['ped_bboxes'] # [num_seqs, seq_len, 4]
@@ -46,15 +48,16 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         print('Computing {} graphs...'.format(data_split))
 
         # Prepare objects start position. Class order: ped, obj_class_1, obj_class_2, ..., obj_class_n , other_peds
-        class_init_pos = 1
-        obj_class_pos = {}
-        for k, v in max_nodes_dict.items():
-            if k not in ped_classes:
-                obj_class_pos[k] = {}
-                obj_class_pos[k]['init_pos'] = class_init_pos
-                obj_class_pos[k]['count'] = 0
-                class_init_pos += v
-        other_ped_init_pos = class_init_pos
+        if edge_importance:
+            class_init_pos = 1
+            obj_class_pos = {}
+            for k, v in max_nodes_dict.items():
+                if k not in ped_classes:
+                    obj_class_pos[k] = {}
+                    obj_class_pos[k]['init_pos'] = class_init_pos
+                    obj_class_pos[k]['count'] = 0
+                    class_init_pos += v
+            other_ped_init_pos = class_init_pos
 
         num_seqs = len(ped_feats)
         seq_len = len(ped_feats[0])
@@ -74,26 +77,36 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                 x_seq[i, j, 0, :] = ped_feats[i][j]
                 b_seq[i, j, 0, :] = ped_bboxes[i][j]
                 ped_position = bbox_center(ped_bboxes[i][j])
+                num_node = 1
 
                 edge_weights = np.zeros((max_num_nodes,), dtype=np.float32) 
 
                 # Object nodes
                 for k, (obj_feat, obj_bbox, obj_class) in enumerate(zip(obj_feats[i][j], obj_bboxes[i][j], obj_classes[i][j])):
-                    num_node = obj_class_pos[obj_class]['init_pos'] + obj_class_pos[obj_class]['count']
+                    if edge_importance:
+                        num_node = obj_class_pos[obj_class]['init_pos'] + obj_class_pos[obj_class]['count']
+
                     x_seq[i, j, num_node, :] = obj_feat
                     b_seq[i, j, num_node, :] = obj_bbox
+                    
                     if not self.edge_weigths:
                         edge_weights[num_node] = 1
                     else:
                         edge_weights[num_node] = np.linalg.norm(np.array(ped_position) - np.array(bbox_center(obj_bboxes[i][j][k])))
-                    obj_class_pos[obj_class]['count'] += 1
-                
-                # Restore the object class position
-                for k, v in obj_class_pos.items():
-                    obj_class_pos[k]['count'] = 0
+                    
+                    if edge_importance:
+                        obj_class_pos[obj_class]['count'] += 1
+                    else:
+                        num_node += 1
+
+                if edge_importance:
+                    # Restore the object class position
+                    for k, v in obj_class_pos.items():
+                        obj_class_pos[k]['count'] = 0
 
                 # Other pedestrian nodes
-                num_node = other_ped_init_pos
+                if edge_importance:
+                    num_node = other_ped_init_pos
                 for k, (other_ped_feat, other_ped_bbox) in enumerate(zip(other_ped_feats[i][j], other_ped_bboxes[i][j])):
                     x_seq[i, j, num_node, :] = other_ped_feat
                     b_seq[i, j, num_node, :] = other_ped_bbox

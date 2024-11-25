@@ -141,6 +141,7 @@ class UnPIESTGCN(tf.keras.Model):
         drop_conv = params['drop_conv']
         num_nodes = params['num_nodes']
         self.edge_importance = params['edge_importance']
+        self.is_scene = params['is_scene']
 
         self.data_bn_x = tf.keras.layers.BatchNormalization(axis=1)
         self.data_bn_b = tf.keras.layers.BatchNormalization(axis=1)
@@ -169,10 +170,11 @@ class UnPIESTGCN(tf.keras.Model):
                     residual=False if not self.STGCN_layers_x else True))
             downsample = False
 
-        self.STGCN_layers_b = []
-        self.STGCN_layers_b.append(STGCN(scene_gcn_dim, residual=False, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
-        self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
-        self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
+        if self.is_scene:
+            self.STGCN_layers_b = []
+            self.STGCN_layers_b.append(STGCN(scene_gcn_dim, residual=False, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
+            self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
+            self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
 
         if self.edge_importance:
             # Initialize edge_importance as a list of trainable variables
@@ -202,7 +204,8 @@ class UnPIESTGCN(tf.keras.Model):
         # b: N, T, V, 4
         # a: N, T, V, V
         x = tf.transpose(x, perm=[0, 3, 1, 2])
-        b = tf.transpose(b, perm=[0, 3, 1, 2])
+        if self.is_scene:
+            b = tf.transpose(b, perm=[0, 3, 1, 2])
 
         NX, CX, TX, VX = x.shape
         NB, CB, TB, VB = b.shape
@@ -214,29 +217,33 @@ class UnPIESTGCN(tf.keras.Model):
         x = tf.transpose(x, perm=[0, 1, 3, 2])
         x = tf.reshape(x, [NX, CX, TX, VX])
 
-        b = tf.transpose(b, perm=[0, 3, 1, 2])
-        b = tf.reshape(b, [NB, VB * CB, TB])
-        b = self.data_bn_b(b, training)
-        b = tf.reshape(b, [NB, VB, CB, TB])
-        b = tf.transpose(b, perm=[0, 1, 3, 2])
-        b = tf.reshape(b, [NB, CB, TB, VB])
+        if self.is_scene:
+            b = tf.transpose(b, perm=[0, 3, 1, 2])
+            b = tf.reshape(b, [NB, VB * CB, TB])
+            b = self.data_bn_b(b, training)
+            b = tf.reshape(b, [NB, VB, CB, TB])
+            b = tf.transpose(b, perm=[0, 1, 3, 2])
+            b = tf.reshape(b, [NB, CB, TB, VB])
 
         if self.edge_importance:
             for layer, importance in zip(self.STGCN_layers_x, self.edge_importance_x):
                 x, _ = layer(x, a * importance, training)
-            for layer, importance in zip(self.STGCN_layers_b, self.edge_importance_b):
-                b, _ = layer(b, a * importance, training)
+            if self.is_scene:
+                for layer, importance in zip(self.STGCN_layers_b, self.edge_importance_b):
+                    b, _ = layer(b, a * importance, training)
         else:
             for layer in self.STGCN_layers_x:
                 x, _ = layer(x, a, training)
-            for layer in self.STGCN_layers_b:
-                b, _ = layer(b, a, training)
+            if self.is_scene:
+                for layer in self.STGCN_layers_b:
+                    b, _ = layer(b, a, training)
 
         # x: N,C,T,V
         x = x[:, :, :, 0] # N,C,T, get the first node V (pedestrian) for each graph
-        b = b[:, :, :, 0] # N,4,T, get the first node V (pedestrian) for each graph
+        if self.is_scene:
+            b = b[:, :, :, 0] # N,4,T, get the first node V (pedestrian) for each graph
 
-        x = tf.concat([x, b], axis=1) # N,C+4,T
+            x = tf.concat([x, b], axis=1) # N,C+4,T
         x = tf.transpose(x, perm=[0, 2, 1]) # N,T,C+4
 
         return x
