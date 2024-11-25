@@ -99,6 +99,8 @@ class ParamsLoader:
             "middle_dim": self.args['middle_dim'],
             "input_dim": self.args['channel_dim'],
             "gcn_dim": self.args['gcn_dim'],
+            "drop_conv": self.args['drop_conv'],
+            "drop_tcn": self.args['drop_tcn'],
             "num_input_layers": self.args['num_input_layers'],
             "num_middle_layers": self.args['num_middle_layers'],
             "num_gcn_final_layers": self.args['num_gcn_final_layers'],
