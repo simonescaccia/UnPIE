@@ -31,18 +31,18 @@ LA:
   load_task: 'IR'
 
 # Data preprocessing params
-edge_importance: True # weights for edges in the graph. TODO True even though inference_num_clips != 1
-edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
+edge_importance: False # weights for edges in the graph. TODO True even though inference_num_clips != 1
+edge_weigths: no_norm # Choose between False, no_norm, norm, norm_compl, compl
 num_frames: 15 # number of frames in each clip
 img_height: 1080 # video frame height
 img_width: 1920 # video frame width
 
 # Network params
 channel_dim: 512 # output shape of feature extractor
-middle_dim: 128 # middle layer dimension in the unpie network
-gcn_dim: 64 # final gcn layer dimension
-num_input_layers: 2 # number of input layers in the unpie network
-num_middle_layers: 0 # number of middle layers in the unpie network
+middle_dim: 256 # middle layer dimension in the unpie network
+gcn_dim: 128 # final gcn layer dimension
+num_input_layers: 3 # number of input layers in the unpie network
+num_middle_layers: 3 # number of middle layers in the unpie network
 num_gcn_final_layers: 3 # number of final gcn layers in the unpie network
 scene_gcn_dim: 64 # final scene embedding dimension
 
