@@ -44,7 +44,9 @@ gcn_dim: 128 # final gcn layer dimension
 num_input_layers: 3 # number of input layers in the unpie network
 num_middle_layers: 3 # number of middle layers in the unpie network
 num_gcn_final_layers: 3 # number of final gcn layers in the unpie network
-scene_gcn_dim: 64 # final scene embedding dimension
+scene_gcn_dim: 32 # final scene embedding dimension
+drop_tcn: 0.15 # dropout rate for temporal convolutional network
+drop_gcn: 0.15 # dropout rate for graph convolutional network
 
 # Log files
 train_log_file: 'log.txt' # training log file

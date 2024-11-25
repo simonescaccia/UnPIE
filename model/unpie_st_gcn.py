@@ -137,7 +137,8 @@ class UnPIESTGCN(tf.keras.Model):
         middle_dim = params['middle_dim'] 
         gcn_dim = params['gcn_dim']
         scene_gcn_dim = params['scene_gcn_dim']
-        seq_len = params['seq_len']
+        drop_tcn = params['drop_tcn']
+        drop_conv = params['drop_conv']
         num_nodes = params['num_nodes']
         self.edge_importance = params['edge_importance']
 
@@ -148,14 +149,14 @@ class UnPIESTGCN(tf.keras.Model):
         for _ in range(num_input_layers):
             self.STGCN_layers_x.append(
                 STGCN(
-                    input_dim, dropout_tcn=0.5, dropout_conv=0.5,
+                    input_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv,
                     residual=False if not self.STGCN_layers_x else True))
         
         downsample = True if middle_dim != input_dim and num_input_layers else False
         for _ in range(num_middle_layers):
             self.STGCN_layers_x.append(
                 STGCN(
-                    middle_dim, dropout_tcn=0.5, dropout_conv=0.5, downsample=downsample,
+                    middle_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, downsample=downsample,
                     residual=False if not self.STGCN_layers_x else True))
             downsample = False
 
@@ -164,13 +165,14 @@ class UnPIESTGCN(tf.keras.Model):
         for _ in range(num_gcn_final_layers):
             self.STGCN_layers_x.append(
                 STGCN(
-                    gcn_dim, dropout_tcn=0.5, dropout_conv=0.2, downsample=downsample,
+                    gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, downsample=downsample,
                     residual=False if not self.STGCN_layers_x else True))
             downsample = False
 
         self.STGCN_layers_b = []
-        self.STGCN_layers_b.append(STGCN(scene_gcn_dim, residual=False, dropout_tcn=0.5, dropout_conv=0))
-        self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=0.5, dropout_conv=0.2))
+        self.STGCN_layers_b.append(STGCN(scene_gcn_dim, residual=False, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
+        self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
+        self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
 
         if self.edge_importance:
             # Initialize edge_importance as a list of trainable variables
