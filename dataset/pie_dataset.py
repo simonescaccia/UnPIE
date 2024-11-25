@@ -88,9 +88,13 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                         edge_weights[num_node] = np.linalg.norm(np.array(ped_position) - np.array(bbox_center(obj_bboxes[i][j][k])))
                     obj_class_pos[obj_class]['count'] += 1
                 
+                # Restore the object class position
+                for k, v in obj_class_pos.items():
+                    obj_class_pos[k]['count'] = 0
+
                 # Other pedestrian nodes
+                num_node = other_ped_init_pos
                 for k, (other_ped_feat, other_ped_bbox) in enumerate(zip(other_ped_feats[i][j], other_ped_bboxes[i][j])):
-                    num_node = other_ped_init_pos
                     x_seq[i, j, num_node, :] = other_ped_feat
                     b_seq[i, j, num_node, :] = other_ped_bbox
                     if not self.edge_weigths:
@@ -113,10 +117,6 @@ class PIEGraphDataset(torch.utils.data.Dataset):
 
                 if transform_a is not None:
                     a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
-
-                # Restore the object class position
-                for k, v in obj_class_pos.items():
-                    obj_class_pos[k]['count'] = 0
 
         update_progress(1)
         print('')
