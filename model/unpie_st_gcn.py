@@ -78,7 +78,6 @@ class STGCN(tf.keras.Model):
         self.tgcn = tf.keras.Sequential()
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
         self.tgcn.add(tf.keras.layers.Activation(activation))
-        self.tgcn.add(tf.keras.layers.PReLU())
         self.tgcn.add(tf.keras.layers.Conv2D(filters,
                                              kernel_size=[kernel_size[0], 1],
                                              strides=[stride, 1],
@@ -90,7 +89,6 @@ class STGCN(tf.keras.Model):
         self.tgcn.add(tf.keras.layers.Dropout(dropout_tcn))
 
         self.act = tf.keras.layers.Activation(activation)
-        self.act = tf.keras.layers.PReLU()
 
         if not residual:
             self.residual = lambda x, training=False: 0
