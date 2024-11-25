@@ -283,6 +283,7 @@ class PIEPreprocessing(object):
             'other_ped_feats': other_ped_sequences,
             'ped_bboxes': data['bboxes'],
             'obj_bboxes': data['obj_bboxes'],
+            'obj_classes': data['obj_classes'],
             'other_ped_bboxes': data['other_ped_bboxes'],
             'intention_binary': data['intention_binary'], # shape: [num_seqs, 1]
             'data_split': data_split,

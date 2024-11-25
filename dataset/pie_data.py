@@ -1579,7 +1579,7 @@ class PIE(object):
                             if f in frame_to_idx:
                                 obj_idx = frame_to_idx[f]  # Get the index directly from precomputed mapping
                                 objs_bbox[idx].append(obj_data['bbox'][obj_idx])
-                                objs_classes[idx].append(obj_data['obj_class'][obj_idx])
+                                objs_classes[idx].append(obj_data['obj_class'])
                                 objs_ids[idx].append(obj)
                     # Get the other pedestrians in the frame
                     other_peds_bbox = [[] for _ in range(len(boxes))]

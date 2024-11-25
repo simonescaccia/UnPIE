@@ -98,7 +98,11 @@ class ParamsLoader:
             "emb_dim": self.args['emb_dim'],
             "middle_dim": self.args['middle_dim'],
             "input_dim": self.args['channel_dim'],
-            "scene_dim": self.args['scene_dim'],
+            "gcn_dim": self.args['gcn_dim'],
+            "num_input_layers": self.args['num_input_layers'],
+            "num_middle_layers": self.args['num_middle_layers'],
+            "num_gcn_final_layers": self.args['num_gcn_final_layers'],
+            "scene_gcn_dim": self.args['scene_gcn_dim'],
             "seq_len": self.args['num_frames'],
             "num_nodes": num_nodes,
             "edge_importance": self.args['edge_importance'],
@@ -147,7 +151,6 @@ class ParamsLoader:
             'batch_size': self.args['batch_size'],
             'inference_batch_size': self.args['inference_batch_size'],
             'inference_num_clips': self.args['inference_num_clips'],
-            'emb_dim': self.args['emb_dim'],
             'img_height': self.args['img_height'],
             'img_width': self.args['img_width'],
             'edge_weigths': self.args['edge_weigths'],
@@ -200,6 +203,7 @@ class ParamsLoader:
         save_params, load_params = self._get_save_load_params_from_arg()
         pie_params = self.get_pie_params()
 
+        self.args['emb_dim'] = self.args['scene_gcn_dim'] + self.args['gcn_dim']
         self.args['kmeans_k'] = [self.args['num_classes']]
         self.args['input_shape'] = self._get_input_shape()
 
