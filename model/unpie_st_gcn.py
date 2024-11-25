@@ -77,7 +77,7 @@ class STGCN(tf.keras.Model):
 
         self.tgcn = tf.keras.Sequential()
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
-        # self.tgcn.add(tf.keras.layers.Activation(activation))
+        self.tgcn.add(tf.keras.layers.Activation(activation))
         self.tgcn.add(tf.keras.layers.PReLU())
         self.tgcn.add(tf.keras.layers.Conv2D(filters,
                                              kernel_size=[kernel_size[0], 1],
@@ -89,7 +89,7 @@ class STGCN(tf.keras.Model):
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
         self.tgcn.add(tf.keras.layers.Dropout(dropout_tcn))
 
-        # self.act = tf.keras.layers.Activation(activation)
+        self.act = tf.keras.layers.Activation(activation)
         self.act = tf.keras.layers.PReLU()
 
         if not residual:
@@ -179,7 +179,7 @@ class UnPIESTGCN(tf.keras.Model):
             self.edge_importance_x = [
                 tf.Variable(
                     tf.random.normal(
-                        shape=(seq_len, num_nodes, num_nodes),
+                        shape=(num_nodes, num_nodes),
                         stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
                     ),
                     trainable=True,
@@ -189,7 +189,7 @@ class UnPIESTGCN(tf.keras.Model):
             self.edge_importance_b = [
                 tf.Variable(
                     tf.random.normal(
-                        shape=(seq_len, num_nodes, num_nodes),
+                        shape=(num_nodes, num_nodes),
                         stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
                     ),
                     trainable=True,
