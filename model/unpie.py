@@ -40,13 +40,7 @@ class UnPIE():
         
         # Model
         self.model = UnPIENetwork(
-            self.params['model_params']['model_func_params']['input_dim'],
-            self.params['model_params']['model_func_params']['middle_dim'],
-            self.params['model_params']['model_func_params']['emb_dim'],
-            self.params['model_params']['model_func_params']['scene_dim'],
-            self.params['model_params']['model_func_params']['seq_len'],
-            self.params['model_params']['model_func_params']['num_nodes'],
-            self.params['model_params']['model_func_params']['edge_importance']
+            **self.params['model_params']['model_func_params']
         )
 
         # Memory bank and clustering
@@ -126,7 +120,7 @@ class UnPIE():
 
         if not train:
             all_dist = self.memory_bank.get_all_dot_products(output) # cosine similarity (via matrix multiplication): similarity of a test sample to every training sample.
-            return all_dist
+            return all_dist, self.cluster_labels
 
         # Training: compute loss
         model_class = InstanceModel(
@@ -273,14 +267,15 @@ class UnPIE():
 
 
     # Validation functions
-    def _build_inference_targets(self, y, outputs):
+    def _build_inference_targets(self, y, i, outputs):
         target_params = self.params['inference_params']['targets']
         targets = self._perf_func_kNN(y, outputs, **target_params)
+        targets.update(self._perf_func_unsup(y, i, outputs))
         return targets
 
     def _inference_func(self, x, b, a, y, i):        
         outputs = self._build_network(x, b, a, i, train=False)
-        targets = self._build_inference_targets(y, outputs)
+        targets = self._build_inference_targets(y, i, outputs)
         return targets
 
     def _run_inference_loop(self, dataloader_type):
@@ -340,7 +335,7 @@ class UnPIE():
         return loss_all
     
 
-    # Inference function to compute metrics
+    # Compute metrics for unsupervised feature learning
     def _perf_func_kNN(
             self,
             y, output, 
@@ -348,7 +343,7 @@ class UnPIE():
             k, inference_num_clips,
             num_classes):
         all_labels = self.all_labels
-        curr_dist = output
+        curr_dist, _ = output
         all_labels = tuple_get_one(all_labels)
         top_dist, top_indices = tf.nn.top_k(curr_dist, k=k) # top k closest neighbor (highest similarity) for each test sample, top_dist: similarity score, top_indices: index of the closest neighbor
         top_labels = tf.gather(all_labels, top_indices) # retrieve the labels of the nearest neighbors
@@ -362,4 +357,28 @@ class UnPIE():
         f1_score = sklearn.metrics.f1_score(y, curr_pred, zero_division=0)
         # auc = sklearn.metrics.roc_auc_score(y, curr_pred)
         precision = sklearn.metrics.precision_score(y, curr_pred, zero_division=0)
-        return {'Accuracy': accuracy, 'F1': f1_score, 'Precision': precision}
+        return {
+            'Accuracy u.f.l.': accuracy,
+            'F1 u.f.l.': f1_score,
+            # 'AUC u.f.l.': auc,
+            'Precision u.f.l.': precision
+        }
+    
+    
+    # Compute metrics for unsupervised learning
+    def _perf_func_unsup(
+            slf,
+            y, i, output):
+        _, cluster_labels = output
+        cluster_labels = tf.squeeze(cluster_labels, axis=0)
+        y_pred = tf.gather(cluster_labels, i)
+        accuracy = sklearn.metrics.accuracy_score(y, y_pred)
+        f1_score = sklearn.metrics.f1_score(y, y_pred, zero_division=0)
+        # auc = sklearn.metrics.roc_auc_score(y, y_pred)
+        precision = sklearn.metrics.precision_score(y, y_pred, zero_division=0)
+        return {
+            'Accuracy u.l.': accuracy,
+            'F1 u.l.': f1_score,
+            # 'AUC u.l.': auc,
+            'Precision u.l.': precision
+        }
