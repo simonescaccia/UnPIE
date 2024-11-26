@@ -3,9 +3,6 @@ import tensorflow as tf
 from utils.graph_utils import normalize_undigraph
 
 REGULARIZER = tf.keras.regularizers.l2(l=0.0001)
-INITIALIZER = tf.keras.initializers.VarianceScaling(scale=2.,
-                                                    mode="fan_out",
-                                                    distribution="truncated_normal")
 
 """The basic module for applying a spatial graph convolution.
     Args:
@@ -29,7 +26,10 @@ class SGCN(tf.keras.Model):
         self.conv = tf.keras.layers.Conv2D(filters,
                                            kernel_size=1,
                                            padding='same',
-                                           kernel_initializer=INITIALIZER,
+                                           kernel_initializer=tf.keras.initializers.VarianceScaling(
+                                               scale=2.,
+                                               mode="fan_out",
+                                               distribution="truncated_normal"),
                                            data_format='channels_first',
                                            kernel_regularizer=REGULARIZER)
         self.drop = tf.keras.layers.Dropout(dropout_conv)
@@ -82,7 +82,10 @@ class STGCN(tf.keras.Model):
                                              kernel_size=[kernel_size[0], 1],
                                              strides=[stride, 1],
                                              padding='same',
-                                             kernel_initializer=INITIALIZER,
+                                             kernel_initializer=tf.keras.initializers.VarianceScaling(
+                                                 scale=2.,
+                                                 mode="fan_out",
+                                                 distribution="truncated_normal"),
                                              data_format='channels_first',
                                              kernel_regularizer=REGULARIZER))
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
@@ -100,7 +103,10 @@ class STGCN(tf.keras.Model):
                                                      kernel_size=[1, 1],
                                                      strides=[stride, 1],
                                                      padding='same',
-                                                     kernel_initializer=INITIALIZER,
+                                                     kernel_initializer=tf.keras.initializers.VarianceScaling(
+                                                         scale=2.,
+                                                         mode="fan_out",
+                                                         distribution="truncated_normal"),
                                                      data_format='channels_first',
                                                      kernel_regularizer=REGULARIZER))
             self.residual.add(tf.keras.layers.BatchNormalization(axis=1))
@@ -144,31 +150,27 @@ class UnPIESTGCN(tf.keras.Model):
         self.is_scene = params['is_scene']
 
         self.data_bn_x = tf.keras.layers.BatchNormalization(axis=1)
-        self.data_bn_b = tf.keras.layers.BatchNormalization(axis=1)
+        if self.is_scene:
+            self.data_bn_b = tf.keras.layers.BatchNormalization(axis=1)
 
         self.STGCN_layers_x = []
         for _ in range(num_input_layers):
             self.STGCN_layers_x.append(
                 STGCN(
                     input_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv,
-                    residual=False if not self.STGCN_layers_x else True))
-        
-        downsample = True if middle_dim != input_dim and num_input_layers else False
-        for _ in range(num_middle_layers):
+                    residual=True if self.STGCN_layers_x else False))
+        for i in range(num_middle_layers):
             self.STGCN_layers_x.append(
                 STGCN(
-                    middle_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, downsample=downsample,
-                    residual=False if not self.STGCN_layers_x else True))
-            downsample = False
-
-        downsample = True if (gcn_dim != middle_dim and num_middle_layers) or \
-                             (gcn_dim != input_dim and num_input_layers) else False
-        for _ in range(num_gcn_final_layers):
+                    middle_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, 
+                    downsample=True if i == 0 else False,
+                    residual=True if self.STGCN_layers_x else False))
+        for i in range(num_gcn_final_layers):
             self.STGCN_layers_x.append(
                 STGCN(
-                    gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, downsample=downsample,
-                    residual=False if not self.STGCN_layers_x else True))
-            downsample = False
+                    gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, 
+                    downsample=True if i == 0 else False,
+                    residual=True if self.STGCN_layers_x else False))
 
         if self.is_scene:
             self.STGCN_layers_b = []
