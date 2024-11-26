@@ -1,7 +1,6 @@
 import os
 import time
 import sklearn
-import tqdm
 import numpy as np
 import tensorflow as tf
 
@@ -196,7 +195,8 @@ class UnPIE():
 
         return loss
 
-    def _grad(self, x, b, a, y, i):
+    @tf.function
+    def _grad(self, x, b, a, i):
         with tf.GradientTape() as tape:
             loss_value = self._loss(x, b, a, i)
         return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
@@ -227,7 +227,7 @@ class UnPIE():
                 self.start_time = time.time()
                 
                 # Optimize the model
-                loss_value, grads = self._grad(x, b, a, y, i)
+                loss_value, grads = self._grad(x, b, a, i)
                 self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
                 duration = time.time() - self.start_time
