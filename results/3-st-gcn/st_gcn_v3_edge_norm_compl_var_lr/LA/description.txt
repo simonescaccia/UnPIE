@@ -1,1 +1,0 @@
-st_gcn_v3_edge_norm_compl + variable lr
