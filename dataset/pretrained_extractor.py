@@ -9,7 +9,7 @@ class PretrainedExtractor(object):
         #     pooling='avg',
         #     include_top=False
         # )
-        self.model = tf.keras.applications.EfficientNetB5(
+        self.model = tf.keras.applications.EfficientNetB3(
             include_top=False,
             weights='imagenet',
             pooling='avg'

@@ -56,6 +56,7 @@ class PIEPreprocessing(object):
             max_num_nodes = max(train_features['max_num_nodes'], val_features['max_num_nodes'], test_features['max_num_nodes'])
 
         print('Max number of nodes in a graph: {}'.format(max_num_nodes))
+        print('Classes max number of nodes: {}'.format(max_nodes_dict))
 
         # Load the data
         test_dataset = None

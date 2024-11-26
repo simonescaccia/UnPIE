@@ -92,7 +92,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                     if not self.edge_weigths:
                         edge_weights[num_node] = 1
                     else:
-                        edge_weights[num_node] = np.linalg.norm(np.array(ped_position) - np.array(bbox_center(obj_bboxes[i][j][k])))
+                        edge_weights[num_node] = self._get_distance(ped_position, bbox_center(obj_bboxes[i][j][k]))
                     
                     if edge_importance:
                         obj_class_pos[obj_class]['count'] += 1
@@ -113,20 +113,14 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                     if not self.edge_weigths:
                         edge_weights[num_node] = 1
                     else:    
-                        edge_weights[num_node] = np.linalg.norm(np.array(ped_position) - np.array(bbox_center(other_ped_bboxes[i][j][k])))
+                        edge_weights[num_node] = self._get_distance(ped_position, bbox_center(other_ped_bboxes[i][j][k]))
                     num_node += 1
 
                 # Adjacency matrix: Copy the precomputed adjacency template and adjust for number of nodes
-                if self.edge_weigths == False or self.edge_weigths == 'no_norm':
-                    pass
-                elif self.edge_weigths == 'norm':
-                    edge_weights = edge_weights / self.normalization_factor
-                elif self.edge_weigths == 'compl':
-                    edge_weights = self.normalization_factor - edge_weights
-                elif self.edge_weigths == 'norm_compl':
-                    edge_weights = 1 - (edge_weights / self.normalization_factor)
                 a_seq[i, j, 0, :] = edge_weights
                 a_seq[i, j, :, 0] = edge_weights
+
+                print(a_seq[i, j, :, :])
 
                 if transform_a is not None:
                     a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
@@ -141,6 +135,18 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         i = np.arange(num_seqs)
 
         return x, b, a, y, i
+    
+    def _get_distance(self, ped_position, obj_position):
+        distance = np.linalg.norm(np.array(ped_position) - np.array(obj_position))
+        if self.edge_weigths == 'no_norm':
+            pass
+        elif self.edge_weigths == 'norm':
+            distance = distance / self.normalization_factor
+        elif self.edge_weigths == 'compl':
+            distance = self.normalization_factor - distance
+        elif self.edge_weigths == 'norm_compl':
+            distance = 1 - (distance / self.normalization_factor)
+        return distance
 
     def __getitem__(self, index):
         return self.x[index], self.b[index], self.a[index], self.y[index], self.i[index]
