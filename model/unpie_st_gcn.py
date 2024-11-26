@@ -190,16 +190,17 @@ class UnPIESTGCN(tf.keras.Model):
                 )
                 for _ in self.STGCN_layers_x
             ]
-            self.edge_importance_b = [
-                tf.Variable(
-                    tf.random.normal(
-                        shape=(num_nodes, num_nodes),
-                        stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
-                    ),
-                    trainable=True,
-                )
-                for _ in self.STGCN_layers_b
-            ]
+            if self.is_scene:
+                self.edge_importance_b = [
+                    tf.Variable(
+                        tf.random.normal(
+                            shape=(num_nodes, num_nodes),
+                            stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
+                        ),
+                        trainable=True,
+                    )
+                    for _ in self.STGCN_layers_b
+                ]
 
     def call(self, x, b, a, training):
         # x: N, T, V, C
