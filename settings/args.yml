@@ -27,7 +27,7 @@ LA:
   # lr_boundaries: null
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 200
+  train_num_epochs: 2000
   load_task: 'IR'
 
 # Data preprocessing params
