@@ -120,8 +120,6 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                 a_seq[i, j, 0, :] = edge_weights
                 a_seq[i, j, :, 0] = edge_weights
 
-                print(a_seq[i, j, :, :])
-
                 if transform_a is not None:
                     a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
 
