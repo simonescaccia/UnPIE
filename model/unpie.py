@@ -188,18 +188,18 @@ class UnPIE():
         return loss_retval
 
     def _loss(self, x, b, a, i):
-        # training=training is needed only if there are layers with different
-        # behavior during training versus inference (e.g. Dropout).
         y_ = self._build_network(x, b, a, i, train=True)
         loss = self._build_loss(y_)
-
         return loss
 
-    @tf.function
     def _grad(self, x, b, a, i):
         with tf.GradientTape() as tape:
             loss_value = self._loss(x, b, a, i)
         return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
+
+    @tf.function
+    def _apply_gradients(self, grads):
+        self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
 
     def _run_train_loop(self):
         clstr_update_per_epoch = self.params['train_params']['clstr_update_per_epoch']
@@ -228,7 +228,7 @@ class UnPIE():
                 
                 # Optimize the model
                 loss_value, grads = self._grad(x, b, a, i)
-                self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+                self._apply_gradients(grads)                
 
                 duration = time.time() - self.start_time
 
