@@ -1,6 +1,6 @@
 # Training params
-# learning_rates: '0.01,0.003,0.0007,0.0002' # optimizer learning rates
-learning_rates: '0.003'
+learning_rates: '0.01,0.003,0.0007,0.0003' # optimizer learning rates
+# learning_rates: '0.003'
 weight_decay: 0.0001 # loss function weight decay
 instance_t: 0.07 # temperature for contrastive loss
 batch_size: 32 # training batch size
@@ -16,7 +16,7 @@ train_steps: 'IR,LA' # training steps
 IR:
   task: 'IR' # task name
   lr_boundaries: null # learning rate boundaries
-  train_num_workers': 1 # number of workers for training data loader
+  train_num_workers: 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
   train_num_epochs: 0 # number of training epochs
   load_task: null # load task
@@ -25,14 +25,14 @@ LA:
   task: 'LA'
   # lr_boundaries: '200,400,600'
   lr_boundaries: null
-  train_num_workers': 1
+  train_num_workers: 1
   val_num_workers: 1
   train_num_epochs: 200
   load_task: 'IR'
 
 # Data preprocessing params
 edge_importance: True # weights for edges in the graph. TODO True even though inference_num_clips != 1
-edge_weigths: norm_compl # Choose between False, no_norm, norm, norm_compl, compl
+edge_weigths: 'norm_compl' # Choose between False, no_norm, norm, norm_compl, compl
 num_frames: 15 # number of frames in each clip
 img_height: 1080 # video frame height
 img_width: 1920 # video frame width
@@ -46,8 +46,8 @@ num_input_layers: 3 # number of input layers in the unpie network
 num_middle_layers: 3 # number of middle layers in the unpie network
 num_gcn_final_layers: 3 # number of final gcn layers in the unpie network
 scene_gcn_dim: 32 # final scene embedding dimension
-drop_tcn: 0.0 # dropout rate for temporal convolutional network
-drop_conv: 0.0 # dropout rate for graph convolutional network
+drop_tcn: 0.2 # dropout rate for temporal convolutional network
+drop_conv: 0.2 # dropout rate for graph convolutional network
 is_scene: False # whether to use scene embeddings
 
 # Log files
