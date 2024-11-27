@@ -1,5 +1,5 @@
 # Training params
-learning_rates: '0.01,0.003,0.0007,0.0003' # optimizer learning rates
+learning_rates: '0.03,0.01,0.007' # optimizer learning rates
 # learning_rates: '0.003'
 weight_decay: 0.0001 # loss function weight decay
 instance_t: 0.07 # temperature for contrastive loss
@@ -23,11 +23,11 @@ IR:
   load_step: null # load step
 LA:
   task: 'LA'
-  lr_boundaries: '600,1000,1400'
+  lr_boundaries: '700, 900'
   # lr_boundaries: null
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 2000
+  train_num_epochs: 1000
   load_task: 'IR'
 
 # Data preprocessing params
@@ -46,8 +46,8 @@ num_input_layers: 3 # number of input layers in the unpie network
 num_middle_layers: 3 # number of middle layers in the unpie network
 num_gcn_final_layers: 3 # number of final gcn layers in the unpie network
 scene_gcn_dim: 32 # final scene embedding dimension
-drop_tcn: 0.2 # dropout rate for temporal convolutional network
-drop_conv: 0.2 # dropout rate for graph convolutional network
+drop_tcn: 0.1 # dropout rate for temporal convolutional network
+drop_conv: 0.1 # dropout rate for graph convolutional network
 is_scene: True # whether to use scene embeddings
 
 # Log files
