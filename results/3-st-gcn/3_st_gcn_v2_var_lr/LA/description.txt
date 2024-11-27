@@ -1,0 +1,1 @@
+st-gcn with variable lr - 1000 epochs
