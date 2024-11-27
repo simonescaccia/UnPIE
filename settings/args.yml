@@ -32,7 +32,7 @@ LA:
 
 # Data preprocessing params
 edge_importance: True # weights for edges in the graph. TODO True even though inference_num_clips != 1
-edge_weigths: norm_compl # Choose between False, no_norm, norm, norm_compl, compl
+edge_weigths: 'norm_compl' # Choose between False, no_norm, norm, norm_compl, compl
 num_frames: 15 # number of frames in each clip
 img_height: 1080 # video frame height
 img_width: 1920 # video frame width
