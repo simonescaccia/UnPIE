@@ -148,6 +148,7 @@ class UnPIESTGCN(tf.keras.Model):
         num_nodes = params['num_nodes']
         self.edge_importance = params['edge_importance']
         self.is_scene = params['is_scene']
+        self.share_edge_importance = params['share_edge_importance']
 
         self.data_bn_x = tf.keras.layers.BatchNormalization(axis=1)
         if self.is_scene:
@@ -190,17 +191,17 @@ class UnPIESTGCN(tf.keras.Model):
                 )
                 for _ in self.STGCN_layers_x
             ]
-            if self.is_scene:
-                self.edge_importance_b = [
-                    tf.Variable(
-                        tf.random.normal(
-                            shape=(num_nodes, num_nodes),
-                            stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
-                        ),
-                        trainable=True,
-                    )
-                    for _ in self.STGCN_layers_b
-                ]
+            if not self.share_edge_importance and self.is_scene:
+                    self.edge_importance_b = [
+                        tf.Variable(
+                            tf.random.normal(
+                                shape=(num_nodes, num_nodes),
+                                stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
+                            ),
+                            trainable=True,
+                        )
+                        for _ in self.STGCN_layers_b
+                    ]
 
     def call(self, x, b, a, training):
         # x: N, T, V, C
@@ -232,6 +233,7 @@ class UnPIESTGCN(tf.keras.Model):
             for layer, importance in zip(self.STGCN_layers_x, self.edge_importance_x):
                 x, _ = layer(x, a * importance, training)
             if self.is_scene:
+                self.edge_importance_b = self.edge_importance_x if self.share_edge_importance else self.edge_importance_b
                 for layer, importance in zip(self.STGCN_layers_b, self.edge_importance_b):
                     b, _ = layer(b, a * importance, training)
         else:

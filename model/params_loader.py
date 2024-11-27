@@ -109,6 +109,7 @@ class ParamsLoader:
             "num_nodes": num_nodes,
             "edge_importance": self.args['edge_importance'],
             "is_scene": self.args['is_scene'],
+            'share_edge_importance': self.args['share_edge_importance'], 
         }
         return model_params
 
