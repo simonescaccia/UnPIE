@@ -51,12 +51,8 @@ class UnPIE():
         self.memory_bank = MemoryBank(self.data_len, self.emb_dim)
         self.nn_clustering = None
 
-        self.all_labels = tf.Variable(
-            initial_value=tf.zeros(shape=(self.data_len,), dtype=tf.int32),
-            trainable=False,
-            dtype=tf.int32,
-            name='all_labels'
-        )
+        self.all_labels = self.params['datasets']['train']['dataloader'].dataset.y
+
         # Initialize lbl_init_values with a range
         lbl_init_values = tf.range(self.data_len, dtype=tf.int64)
         no_kmeans_k = len(self.kmeans_k)
@@ -81,7 +77,6 @@ class UnPIE():
         # Checkpoint
         self.checkpoint = tf.train.Checkpoint(
             model=self.model,
-            all_labels = self.all_labels,
             cluster_labels=self.cluster_labels,
             memory_bank=self.memory_bank._bank,
             epoch=tf.Variable(0))
@@ -218,10 +213,6 @@ class UnPIE():
                 a = tf.cast(a, tf.float32)
                 y = tf.cast(y, tf.int32)
                 i = tf.cast(i, tf.int32)
-
-                if epoch == 1:                  
-                    # Validation and test purpose: compute distance
-                    tf.compat.v1.scatter_update(self.all_labels, i, y) # collect all validation labels: first validation matric is not accurate
 
                 train_step += 1
                 self.start_time = time.time()
