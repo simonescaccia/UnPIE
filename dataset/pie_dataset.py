@@ -135,9 +135,6 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         return x, b, a, y, i
     
     def _get_distance(self, ped_position, obj_position):
-        print('self.edge_weigths:', self.edge_weigths)
-        import sys
-        sys.exit()
         distance = np.linalg.norm(np.array(ped_position) - np.array(obj_position))
         if self.edge_weigths == 'no_norm':
             pass
