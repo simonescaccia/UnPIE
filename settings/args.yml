@@ -48,7 +48,7 @@ num_gcn_final_layers: 3 # number of final gcn layers in the unpie network
 scene_gcn_dim: 32 # final scene embedding dimension
 drop_tcn: 0.2 # dropout rate for temporal convolutional network
 drop_conv: 0.2 # dropout rate for graph convolutional network
-is_scene: False # whether to use scene embeddings
+is_scene: True # whether to use scene embeddings
 
 # Log files
 train_log_file: 'log.txt' # training log file
