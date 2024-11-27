@@ -90,15 +90,15 @@ class PIE(object):
         self.ped_type = 'peds'
         self.traffic_type = 'objs'
 
-        self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
-                               'val': ['set05', 'set06'],
-                               'test': ['set03'],
-                               'all': ['set01', 'set02', 'set03',
-                                       'set04', 'set05', 'set06']}
-        # self.image_set_nums = {'train': ['set04'],
-        #                 'val': ['set06'],
-        #                 'test': ['set03'],
-        #                 'all': ['set03', 'set04', 'set06']}
+        # self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
+        #                        'val': ['set05', 'set06'],
+        #                        'test': ['set03'],
+        #                        'all': ['set01', 'set02', 'set03',
+        #                                'set04', 'set05', 'set06']}
+        self.image_set_nums = {'train': ['set04'],
+                        'val': ['set06'],
+                        'test': ['set03'],
+                        'all': ['set03', 'set04', 'set06']}
 
     # Path generators
     @property
