@@ -49,7 +49,7 @@ from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress, mer
 from utils.print_utils import print_separator
 
 class PIE(object):
-    def __init__(self, regen_database=False, data_path=''):
+    def __init__(self, data_opts, data_sets, regen_database=False, data_path=''):
         """
         Class constructor
         :param regen_database: Whether generate the database or not
@@ -69,36 +69,24 @@ class PIE(object):
         self.clips_path = join(self.pie_path, 'PIE_clips')
         self.images_path = join(self.pie_path, 'images')
         
-        self.data_opts = {'fstride': 1,
-            'sample_type': 'all', 
-            'height_rng': [0, float('inf')],
-            'squarify_ratio': 0,
-            'data_split_type': 'default',  #  kfold, random, default
-            'seq_type': 'intention', #  crossing , intention
-            'min_track_size': 0, #  discard tracks that are shorter
-            'max_size_observe': 15,  # number of observation frames
-            'max_size_predict': 5,  # number of prediction frames
-            'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
-            'balance': True,  # balance the training and testing samples
-            'crop_type': 'context',  # crop 2x size of bbox around the pedestrian
-            'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
-            'encoder_input_type': [],
-            'decoder_input_type': ['bbox'],
-            'output_type': ['intention_binary']
-            }
+        self.data_opts = data_opts
         
         self.ped_type = 'peds'
         self.traffic_type = 'objs'
 
-        # self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
-        #                        'val': ['set05', 'set06'],
-        #                        'test': ['set03'],
-        #                        'all': ['set01', 'set02', 'set03',
-        #                                'set04', 'set05', 'set06']}
-        self.image_set_nums = {'train': ['set04'],
-                        'val': ['set06'],
-                        'test': ['set03'],
-                        'all': ['set03', 'set04', 'set06']}
+        if data_sets == 'all':
+            self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
+                                'val': ['set05', 'set06'],
+                                'test': ['set03'],
+                                'all': ['set01', 'set02', 'set03',
+                                        'set04', 'set05', 'set06']}
+        elif data_sets == 'small':
+            self.image_set_nums = {'train': ['set04'],
+                            'val': ['set06'],
+                            'test': ['set03'],
+                            'all': ['set03', 'set04', 'set06']}
+        else:
+            print('Invalid data_sets. Please choose from "all" or "small"')
 
     # Path generators
     @property
@@ -311,48 +299,24 @@ class PIE(object):
                 print('\n')
 
     def get_path(self,
-                 type_save='models', # model or data
-                 models_save_folder='',
-                 model_name='convlstm_encdec',
-                 file_name='',
-                 data_subset='',
-                 data_type='',
-                 save_root_folder='',
-                 feature_type=''):
+                 model_name,
+                 data_subset,
+                 data_type,
+                 feature_type):
         """
         A path generator method for saving model and config data. Creates directories
         as needed.
-        :param type_save: Specifies whether data or model is saved.
-        :param models_save_folder: model name (e.g. train function uses timestring "%d%b%Y-%Hh%Mm%Ss")
-        :param model_name: model name (either trained convlstm_encdec model or vgg16)
-        :param file_name: Actual file of the file (e.g. model.h5, history.h5, config.pkl)
-        :param data_subset: train, test or val
+        :param model_name: model name
+        :param data_subset: all, train, test or val
         :param data_type: type of the data (e.g. features_context_pad_resize)
-        :param save_root_folder: The root folder for saved data.
+        :param feature_type: type of the feature (e.g. ped, traffic)
         :return: The full path for the save folder
         """
-        if save_root_folder == '':
-            save_root_folder = os.path.join(self.pie_path, 'data')
-
-        assert(type_save in ['models', 'data'])
-        if data_type != '':
-            assert(any([d in data_type for d in ['images', 'features']]))
-        root = os.path.join(save_root_folder, type_save)
-
-        if type_save == 'models':
-            save_path = os.path.join(save_root_folder, 'pie', 'intention', models_save_folder)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            return os.path.join(save_path, file_name), save_path
-        else:
-            assert feature_type != '' and feature_type != None
-            assert data_subset != '' and data_subset != None
-            assert data_type != '' and data_type != None
-            assert model_name != '' and model_name != None
-            save_path = os.path.join(root, 'pie', feature_type, data_subset, data_type, model_name)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            return save_path
+        root = os.path.join(self.pie_path, 'data')
+        save_path = os.path.join(root, model_name, data_type, feature_type, data_subset)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        return save_path
 
     def get_tracks(self, dataset, data_type, seq_length, overlap):
         """
@@ -497,17 +461,17 @@ class PIE(object):
         :param image: The image
         :param save_path: The path to save the features
         """
-        save_path = self.get_path(type_save='data',
-                                  data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                  model_name='vgg16_'+'none',
-                                  data_subset='all',
-                                  feature_type=feature_type)
+        save_path = self.get_path(
+            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+            model_name=self.pretrained_extractor.model_name,
+            data_subset='all',
+            feature_type=feature_type)
         dest_folder = self.get_folder_from_set(set_id)
-        dest_path = self.get_path(type_save='data',
-                                  data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                  model_name='vgg16_'+'none',
-                                  data_subset=dest_folder,
-                                  feature_type=feature_type)
+        dest_path = self.get_path(
+            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+            model_name=self.pretrained_extractor.model_name,
+            data_subset=dest_folder,
+            feature_type=feature_type)
         img_save_folder = os.path.join(save_path, set_id, vid_id)
         img_save_path = os.path.join(img_save_folder, img_name+'_'+ped_id+'.pkl')
         img_dest_folder = os.path.join(dest_path, set_id, vid_id)
@@ -585,7 +549,7 @@ class PIE(object):
         :param extract_frame_type: Whether to extract 'all' frames or only the ones that are 'annotated'
                              Note: extracting 'all' features requires approx. TODO
         """  
-        self.pretrained_extractor = PretrainedExtractor() # Create extractor model  
+        self.pretrained_extractor = PretrainedExtractor() # Create extractor model
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
         ped_dataframe = self._get_ped_info_per_image(
@@ -616,17 +580,17 @@ class PIE(object):
         folders = ['train', 'val', 'test']
         feature_types = [self.ped_type, self.traffic_type]
         for feature_type in feature_types:
-            source_path = self.get_path(type_save='data',
-                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                model_name='vgg16_'+'none',
-                                data_subset='all',
-                                feature_type=feature_type)
+            source_path = self.get_path(
+                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                model_name='vgg16_'+'none',
+                data_subset='all',
+                feature_type=feature_type)
             for folder in folders:
-                dest_path = self.get_path(type_save='data',
-                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                    model_name='vgg16_'+'none',
-                                    data_subset=folder,
-                                    feature_type=feature_type)
+                dest_path = self.get_path(
+                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                    model_name='vgg16_'+'none',
+                    data_subset=folder,
+                    feature_type=feature_type)
                 sets = self.get_image_set_ids(folder)
                 for set_id in sets:
                     # Move the folder set_id from source_path to path

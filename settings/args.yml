@@ -31,7 +31,9 @@ LA:
   load_task: 'IR'
 
 # Data preprocessing params
-edge_importance: True # weights for edges in the graph. TODO True even though inference_num_clips != 1
+data_sets: 'small' # data sets to use (small, all)
+feature_extractor: 'efficientnetb3' # feature extractor to use (vgg16, efficientnetb3)
+edge_importance: True # weights for edges in the graph.
 edge_weigths: 'norm_compl' # Choose between False, no_norm, norm, norm_compl, compl
 num_frames: 15 # number of frames in each clip
 img_height: 1080 # video frame height
@@ -49,6 +51,7 @@ scene_gcn_dim: 32 # final scene embedding dimension
 drop_tcn: 0.1 # dropout rate for temporal convolutional network
 drop_conv: 0.1 # dropout rate for graph convolutional network
 is_scene: True # whether to use scene embeddings
+share_edge_importance: False # whether to share edge importance weights between scene and node gcns
 
 # Log files
 train_log_file: 'log.txt' # training log file

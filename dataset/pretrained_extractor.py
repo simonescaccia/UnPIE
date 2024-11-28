@@ -8,7 +8,7 @@ class PretrainedExtractor(object):
         #     weights='imagenet', 
         #     pooling='avg',
         #     include_top=False
-        # )
+        # )        
         self.model = tf.keras.applications.EfficientNetB3(
             include_top=False,
             weights='imagenet',
@@ -17,6 +17,8 @@ class PretrainedExtractor(object):
 
         #self.preprocess_func = tf.keras.applications.vgg16.preprocess_input
         self.preprocess_func = tf.keras.applications.efficientnet.preprocess_input
+
+        self.model_name = self.model.name
 
     def __call__(self, inputs):
         x = self.model.predict(inputs, verbose=0)
