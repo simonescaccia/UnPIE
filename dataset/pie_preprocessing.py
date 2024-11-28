@@ -27,11 +27,13 @@ class PIEPreprocessing(object):
         self.img_width = params['img_width']
         self.edge_weigths = params['edge_weigths']
         self.edge_importance = params['edge_importance']
+        self.feature_extractor = params['feature_extractor']
+        self.data_sets = params['data_sets']
 
         self.ped_class = 'ped'
         self.other_ped_class = 'other_ped'
 
-        self.pie = PIE(data_path=self.pie_path)
+        self.pie = PIE(data_path=self.pie_path, data_opts=self.data_opts, data_sets=self.data_sets)
 
     def get_datasets(self):
         '''
@@ -201,16 +203,16 @@ class PIEPreprocessing(object):
         other_ped_ids = data['other_ped_ids']
 
         # load the feature files if exists
-        peds_load_path = self.pie.get_path(type_save='data',
-                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                    model_name='vgg16_'+'none',
-                                    data_subset = data_split,
-                                    feature_type=self.pie.get_ped_type())
-        objs_load_path = self.pie.get_path(type_save='data',
-                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                    model_name='vgg16_'+'none',
-                                    data_subset = data_split,
-                                    feature_type=self.pie.get_traffic_type())
+        peds_load_path = self.pie.get_path(
+            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+            model_name=self.feature_extractor,
+            data_subset = data_split,
+            feature_type=self.pie.get_ped_type())
+        objs_load_path = self.pie.get_path(
+            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+            model_name=self.feature_extractor,
+            data_subset = data_split,
+            feature_type=self.pie.get_traffic_type())
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_split, peds_load_path))
 
         ped_sequences, obj_sequences, other_ped_sequences = [], [], []

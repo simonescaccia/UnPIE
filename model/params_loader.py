@@ -9,6 +9,45 @@ class ParamsLoader:
 
         self._set_environment()
 
+    @staticmethod
+    def get_pie_params_static(args, config):
+        data_opts = {
+            'fstride': 1,
+            'sample_type': 'all', 
+            'height_rng': [0, float('inf')],
+            'squarify_ratio': 0,
+            'data_split_type': 'default',  #  kfold, random, default
+            'seq_type': 'intention', #  crossing , intention
+            'min_track_size': 0, #  discard tracks that are shorter
+            'max_size_observe': args['num_frames'],  # number of observation frames
+            'max_size_predict': 5,  # number of prediction frames
+            'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
+            'balance': True,  # balance the training and testing samples
+            'crop_type': 'context',  # crop 2x size of bbox around the pedestrian
+            'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
+            'encoder_input_type': [],
+            'decoder_input_type': ['bbox'],
+            'output_type': ['intention_binary']
+        }
+        pie_params = {
+            'data_opts': data_opts,
+            'pie_path': config['PIE_PATH'],
+            'batch_size': args['batch_size'],
+            'inference_batch_size': args['inference_batch_size'],
+            'inference_num_clips': args['inference_num_clips'],
+            'img_height': args['img_height'],
+            'img_width': args['img_width'],
+            'edge_weigths': args['edge_weigths'],
+            'edge_importance': args['edge_importance'],
+            'feature_extractor': args['feature_extractor'],
+            'data_sets': args['data_sets'],
+        }
+        return pie_params
+
+
+    def get_pie_params(self):
+        return self.get_pie_params_static(self.args, self.config)
+
 
     def get_args(self):
         return self.args
@@ -128,39 +167,6 @@ class ParamsLoader:
             'val_log_file': save_params['val_log_file'],
         }
         return plot_params
-
-
-    def get_pie_params(self):
-        data_opts = {
-            'fstride': 1,
-            'sample_type': 'all', 
-            'height_rng': [0, float('inf')],
-            'squarify_ratio': 0,
-            'data_split_type': 'default',  #  kfold, random, default
-            'seq_type': 'intention', #  crossing , intention
-            'min_track_size': 0, #  discard tracks that are shorter
-            'max_size_observe': self.args['num_frames'],  # number of observation frames
-            'max_size_predict': 5,  # number of prediction frames
-            'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
-            'balance': True,  # balance the training and testing samples
-            'crop_type': 'context',  # crop 2x size of bbox around the pedestrian
-            'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
-            'encoder_input_type': [],
-            'decoder_input_type': ['bbox'],
-            'output_type': ['intention_binary']
-        }
-        pie_params = {
-            'data_opts': data_opts,
-            'pie_path': self.config['PIE_PATH'],
-            'batch_size': self.args['batch_size'],
-            'inference_batch_size': self.args['inference_batch_size'],
-            'inference_num_clips': self.args['inference_num_clips'],
-            'img_height': self.args['img_height'],
-            'img_width': self.args['img_width'],
-            'edge_weigths': self.args['edge_weigths'],
-            'edge_importance': self.args['edge_importance'],
-        }
-        return pie_params
 
     def get_train_params(self, datasets):
         train_dataset_len = datasets['train']['len']
