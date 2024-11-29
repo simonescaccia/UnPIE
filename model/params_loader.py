@@ -103,14 +103,15 @@ class ParamsLoader:
         cache_dir = os.path.join(
                 self.args['cache_dir'], dir_num_epochs, task)
         save_params = {
-                'save_valid_freq': self.args['fre_valid'],
-                'fre_save_model': self.args['fre_save_model'],
-                'cache_dir': cache_dir,
-                'train_log_file': self.args['train_log_file'],
-                'val_log_file': self.args['val_log_file'],
-                'val_prediction_file': self.args['val_prediction_file'],
-                'test_log_file': self.args['test_log_file'],
-                }
+            'save_valid_freq': self.args['fre_valid'],
+            'fre_save_model': self.args['fre_save_model'],
+            'cache_dir': cache_dir,
+            'train_log_file': self.args['train_log_file'],
+            'val_log_file': self.args['val_log_file'],
+            'val_prediction_file': self.args['val_prediction_file'],
+            'test_log_file': self.args['test_log_file'],
+            'plot_dir': self.args['plot_dir'],
+        }
         
         load_task = self.args[self.setting]['load_task']
         load_step = None
@@ -182,6 +183,7 @@ class ParamsLoader:
             'num_epochs': self.args[self.setting]['train_num_epochs'],
             'num_steps': train_num_steps,
             'clstr_update_per_epoch': self.args['clstr_update_per_epoch'],
+            'fre_plot_clusters': self.args['fre_plot_clusters'],
         }
         
         if not self.args[self.setting]['task'] == 'SUP':

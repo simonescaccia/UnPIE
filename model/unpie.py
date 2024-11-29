@@ -10,7 +10,7 @@ from model.memory_bank import MemoryBank
 from model.self_loss import get_selfloss
 from model.unpie_network import UnPIENetwork
 from utils.print_utils import print_separator, write_dict
-from utils.vie_utils import tuple_get_one
+from utils.vie_utils import plot_cluster, tuple_get_one
 
 import sys
 np.set_printoptions(threshold=sys.maxsize)
@@ -24,7 +24,9 @@ class UnPIE():
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
         self.log_file_path = os.path.join(self.cache_dir, self.params['save_params']['train_log_file'])
         self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
+        self.plot_save_path = os.path.join(self.cache_dir, self.params['save_params']['plot_dir'])
         os.system('mkdir -p %s' % self.cache_dir)
+        os.system('mkdir -p %s' % self.plot_save_path)
         self.load_from_curr_exp = tf.train.latest_checkpoint(self.cache_dir)
         if not self.load_from_curr_exp: # if no checkpoint is found then create a new log file
             self.log_writer = open(self.log_file_path, 'w')
@@ -194,6 +196,7 @@ class UnPIE():
 
     def _run_train_loop(self):
         clstr_update_per_epoch = self.params['train_params']['clstr_update_per_epoch']
+        fre_plot_clusters = self.params['train_params']['fre_plot_clusters']
         fre_save_model = self.params['save_params']['fre_save_model']
         save_valid_freq = self.params['save_params']['save_valid_freq']
         train_dataloader = self.params['datasets']['train']['dataloader']
@@ -225,11 +228,19 @@ class UnPIE():
 
                 self.log_writer.write(message + '\n')
 
-                # Recompute clusters for LA task: TODO choose right frequency, epoch/batch/multi-batch
-                if train_step == 1 or train_step % (num_steps // clstr_update_per_epoch) == 0:
+                # Recompute clusters for LA task
+                if train_step == 1 or \
+                        train_step % (num_steps // clstr_update_per_epoch) == 0:
                     print("Recomputing clusters...")
                     km = Kmeans(self.kmeans_k, self.memory_bank)
                     self.cluster_labels.assign(km.recompute_clusters())
+                    
+                    # Plot clusters
+                    if train_step == 1 or \
+                            train_step % ((num_steps // clstr_update_per_epoch) * (clstr_update_per_epoch * fre_plot_clusters)) == 0:
+                        print("Plotting clusters...")
+                        plot_cluster(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
+
 
             self.checkpoint.epoch.assign_add(1)
 
