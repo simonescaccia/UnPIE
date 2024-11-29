@@ -217,7 +217,6 @@ class ParamsLoader:
         self.args['emb_dim'] = self.args['scene_gcn_dim'] + self.args['gcn_dim']
         self.args['kmeans_k'] = [self.args['num_classes']]
         self.args['input_shape'] = self._get_input_shape()
-        self.args['instance_k'] = datasets['train']['len'] if not self.args['instance_k'] else self.args['instance_k']
 
         model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])
         model_params = {

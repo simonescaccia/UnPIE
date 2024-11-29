@@ -1,5 +1,5 @@
 # Training params
-learning_rates: '0.03,0.01,0.007' # optimizer learning rates
+learning_rates: '0.01,0.007' # optimizer learning rates
 # learning_rates: '0.003'
 weight_decay: 0.0001 # loss function weight decay
 instance_t: 0.07 # temperature for contrastive loss
@@ -8,7 +8,7 @@ inference_batch_size: 32 # val/test batch size
 inference_num_clips: 5 # number of clips to sample from each video
 clstr_update_per_epoch: 10 # number of cluster updates per epoch
 kNN_inference: 100 # number of nearest neighbors to consider
-instance_k: null # background neighbors to sample. If null, all training samples are considered
+instance_k: 0 # background neighbors to sample. If 0, all training samples are considered
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
 num_classes: 2 # number of different clusters
@@ -23,16 +23,16 @@ IR:
   load_step: null # load step
 LA:
   task: 'LA'
-  lr_boundaries: '700, 900'
+  lr_boundaries: '500'
   # lr_boundaries: null
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 1000
+  train_num_epochs: 500
   load_task: 'IR'
 
 # Data preprocessing params
-data_sets: 'small' # data sets to use (small, all)
-feature_extractor: 'efficientnetb3' # feature extractor to use (vgg16, efficientnetb3)
+data_sets: 'all' # data sets to use (small, all)
+feature_extractor: 'vgg16' # feature extractor to use (vgg16, efficientnetb3)
 edge_importance: True # weights for edges in the graph.
 edge_weigths: 'norm_compl' # Choose between False, no_norm, norm, norm_compl, compl
 num_frames: 15 # number of frames in each clip
