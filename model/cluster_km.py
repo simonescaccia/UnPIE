@@ -67,8 +67,7 @@ class Kmeans:
         all_lables = []
         for k_idx, each_k in enumerate(self.k):
             # cluster the data
-            I, _ = run_kmeans(data, each_k, 
-                              verbose)
+            I, _ = run_kmeans(data, each_k, False)
             new_clust_labels = np.asarray(I)
             all_lables.append(new_clust_labels)
         new_clust_labels = np.stack(all_lables, axis=0)
