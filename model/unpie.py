@@ -26,7 +26,6 @@ class UnPIE():
         self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
         self.plot_save_path = os.path.join(self.cache_dir, self.params['save_params']['plot_dir'])
         os.system('mkdir -p %s' % self.cache_dir)
-        os.system('mkdir -p %s' % self.plot_save_path)
         self.load_from_curr_exp = tf.train.latest_checkpoint(self.cache_dir)
         if not self.load_from_curr_exp: # if no checkpoint is found then create a new log file
             self.log_writer = open(self.log_file_path, 'w')
