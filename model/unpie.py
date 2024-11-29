@@ -4,6 +4,7 @@ import sklearn
 import numpy as np
 import tensorflow as tf
 
+from .cluster_km import Kmeans
 from model.instance_model import InstanceModel
 from model.memory_bank import MemoryBank
 from model.self_loss import get_selfloss
@@ -49,7 +50,6 @@ class UnPIE():
         self.kmeans_k = self.params['model_params']['model_func_params']['kmeans_k']
 
         self.memory_bank = MemoryBank(self.data_len, self.emb_dim)
-        self.nn_clustering = None
 
         self.all_labels = self.params['datasets']['train']['dataloader'].dataset.y
 
@@ -69,10 +69,6 @@ class UnPIE():
             dtype=tf.int64,
             name='cluster_labels'
         )
-
-        if self.task == 'LA':
-            from .cluster_km import Kmeans
-            self.nn_clustering = Kmeans(self.kmeans_k, self.get_cluster_labels, self.get_memory_bank)
 
         # Checkpoint
         self.checkpoint = tf.train.Checkpoint(
@@ -230,9 +226,10 @@ class UnPIE():
                 self.log_writer.write(message + '\n')
 
                 # Recompute clusters for LA task: TODO choose right frequency, epoch/batch/multi-batch
-                if self.nn_clustering is not None and train_step % (num_steps // clstr_update_per_epoch) == 0:
+                if self.checkpoint.epoch == 0 or train_step % (num_steps // clstr_update_per_epoch) == 0:
                     print("Recomputing clusters...")
-                    self.nn_clustering.recompute_clusters()
+                    km = Kmeans(self.kmeans_k, self.memory_bank)
+                    self.cluster_labels = km.recompute_clusters()
 
             self.checkpoint.epoch.assign_add(1)
 

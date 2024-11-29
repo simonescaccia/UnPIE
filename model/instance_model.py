@@ -62,10 +62,11 @@ class InstanceModel(object):
         return probs
 
     def get_cluster_classification_loss(
-            self, cluster_labels, 
-            k=None):
-        if not k:
-            k = self.instance_k
+            self, cluster_labels):
+        '''
+        Aim: Compute the loss starting from the cluster labels
+        '''
+        k = self.instance_k
         # ignore all but the top k nearest examples
         all_dps = self.memory_bank.get_all_dot_products(self.embed_output)
         top_dps, top_idxs = tf.nn.top_k(all_dps, k=k, sorted=False)
