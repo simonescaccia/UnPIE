@@ -4,13 +4,13 @@ import sklearn
 import numpy as np
 import tensorflow as tf
 
-from .cluster_km import Kmeans
+from model.cluster_km import Kmeans
 from model.instance_model import InstanceModel
 from model.memory_bank import MemoryBank
 from model.self_loss import get_selfloss
 from model.unpie_network import UnPIENetwork
 from utils.print_utils import print_separator, write_dict
-from utils.vie_utils import plot_cluster, tuple_get_one
+from utils.vie_utils import tuple_get_one
 
 import sys
 np.set_printoptions(threshold=sys.maxsize)
@@ -26,6 +26,7 @@ class UnPIE():
         self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
         self.plot_save_path = os.path.join(self.cache_dir, self.params['save_params']['plot_dir'])
         os.system('mkdir -p %s' % self.cache_dir)
+        os.system('mkdir -p %s' % self.plot_save_path)
         self.load_from_curr_exp = tf.train.latest_checkpoint(self.cache_dir)
         if not self.load_from_curr_exp: # if no checkpoint is found then create a new log file
             self.log_writer = open(self.log_file_path, 'w')
@@ -237,9 +238,8 @@ class UnPIE():
                     # Plot clusters
                     if train_step == 1 or \
                             train_step % ((num_steps // clstr_update_per_epoch) * (clstr_update_per_epoch * fre_plot_clusters)) == 0:
-                        print("Plotting clusters...")
-                        plot_cluster(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
-
+                        print("Saving clusters...")
+                        self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
 
             self.checkpoint.epoch.assign_add(1)
 
@@ -257,6 +257,18 @@ class UnPIE():
                 print('Saving model...')
                 self.check_manager.save(checkpoint_number=epoch)
 
+
+    def save_memory_bank(self, memory_bank, y, save_path, epoch):
+        # Save the true labels if they are not saved yet
+        file_name = os.path.join(save_path, 'true_labels.npy')
+        if not os.path.exists(file_name):
+            np.save(file_name, y)
+
+        # Save the memory bank
+        memory_bank_dir = os.path.join(save_path, 'memory_bank')
+        os.system('mkdir -p %s' % memory_bank_dir)
+        file_name = os.path.join(memory_bank_dir, f'epoch_{epoch}_memory_bank.npy')
+        np.save(file_name, memory_bank.as_tensor().numpy())
 
     def train(self):
         print_separator('Starting UnPIE training')

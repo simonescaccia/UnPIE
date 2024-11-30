@@ -2,10 +2,59 @@ import ast
 import os
 import sys
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from model.params_loader import ParamsLoader
 from utils.print_utils import print_separator
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+
+def plot_cluster(save_path):
+    algorithm = 'PCA_TSNE'
+    # load the true labels
+    file_name = os.path.join(save_path, 'true_labels.npy')
+    y = np.load(file_name)
+
+    # load the memory bank for each epoch
+    memory_bank_path = os.path.join(save_path, 'memory_bank')
+    if not os.path.exists(memory_bank_path):
+        return
+    # read all files in the directory
+    files = os.listdir(memory_bank_path)
+    for file in tqdm(files):
+        # get the epoch number from the file name
+        epoch = file.split('_')[1]
+        # read the memory bank
+        memory_bank = np.load(os.path.join(memory_bank_path, file))
+        # reduce the data dimention using PCA and 
+        pca = PCA(n_components=50)
+        tsne = TSNE(n_components=2)
+        data_pca = pca.fit_transform(memory_bank)
+        data_tsne = tsne.fit_transform(data_pca)
+        # plot clusters
+        plot_cluster_epoch(save_path, data_tsne, epoch, y, algorithm)
+
+
+def plot_cluster_epoch(save_path, data_2d, epoch, y, algorithm):
+    alg_path = os.path.join(save_path, algorithm)
+
+    # Create a figure for the true labels plot
+    plt.figure(figsize=(7, 7))
+    unique_labels = np.unique(y)
+    for label in unique_labels:
+        label_points = data_2d[y == label]
+        plt.scatter(label_points[:, 0], label_points[:, 1], label=f'Label {label}')
+    plt.title('{}: True Labels Visualized in 2D'.format(algorithm))
+    plt.xlabel('Component 1')
+    plt.ylabel('Component 2')
+    plt.legend()
+
+    # Save the figure
+    os.system('mkdir -p %s' % alg_path)
+    file_name = os.path.join(alg_path, f'epoch_{epoch}_{algorithm}.png')
+    plt.savefig(file_name)
+    plt.close()  # Close the figure to avoid interactive display
 
 def save_plot(df, x_col, y_col, title, xlabel, ylabel, save_path):
     """
@@ -64,4 +113,8 @@ for i in tqdm(range(len(training_steps))):
     df_keys.remove('Epoch')
     for key in df_keys:
         save_plot(val_df, 'Epoch', key, 'Validation {}'.format(key), 'Epoch', key, os.path.join(cache_dir, 'val_{}.png'.format(key.lower())))
+    
+    # plot clusters
+    plot_save_path = os.path.join(cache_dir, params['plot_dir'])
+    plot_cluster(plot_save_path)
 

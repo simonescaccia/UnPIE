@@ -166,6 +166,7 @@ class ParamsLoader:
             'cache_dir': save_params['cache_dir'],
             'train_log_file': save_params['train_log_file'],
             'val_log_file': save_params['val_log_file'],
+            'plot_dir': self.args['plot_dir'],
         }
         return plot_params
 
