@@ -34,10 +34,10 @@ class SGCN(tf.keras.Model):
                                            kernel_regularizer=REGULARIZER)
         self.drop = tf.keras.layers.Dropout(dropout_conv)
 
-    def call(self, x, a):
+    def call(self, x, a, training):
         # x: N, C, T, V
         # a: N, T, V, V
-        x = self.drop(self.conv(x))
+        x = self.drop(self.conv(x), training)
         x = tf.einsum('nctv,ntvw->nctw', x, a)
         return x, a
 
@@ -113,7 +113,7 @@ class STGCN(tf.keras.Model):
 
     def call(self, x, a, training):
         res = self.residual(x, training)
-        x, a = self.sgcn(x, a)
+        x, a = self.sgcn(x, a, training)
         x = self.tgcn(x, training)
         x += res
         x = self.act(x)
