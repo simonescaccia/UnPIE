@@ -72,21 +72,26 @@ class UnPIE():
             name='cluster_labels'
         )
 
-        # Checkpoint
-        self.checkpoint = tf.train.Checkpoint(
-            model=self.model,
-            cluster_labels=self.cluster_labels,
-            memory_bank=self.memory_bank._bank,
-            epoch=tf.Variable(0))
-
-        self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
-
         # Optimizer
         opt_params = self.params['optimizer_params']
         self.learning_rate = self._get_learning_rate()
         self.optimizer = tf.keras.optimizers.SGD(
             learning_rate=self.learning_rate, 
             **opt_params)
+
+        # Best accuracy
+        self.best_val_acc = tf.Variable(0.0, trainable=False, dtype=tf.float32)
+
+        # Checkpoint
+        self.checkpoint = tf.train.Checkpoint(
+            model=self.model,
+            cluster_labels=self.cluster_labels,
+            memory_bank=self.memory_bank._bank,
+            optimizer=self.optimizer,
+            best_val_acc=self.best_val_acc,
+            epoch=tf.Variable(0))
+
+        self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
 
         self._init_and_restore()
 
@@ -254,8 +259,10 @@ class UnPIE():
 
             # Save checkpoint
             if epoch % fre_save_model == 0:
-                print('Saving model...')
-                self.check_manager.save(checkpoint_number=epoch)
+                if val_result['Accuracy u.f.l.'] > self.best_val_acc:
+                    print('Saving model...')
+                    self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
+                    self.check_manager.save(checkpoint_number=epoch)
 
 
     def save_memory_bank(self, memory_bank, y, save_path, epoch):
