@@ -238,13 +238,7 @@ class UnPIE():
                         train_step % (num_steps // clstr_update_per_epoch) == 0:
                     print("Recomputing clusters...")
                     km = Kmeans(self.kmeans_k, self.memory_bank)
-                    self.cluster_labels.assign(km.recompute_clusters())
-                    
-                    # Plot clusters
-                    if train_step == 1 or \
-                            train_step % ((num_steps // clstr_update_per_epoch) * (clstr_update_per_epoch * fre_plot_clusters)) == 0:
-                        print("Saving clusters...")
-                        self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
+                    self.cluster_labels.assign(km.recompute_clusters())                        
 
             self.checkpoint.epoch.assign_add(1)
 
@@ -264,18 +258,27 @@ class UnPIE():
                     self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
                     self.check_manager.save(checkpoint_number=epoch)
 
+                    print("Saving clusters...")
+                    self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, clean=True)
 
-    def save_memory_bank(self, memory_bank, y, save_path, epoch):
+
+    def save_memory_bank(self, memory_bank, y, save_path, epoch, clean):
+        memory_bank_dir = os.path.join(save_path, 'memory_bank')
+
         # Save the true labels if they are not saved yet
         file_name = os.path.join(save_path, 'true_labels.npy')
         if not os.path.exists(file_name):
             np.save(file_name, y)
 
+        # Remove previous memory bank files
+        if clean:
+            os.system('rm -rf %s' % memory_bank_dir)
+
         # Save the memory bank
-        memory_bank_dir = os.path.join(save_path, 'memory_bank')
         os.system('mkdir -p %s' % memory_bank_dir)
         file_name = os.path.join(memory_bank_dir, f'epoch_{epoch}_memory_bank.npy')
         np.save(file_name, memory_bank.as_tensor().numpy())
+
 
     def train(self):
         print_separator('Starting UnPIE training')
