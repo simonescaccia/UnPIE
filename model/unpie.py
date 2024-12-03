@@ -90,10 +90,11 @@ class UnPIE():
             optimizer=self.optimizer,
             best_val_acc=self.best_val_acc,
             epoch=tf.Variable(0))
+        best_check_dir = os.path.join(self.cache_dir, 'best')
+        last_check_dir = os.path.join(self.cache_dir, 'last')
+        self.last_check_manager = tf.train.CheckpointManager(self.checkpoint, last_check_dir, max_to_keep=1)
+        self.best_check_manager = tf.train.CheckpointManager(self.checkpoint, best_check_dir, max_to_keep=1)
 
-        self.check_manager = tf.train.CheckpointManager(self.checkpoint, self.cache_dir, max_to_keep=1)
-
-        self._init_and_restore()
 
     def get_memory_bank(self):
         return self.memory_bank
@@ -146,13 +147,12 @@ class UnPIE():
 
     def _load_from_ckpt(self, ckpt_path):
         print('\nRestore from %s' % ckpt_path)
-        self.checkpoint.restore(ckpt_path)
+        self.checkpoint.restore(ckpt_path).expect_partial()
 
-    def _init_and_restore(self):
-        latest_checkpoint = self.check_manager.latest_checkpoint
-        if latest_checkpoint:
+    def _restore_model(self, checkpoint):
+        if checkpoint:
             # Load current task training
-            self._load_from_ckpt(latest_checkpoint)
+            self._load_from_ckpt(checkpoint)
         elif self.params['load_params'] is not None:
             # Load previous task training
             split_cache_path = self.cache_dir.split(os.sep)
@@ -253,16 +253,19 @@ class UnPIE():
 
             # Save checkpoint
             if epoch % fre_save_model == 0:
+                self.last_check_manager.save(checkpoint_number=epoch)
+                if epoch % fre_plot_clusters == 0:
+                    self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
                 if val_result['Accuracy u.f.l.'] > self.best_val_acc:
                     print('Saving model...')
                     self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
-                    self.check_manager.save(checkpoint_number=epoch)
+                    self.best_check_manager.save(checkpoint_number=epoch)
 
                     print("Saving clusters...")
-                    self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, clean=True)
+                    self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
 
 
-    def save_memory_bank(self, memory_bank, y, save_path, epoch, clean):
+    def save_memory_bank(self, memory_bank, y, save_path, epoch, is_best=False):
         memory_bank_dir = os.path.join(save_path, 'memory_bank')
 
         # Save the true labels if they are not saved yet
@@ -270,18 +273,20 @@ class UnPIE():
         if not os.path.exists(file_name):
             np.save(file_name, y)
 
-        # Remove previous memory bank files
-        if clean:
-            os.system('rm -rf %s' % memory_bank_dir)
+        # Remove previous best memory bank
+        if is_best:
+            os.system('rm %s' % os.path.join(memory_bank_dir, '*_best.npy'))
 
         # Save the memory bank
         os.system('mkdir -p %s' % memory_bank_dir)
-        file_name = os.path.join(memory_bank_dir, f'epoch_{epoch}_memory_bank.npy')
+        best = '_best' if is_best else ''
+        file_name = os.path.join(memory_bank_dir, f'epoch_{epoch}_memory_bank{best}.npy')
         np.save(file_name, memory_bank.as_tensor().numpy())
 
 
     def train(self):
         print_separator('Starting UnPIE training')
+        self._restore_model(self.last_check_manager.latest_checkpoint)
         self._run_train_loop()
         print_separator('UnPIE training ended')
 
@@ -329,16 +334,20 @@ class UnPIE():
 
 
     # Testing functions
-    def _run_test_loop(self):
+    def _run_test_loop(self, test_type):
         test_result = self._run_inference_loop('test')
         self.test_log_writer.write(
-                '%s: %s\n' % ('test results: ', str(test_result)))
+                '%s: %s\n' % (f'test results  {test_type}: ', str(test_result)))
         print(test_result)
-        self.test_log_writer.close()
+
 
     def test(self):
         print_separator('Starting UnPIE testing')
-        self._run_test_loop()
+        self._restore_model(self.last_check_manager.latest_checkpoint)
+        self._run_test_loop('last')
+        self._restore_model(self.best_check_manager.latest_checkpoint)
+        self._run_test_loop('best')
+        self.test_log_writer.close()
         print_separator('UnPIE testing ended')
 
 
