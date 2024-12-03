@@ -9,7 +9,7 @@ from model.instance_model import InstanceModel
 from model.memory_bank import MemoryBank
 from model.self_loss import get_selfloss
 from model.unpie_network import UnPIENetwork
-from utils.print_utils import print_separator, write_dict
+from utils.print_utils import print_gpu_memory, print_separator, write_dict
 from utils.vie_utils import tuple_get_one
 
 import sys
@@ -20,14 +20,17 @@ class UnPIE():
 
         self.params = params
 
-        # Log files
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
-        self.log_file_path = os.path.join(self.cache_dir, self.params['save_params']['train_log_file'])
-        self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
         self.plot_save_path = os.path.join(self.cache_dir, self.params['save_params']['plot_dir'])
         os.system('mkdir -p %s' % self.cache_dir)
         os.system('mkdir -p %s' % self.plot_save_path)
-        self.load_from_curr_exp = tf.train.latest_checkpoint(self.cache_dir)
+
+        # Log files
+        self.log_file_path = os.path.join(self.cache_dir, self.params['save_params']['train_log_file'])
+        self.val_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['val_log_file'])
+        self.best_check_dir = os.path.join(self.cache_dir, 'best')
+        self.last_check_dir = os.path.join(self.cache_dir, 'last')
+        self.load_from_curr_exp = tf.train.latest_checkpoint(self.last_check_dir)
         if not self.load_from_curr_exp: # if no checkpoint is found then create a new log file
             self.log_writer = open(self.log_file_path, 'w')
             self.val_log_writer = open(self.val_log_file_path, 'w')
@@ -37,6 +40,7 @@ class UnPIE():
         if self.params['is_test']:
             self.test_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['test_log_file'])
             self.test_log_writer = open(self.test_log_file_path, 'w')
+
         # Write args
         write_dict(args, os.path.join(self.cache_dir, 'args.txt'))      
         
@@ -90,10 +94,8 @@ class UnPIE():
             optimizer=self.optimizer,
             best_val_acc=self.best_val_acc,
             epoch=tf.Variable(0))
-        best_check_dir = os.path.join(self.cache_dir, 'best')
-        last_check_dir = os.path.join(self.cache_dir, 'last')
-        self.last_check_manager = tf.train.CheckpointManager(self.checkpoint, last_check_dir, max_to_keep=1)
-        self.best_check_manager = tf.train.CheckpointManager(self.checkpoint, best_check_dir, max_to_keep=1)
+        self.last_check_manager = tf.train.CheckpointManager(self.checkpoint, self.last_check_dir, max_to_keep=1)
+        self.best_check_manager = tf.train.CheckpointManager(self.checkpoint, self.best_check_dir, max_to_keep=1)
 
 
     def get_memory_bank(self):
@@ -248,8 +250,6 @@ class UnPIE():
                 val_result['Epoch'] = epoch
                 self.val_log_writer.write(str(val_result) + '\n')
                 print(val_result)
-                self.val_log_writer.close()
-                self.val_log_writer = open(self.val_log_file_path, 'a+')
 
             # Save checkpoint
             if epoch % fre_save_model == 0:
@@ -288,6 +288,8 @@ class UnPIE():
         print_separator('Starting UnPIE training')
         self._restore_model(self.last_check_manager.latest_checkpoint)
         self._run_train_loop()
+        self.log_writer.close()
+        self.val_log_writer.close()
         print_separator('UnPIE training ended')
 
 

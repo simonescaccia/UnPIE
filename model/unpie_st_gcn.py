@@ -148,6 +148,7 @@ class UnPIESTGCN(tf.keras.Model):
         num_nodes = params['num_nodes']
         self.edge_importance = params['edge_importance']
         self.is_scene = params['is_scene']
+        self.scene_layers = params['scene_layers']
         self.share_edge_importance = params['share_edge_importance']
 
         self.data_bn_x = tf.keras.layers.BatchNormalization(axis=1)
@@ -175,9 +176,11 @@ class UnPIESTGCN(tf.keras.Model):
 
         if self.is_scene:
             self.STGCN_layers_b = []
-            self.STGCN_layers_b.append(STGCN(scene_gcn_dim, residual=False, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
-            self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
-            self.STGCN_layers_b.append(STGCN(scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv))
+            for _ in range(self.scene_layers):
+                self.STGCN_layers_b.append(
+                    STGCN(
+                        scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv,
+                        residual=True if self.STGCN_layers_b else False))
 
         if self.edge_importance:
             # Initialize edge_importance as a list of trainable variables
