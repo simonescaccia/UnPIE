@@ -6,7 +6,7 @@ instance_t: 0.07 # temperature for contrastive loss
 batch_size: 32 # training batch size
 inference_batch_size: 32 # val/test batch size
 inference_num_clips: 5 # number of clips to sample from each video
-clstr_update_per_epoch: 10 # number of cluster updates per epoch
+clstr_update_per_epoch: 15 # number of cluster updates per epoch
 fre_plot_clusters: 50 # frequency to plot clusters (epochs)
 kNN_inference: 100 # number of nearest neighbors to consider
 instance_k: 0 # background neighbors to sample. If 0, all training samples are considered
@@ -28,7 +28,7 @@ LA:
   # lr_boundaries: null
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 500
+  train_num_epochs: 5
   load_task: 'IR'
 
 # Data preprocessing params
@@ -42,13 +42,13 @@ img_width: 1920 # video frame width
 
 # Network params
 channel_dim: 512 # output shape of vgg feature extractor
-# channel_dim: 1536 # output shape of efficientnetB3 feature extractor
+# channel_dim: 1024 # 1536 output shape of efficientnetB3 feature extractor
 middle_dim: 256 # middle layer dimension in the unpie network
-gcn_dim: 128 # final gcn layer dimension
+gcn_dim: 64 # final gcn layer dimension
 num_input_layers: 3 # number of input layers in the unpie network
 num_middle_layers: 3 # number of middle layers in the unpie network
 num_gcn_final_layers: 3 # number of final gcn layers in the unpie network
-scene_gcn_dim: 32 # final scene embedding dimension
+scene_gcn_dim: 64 # final scene embedding dimension
 drop_tcn: 0.2 # dropout rate for temporal convolutional network
 drop_conv: 0.2 # dropout rate for graph convolutional network
 is_scene: True # whether to use scene embeddings

@@ -64,7 +64,7 @@ class InstanceModel(object):
     def get_cluster_classification_loss(
             self, cluster_labels):
         '''
-        Aim: Compute the loss starting from the cluster labels
+        Compute the loss starting from the cluster labels
         '''
         k = self.instance_k
         # ignore all but the top k nearest examples
