@@ -145,6 +145,7 @@ class ParamsLoader:
             "num_middle_layers": self.args['num_middle_layers'],
             "num_gcn_final_layers": self.args['num_gcn_final_layers'],
             "scene_gcn_dim": self.args['scene_gcn_dim'],
+            "scene_layers": self.args['scene_layers'],
             "seq_len": self.args['num_frames'],
             "num_nodes": num_nodes,
             "edge_importance": self.args['edge_importance'],

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
-
+import tensorflow as tf
 from utils.pie_utils import jitter_bbox, squarify
 
 num_dashes = 100
@@ -58,3 +58,9 @@ def print_image_with_bbox(image, df):
     plt.imshow(image2)
     plt.axis('off')
     plt.show()
+
+def print_gpu_memory():
+    # get tensorflow memory info
+    info = tf.config.experimental.get_memory_info('GPU:0')
+    # print memory info in Bytes
+    print(f"GPU memory current: {info['current']} Bytes, peak: {info['peak']} Bytes")

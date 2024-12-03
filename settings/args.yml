@@ -28,7 +28,7 @@ LA:
   # lr_boundaries: null
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 5
+  train_num_epochs: 500
   load_task: 'IR'
 
 # Data preprocessing params
@@ -49,9 +49,10 @@ num_input_layers: 3 # number of input layers in the unpie network
 num_middle_layers: 3 # number of middle layers in the unpie network
 num_gcn_final_layers: 3 # number of final gcn layers in the unpie network
 scene_gcn_dim: 64 # final scene embedding dimension
-drop_tcn: 0.2 # dropout rate for temporal convolutional network
-drop_conv: 0.2 # dropout rate for graph convolutional network
+drop_tcn: 0.0 # dropout rate for temporal convolutional network
+drop_conv: 0.0 # dropout rate for graph convolutional network
 is_scene: True # whether to use scene embeddings
+scene_layers: 3 # number of scene embedding layers
 share_edge_importance: False # whether to share edge importance weights between scene and node gcns
 
 # Log files
