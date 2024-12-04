@@ -131,7 +131,7 @@ class ParamsLoader:
     def _get_model_func_params(self, dataset_len, num_nodes):
         model_params = {
             "instance_t": self.args['instance_t'],
-            "instance_k": self.args['instance_k'],
+            "instance_k": self.args[self.setting]['instance_k'],
             "kmeans_k": self.args['kmeans_k'],
             "task": self.args[self.setting]['task'],
             "data_len": dataset_len,
