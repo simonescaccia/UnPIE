@@ -275,7 +275,9 @@ class UnPIE():
 
         # Remove previous best memory bank
         if is_best:
-            os.system('rm %s' % os.path.join(memory_bank_dir, '*_best.npy'))
+            # Check if there is a previous best memory bank
+            if os.path.exists(os.path.join(memory_bank_dir, '*_best.npy')):
+                os.system('rm %s' % os.path.join(memory_bank_dir, '*_best.npy'))
 
         # Save the memory bank
         os.system('mkdir -p %s' % memory_bank_dir)
