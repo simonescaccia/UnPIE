@@ -236,8 +236,8 @@ class UnPIE():
                 self.log_writer.write(message + '\n')
 
                 # Recompute clusters for LA task
-                if train_step == 1 or \
-                        train_step % (num_steps // clstr_update_per_epoch) == 0:
+                if clstr_update_per_epoch and (train_step == 1 or \
+                        train_step % (num_steps // clstr_update_per_epoch) == 0):
                     print("Recomputing clusters...")
                     km = Kmeans(self.kmeans_k, self.memory_bank)
                     self.cluster_labels.assign(km.recompute_clusters())                        
