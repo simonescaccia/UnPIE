@@ -160,7 +160,8 @@ class UnPIE():
             split_cache_path = self.cache_dir.split(os.sep)
             split_cache_path[-1] = self.params['load_params']['task']
             load_dir = os.sep.join(split_cache_path)
-            ckpt_path = tf.train.latest_checkpoint(load_dir)
+            load_dir_best = os.path.join(load_dir, 'best')
+            ckpt_path = tf.train.latest_checkpoint(load_dir_best)
             self._load_from_ckpt(ckpt_path)
 
     def _get_learning_rate(self):
