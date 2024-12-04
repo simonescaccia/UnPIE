@@ -184,7 +184,7 @@ class ParamsLoader:
             'thres_loss': float('Inf'),
             'num_epochs': self.args[self.setting]['train_num_epochs'],
             'num_steps': train_num_steps,
-            'clstr_update_per_epoch': self.args['clstr_update_per_epoch'],
+            'clstr_update_per_epoch': self.args[self.setting]['clstr_update_per_epoch'],
             'fre_plot_clusters': self.args['fre_plot_clusters'],
         }
         
@@ -219,7 +219,7 @@ class ParamsLoader:
         pie_params = self.get_pie_params()
 
         self.args['emb_dim'] = self.args['scene_gcn_dim'] + self.args['gcn_dim']
-        self.args['kmeans_k'] = [self.args['num_classes']]
+        self.args['kmeans_k'] = [self.args['num_classes']] * self.args['num_kmeans']
         self.args['input_shape'] = self._get_input_shape()
 
         model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])
