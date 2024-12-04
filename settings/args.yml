@@ -1,5 +1,5 @@
 # Training params
-learning_rates: '0.03,0.01,0.007' # optimizer learning rates
+learning_rates: '0.03,0.02,0.01' # optimizer learning rates
 # learning_rates: '0.003'
 weight_decay: 0.0001 # loss function weight decay
 instance_t: 0.07 # temperature for contrastive loss
@@ -15,10 +15,10 @@ num_classes: 2 # number of different clusters
 train_steps: 'IR,LA' # training steps
 IR:
   task: 'IR' # task name
-  lr_boundaries: '100, 200' # learning rate boundaries
+  lr_boundaries: '200, 300' # learning rate boundaries
   train_num_workers: 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 50 # number of training epochs
+  train_num_epochs: 2 # number of training epochs
   load_task: null # load task
   load_step: null # load step
   clstr_update_per_epoch: 0 # number of cluster updates per epoch
@@ -29,7 +29,7 @@ LA:
   # lr_boundaries: null
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 0
+  train_num_epochs: 5
   load_task: 'IR'
   clstr_update_per_epoch: 15 # number of cluster updates per epoch
   instance_k: 0 # background neighbors to sample. If 0, all training samples are considered
@@ -47,10 +47,12 @@ img_width: 1920 # video frame width
 channel_dim: 512 # output shape of vgg feature extractor
 # channel_dim: 1024 # 1536 output shape of efficientnetB3 feature extractor
 middle_dim: 256 # middle layer dimension in the unpie network
+middle_2_dim: 128 # second middle layer dimension in the unpie network
 gcn_dim: 64 # final gcn layer dimension
 num_input_layers: 3 # number of input layers in the unpie network
 num_middle_layers: 3 # number of middle layers in the unpie network
-num_gcn_final_layers: 3 # number of final gcn layers in the unpie network
+num_middle_2_layers: 2 # number of second middle layers in the unpie network
+num_gcn_final_layers: 2 # number of final gcn layers in the unpie network
 scene_gcn_dim: 64 # final scene embedding dimension
 drop_tcn: 0.0 # dropout rate for temporal convolutional network
 drop_conv: 0.0 # dropout rate for graph convolutional network

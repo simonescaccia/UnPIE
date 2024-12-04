@@ -138,9 +138,11 @@ class UnPIESTGCN(tf.keras.Model):
 
         num_input_layers = params['num_input_layers']
         num_middle_layers = params['num_middle_layers']
+        num_middle_2_layers = params['num_middle_2_layers']
         num_gcn_final_layers = params['num_gcn_final_layers']
         input_dim = params['input_dim']
-        middle_dim = params['middle_dim'] 
+        middle_dim = params['middle_dim']
+        middle_2_dim = params['middle_2_dim']
         gcn_dim = params['gcn_dim']
         scene_gcn_dim = params['scene_gcn_dim']
         drop_tcn = params['drop_tcn']
@@ -165,6 +167,12 @@ class UnPIESTGCN(tf.keras.Model):
             self.STGCN_layers_x.append(
                 STGCN(
                     middle_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, 
+                    downsample=True if i == 0 else False,
+                    residual=True if self.STGCN_layers_x else False))
+        for i in range(num_middle_2_layers):
+            self.STGCN_layers_x.append(
+                STGCN(
+                    middle_2_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, 
                     downsample=True if i == 0 else False,
                     residual=True if self.STGCN_layers_x else False))
         for i in range(num_gcn_final_layers):
