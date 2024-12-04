@@ -59,8 +59,8 @@ class UnPIE():
 
         self.all_labels = self.params['datasets']['train']['dataloader'].dataset.y
 
-        # Initialize lbl_init_values with a range
-        lbl_init_values = tf.range(self.data_len, dtype=tf.int64)
+        # Initialize lbl_init_values with 0 and 1s randomly
+        lbl_init_values = np.random.randint(2, size=self.data_len)
         no_kmeans_k = len(self.kmeans_k)
         # Expand and tile lbl_init_values
         lbl_init_values = tf.tile(
@@ -297,7 +297,7 @@ class UnPIE():
     def _build_inference_targets(self, y, i, outputs):
         target_params = self.params['inference_params']['targets']
         targets = self._perf_func_kNN(y, outputs, **target_params)
-        targets.update(self._perf_func_unsup(y, i, outputs))
+        # targets.update(self._perf_func_unsup(y, i, outputs))
         return targets
 
     def _inference_func(self, x, b, a, y, i):        
@@ -339,7 +339,7 @@ class UnPIE():
     def _run_test_loop(self, test_type):
         test_result = self._run_inference_loop('test')
         self.test_log_writer.write(
-                '%s: %s\n' % (f'test results  {test_type}: ', str(test_result)))
+                '%s: %s\n' % (f'test results {test_type}: ', str(test_result)))
         print(test_result)
 
 
@@ -400,9 +400,17 @@ class UnPIE():
     def _perf_func_unsup(
             slf,
             y, i, output):
-        _, cluster_labels = output
-        cluster_labels = tf.squeeze(cluster_labels, axis=0)
-        y_pred = tf.gather(cluster_labels, i)
+        _, cluster_labels = output # cluster_labels: [no_kmeans_k, data_len]
+        # cluster_labels = tf.squeeze(cluster_labels, axis=0)
+        # y_pred = tf.gather(cluster_labels, i)
+
+        # for each sample in data_len of cluster_labels, get the most frequent cluster label
+        cluster_labels = tf.transpose(cluster_labels)
+        cluster_labels = tf.gather(cluster_labels, i, axis=0) # [bs, no_kmeans_k]
+        y_pred = tf.argmax(
+            tf.math.bincount(cluster_labels, axis=-1), # [bs, 2]
+            axis=1
+        ) # [bs]
         accuracy = sklearn.metrics.accuracy_score(y, y_pred)
         f1_score = sklearn.metrics.f1_score(y, y_pred, zero_division=0)
         # auc = sklearn.metrics.roc_auc_score(y, y_pred)
