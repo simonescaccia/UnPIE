@@ -13,4 +13,5 @@ id, description, feat_extr_model, feat_extr_layer, bbox, feat_size, GCN, train_s
 3.5, scene_st_gcn_v3, vgg16, pool, adj_matrix, 512, scene_st_gcn, set04, set06, set03, 0, 450, 0.7546164772727273, 0.7493412384716733, 0.749668458781362
 3.6, scene_st_gcn_v3_vgg_full, vgg16, pool, adj_matrix, 512, scene_st_gcn, set01-set02-set04, set05-set06, set03, 0, 500, 0.6266233766233766, 0.6145948045280637, 0.6300372780691222
 3.7, scene_st_gcn_v3_eff_full, efficientnetb3, pool, adj_matrix, 512, scene_st_gcn, set01-set02-set04, set05-set06, set03, 0, 500, 0.6440746753246753, 0.6656357121697302, 0.6243726198613417
-3.8, scene_st_gcn_v3_vgg_full_IR, vgg16, pool, adj_matrix, 512, scene_st_gcn, set01-set02-set04, set05-set06, set03, 300, 0, 0.7375, 0.6991131588385078, 0.704401347120017
+3.8, scene_st_gcn_v3_eff_full_IR, efficientnetb3, pool, adj_matrix, 512, scene_st_gcn, set01-set02-set04, set05-set06, set03, 300, 0, 0.7375, 0.6991131588385078, 0.704401347120017
+3.9, scene_st_gcn_v3_eff_2_full_IR, efficientnetb3, pool, adj_matrix, 512, scene_st_gcn_2, set01-set02-set04, set05-set06, set03, 70, 500, 0.7633928571428571, 0.7211033442498435, 0.7335039999690646

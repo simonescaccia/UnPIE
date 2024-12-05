@@ -4,6 +4,7 @@ import sklearn
 import numpy as np
 import tensorflow as tf
 
+from model.cluster_density import Density
 from model.cluster_km import Kmeans
 from model.instance_model import InstanceModel
 from model.memory_bank import MemoryBank
@@ -240,8 +241,9 @@ class UnPIE():
                 if clstr_update_per_epoch and (train_step == 1 or \
                         train_step % (num_steps // clstr_update_per_epoch) == 0):
                     print("Recomputing clusters...")
-                    km = Kmeans(self.kmeans_k, self.memory_bank)
-                    self.cluster_labels.assign(km.recompute_clusters())                        
+                    # cluster_alg = Kmeans(self.kmeans_k, self.memory_bank)
+                    cluster_alg = Density(self.memory_bank)
+                    self.cluster_labels.assign(cluster_alg.recompute_clusters())                        
 
             self.checkpoint.epoch.assign_add(1)
 
@@ -300,7 +302,7 @@ class UnPIE():
     def _build_inference_targets(self, y, i, outputs):
         target_params = self.params['inference_params']['targets']
         targets = self._perf_func_kNN(y, outputs, **target_params)
-        # targets.update(self._perf_func_unsup(y, i, outputs))
+        targets.update(self._perf_func_unsup(y, i, outputs))
         return targets
 
     def _inference_func(self, x, b, a, y, i):        
