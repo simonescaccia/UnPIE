@@ -23,6 +23,7 @@ IR:
   load_step: null # load step
   clstr_update_per_epoch: 1 # number of cluster updates per epoch
   instance_k: 0 # noise to add to the loss. In ImageNet 4096 is used with a set size of 1,281,167 training images.
+  cluster_alg: 'density' # clustering algorithm to use (kmeans, density)
 LA:
   task: 'LA'
   lr_boundaries: '2800,2900'
@@ -33,6 +34,7 @@ LA:
   load_task: 'IR'
   clstr_update_per_epoch: 15 # number of cluster updates per epoch
   instance_k: 0 # background neighbors to sample. If 0, all training samples are considered
+  cluster_alg: 'kmeans' # clustering algorithm to use (kmeans, density)
 
 # Data preprocessing params
 data_sets: 'all' # data sets to use (small, all)

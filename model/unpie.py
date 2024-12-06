@@ -76,6 +76,7 @@ class UnPIE():
             dtype=tf.int64,
             name='cluster_labels'
         )
+        self.cluster_alg = self.params['model_params']['model_func_params']['cluster_alg']
 
         # Optimizer
         opt_params = self.params['optimizer_params']
@@ -241,8 +242,10 @@ class UnPIE():
                 if clstr_update_per_epoch and (train_step == 1 or \
                         train_step % (num_steps // clstr_update_per_epoch) == 0):
                     print("Recomputing clusters...")
-                    # cluster_alg = Kmeans(self.kmeans_k, self.memory_bank)
-                    cluster_alg = Density(self.memory_bank)
+                    if self.cluster_alg == 'kmeans':
+                        cluster_alg = Kmeans(self.kmeans_k, self.memory_bank)
+                    else:
+                        cluster_alg = Density(self.memory_bank)
                     self.cluster_labels.assign(cluster_alg.recompute_clusters())                        
 
             self.checkpoint.epoch.assign_add(1)
@@ -278,9 +281,17 @@ class UnPIE():
 
         # Remove previous best memory bank
         if is_best:
-            # Check if there is a previous best memory bank
-            if os.path.exists(os.path.join(memory_bank_dir, '*_best.npy')):
-                os.system('rm %s' % os.path.join(memory_bank_dir, '*_best.npy'))
+            postfix = 'best.npy'
+             # Iterate through all items in the directory
+            for file_name in os.listdir(memory_bank_dir):
+                # Check if the item is a file and has the specified postfix
+                if file_name.endswith(postfix) and os.path.isfile(os.path.join(memory_bank_dir, file_name)):
+                    file_path = os.path.join(memory_bank_dir, file_name)
+                    try:
+                        os.remove(file_path)
+                        print(f"Deleted: {file_path}")
+                    except OSError as e:
+                        print(f"Error deleting {file_path}: {e}")
 
         # Save the memory bank
         os.system('mkdir -p %s' % memory_bank_dir)
@@ -405,24 +416,27 @@ class UnPIE():
     def _perf_func_unsup(
             slf,
             y, i, output):
-        _, cluster_labels = output # cluster_labels: [no_kmeans_k, data_len]
-        # cluster_labels = tf.squeeze(cluster_labels, axis=0)
-        # y_pred = tf.gather(cluster_labels, i)
+        _, cluster_labels = output # cluster_labels: [num_kmeans_k, data_len] or [num_percentiles, data_len]        
 
-        # for each sample in data_len of cluster_labels, get the most frequent cluster label
         cluster_labels = tf.transpose(cluster_labels)
-        cluster_labels = tf.gather(cluster_labels, i, axis=0) # [bs, no_kmeans_k]
-        y_pred = tf.argmax(
-            tf.math.bincount(cluster_labels, axis=-1), # [bs, 2]
-            axis=1
-        ) # [bs]
-        accuracy = sklearn.metrics.accuracy_score(y, y_pred)
-        f1_score = sklearn.metrics.f1_score(y, y_pred, zero_division=0)
-        # auc = sklearn.metrics.roc_auc_score(y, y_pred)
-        precision = sklearn.metrics.precision_score(y, y_pred, zero_division=0)
-        return {
-            'Accuracy u.l.': accuracy,
-            'F1 u.l.': f1_score,
-            # 'AUC u.l.': auc,
-            'Precision u.l.': precision
-        }
+        cluster_labels = tf.gather(cluster_labels, i, axis=0) # [bs, num_kmeans_k] or [bs, num_percentiles]
+
+        if slf.cluster_alg == 'kmeans':
+            # for each sample in bs get the most frequent cluster label
+            y_pred = tf.argmax(
+                tf.math.bincount(cluster_labels, axis=-1), # [bs, 2]
+                axis=1
+            ) # [bs]
+            accuracy = sklearn.metrics.accuracy_score(y, y_pred)
+            f1_score = sklearn.metrics.f1_score(y, y_pred, zero_division=0)
+            # auc = sklearn.metrics.roc_auc_score(y, y_pred)
+            precision = sklearn.metrics.precision_score(y, y_pred, zero_division=0)
+            return {
+                'Accuracy u.l.': accuracy,
+                'F1 u.l.': f1_score,
+                # 'AUC u.l.': auc,
+                'Precision u.l.': precision
+            }
+        else: # Density
+            # compute the metrics for each percentile
+            pass
