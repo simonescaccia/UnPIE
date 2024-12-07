@@ -55,18 +55,21 @@ class UnPIE():
         self.emb_dim = self.params['model_params']['model_func_params']['emb_dim']
         self.task = self.params['model_params']['model_func_params']['task']
         self.kmeans_k = self.params['model_params']['model_func_params']['kmeans_k']
+        self.cluster_alg = self.params['model_params']['model_func_params']['cluster_alg']
+        self.percentiles = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+        
+        num_kmeans_k = len(self.kmeans_k)
+        num_clusters = len(self.percentiles) if self.cluster_alg == 'density' else num_kmeans_k
 
         self.memory_bank = MemoryBank(self.data_len, self.emb_dim)
-
         self.all_labels = self.params['datasets']['train']['dataloader'].dataset.y
 
         # Initialize lbl_init_values with 0 and 1s randomly
         lbl_init_values = np.random.randint(2, size=self.data_len)
-        no_kmeans_k = len(self.kmeans_k)
         # Expand and tile lbl_init_values
         lbl_init_values = tf.tile(
             tf.expand_dims(lbl_init_values, axis=0),
-            [no_kmeans_k, 1]
+            [num_clusters, 1]
         )
         
         # Cluster labels variable
@@ -76,7 +79,6 @@ class UnPIE():
             dtype=tf.int64,
             name='cluster_labels'
         )
-        self.cluster_alg = self.params['model_params']['model_func_params']['cluster_alg']
 
         # Optimizer
         opt_params = self.params['optimizer_params']
@@ -245,7 +247,7 @@ class UnPIE():
                     if self.cluster_alg == 'kmeans':
                         cluster_alg = Kmeans(self.kmeans_k, self.memory_bank)
                     else:
-                        cluster_alg = Density(self.memory_bank)
+                        cluster_alg = Density(self.memory_bank, self.percentiles)
                     self.cluster_labels.assign(cluster_alg.recompute_clusters())                        
 
             self.checkpoint.epoch.assign_add(1)
@@ -259,7 +261,6 @@ class UnPIE():
 
             # Save checkpoint
             if epoch % fre_save_model == 0:
-                self.last_check_manager.save(checkpoint_number=epoch)
                 if epoch % fre_plot_clusters == 0:
                     self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
                 if val_result['Accuracy u.f.l.'] > self.best_val_acc:
@@ -269,10 +270,12 @@ class UnPIE():
 
                     print("Saving clusters...")
                     self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
+                self.last_check_manager.save(checkpoint_number=epoch)
 
 
     def save_memory_bank(self, memory_bank, y, save_path, epoch, is_best=False):
         memory_bank_dir = os.path.join(save_path, 'memory_bank')
+        os.system('mkdir -p %s' % memory_bank_dir)
 
         # Save the true labels if they are not saved yet
         file_name = os.path.join(save_path, 'true_labels.npy')
@@ -294,7 +297,6 @@ class UnPIE():
                         print(f"Error deleting {file_path}: {e}")
 
         # Save the memory bank
-        os.system('mkdir -p %s' % memory_bank_dir)
         best = '_best' if is_best else ''
         file_name = os.path.join(memory_bank_dir, f'epoch_{epoch}_memory_bank{best}.npy')
         np.save(file_name, memory_bank.as_tensor().numpy())
@@ -438,5 +440,11 @@ class UnPIE():
                 'Precision u.l.': precision
             }
         else: # Density
+            metrics = {}
             # compute the metrics for each percentile
-            pass
+            for idx, percentile in enumerate(slf.percentiles):
+                y_pred = cluster_labels[:, idx]
+                accuracy = sklearn.metrics.accuracy_score(y, y_pred)
+                metrics[f'Accuracy u.l. {percentile}'] = accuracy
+            return metrics
+                
