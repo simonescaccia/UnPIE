@@ -315,7 +315,7 @@ class UnPIE():
     def _build_inference_targets(self, y, i, outputs):
         target_params = self.params['inference_params']['targets']
         targets = self._perf_func_kNN(y, outputs, **target_params)
-        targets.update(self._perf_func_unsup(y, i, outputs))
+        # targets.update(self._perf_func_unsup(y, i, outputs))
         return targets
 
     def _inference_func(self, x, b, a, y, i):        

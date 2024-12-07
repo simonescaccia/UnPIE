@@ -32,12 +32,13 @@ class SGCN(tf.keras.Model):
                                                distribution="truncated_normal"),
                                            data_format='channels_first',
                                            kernel_regularizer=REGULARIZER)
-        self.drop = tf.keras.layers.Dropout(dropout_conv)
+        # self.drop = tf.keras.layers.Dropout(dropout_conv)
 
     def call(self, x, a, training):
         # x: N, C, T, V
         # a: N, T, V, V
-        x = self.drop(self.conv(x), training)
+        # x = self.drop(self.conv(x), training)
+        x = self.conv(x), training
         x = tf.einsum('nctv,ntvw->nctw', x, a)
         return x, a
 
@@ -89,7 +90,7 @@ class STGCN(tf.keras.Model):
                                              data_format='channels_first',
                                              kernel_regularizer=REGULARIZER))
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
-        self.tgcn.add(tf.keras.layers.Dropout(dropout_tcn))
+        # self.tgcn.add(tf.keras.layers.Dropout(dropout_tcn))
 
         self.act = tf.keras.layers.Activation(activation)
 
