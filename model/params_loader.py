@@ -153,7 +153,7 @@ class ParamsLoader:
             "edge_importance": self.args['edge_importance'],
             "is_scene": self.args['is_scene'],
             "share_edge_importance": self.args['share_edge_importance'],
-            "cluster_alg": self.args[self.setting]['cluster_alg'],
+            "cluster_alg": self.args['cluster_alg'],
         }
         return model_params
 

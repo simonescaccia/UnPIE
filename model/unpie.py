@@ -261,15 +261,15 @@ class UnPIE():
 
             # Save checkpoint
             if epoch % fre_save_model == 0:
-                if epoch % fre_plot_clusters == 0:
-                    self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
-                if val_result['Accuracy u.f.l.'] > self.best_val_acc:
-                    print('Saving model...')
-                    self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
-                    self.best_check_manager.save(checkpoint_number=epoch)
+                # if epoch % fre_plot_clusters == 0:
+                #     self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
+                # if val_result['Accuracy u.f.l.'] > self.best_val_acc:
+                #     print('Saving model...')
+                #     self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
+                #     self.best_check_manager.save(checkpoint_number=epoch)
 
-                    print("Saving clusters...")
-                    self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
+                #     print("Saving clusters...")
+                #     self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
                 self.last_check_manager.save(checkpoint_number=epoch)
 
 
