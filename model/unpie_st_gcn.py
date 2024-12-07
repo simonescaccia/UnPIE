@@ -38,7 +38,7 @@ class SGCN(tf.keras.Model):
         # x: N, C, T, V
         # a: N, T, V, V
         # x = self.drop(self.conv(x), training)
-        x = self.conv(x), training
+        x = self.conv(x)
         x = tf.einsum('nctv,ntvw->nctw', x, a)
         return x, a
 
