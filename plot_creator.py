@@ -115,6 +115,6 @@ for i in tqdm(range(len(training_steps))):
         save_plot(val_df, 'Epoch', key, 'Validation {}'.format(key), 'Epoch', key, os.path.join(cache_dir, 'val_{}.png'.format(key.lower())))
     
     # plot clusters
-    plot_save_path = os.path.join(cache_dir, params['plot_dir'])
-    plot_cluster(plot_save_path)
+    # plot_save_path = os.path.join(cache_dir, params['plot_dir'])
+    # plot_cluster(plot_save_path)
 
