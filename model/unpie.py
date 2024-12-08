@@ -161,12 +161,17 @@ class UnPIE():
             self._load_from_ckpt(checkpoint)
         elif self.params['load_params'] is not None:
             # Load previous task training
-            split_cache_path = self.cache_dir.split(os.sep)
-            split_cache_path[-1] = self.params['load_params']['task']
-            load_dir = os.sep.join(split_cache_path)
-            load_dir_best = os.path.join(load_dir, 'best')
+            load_dir_best = self._get_load_dir_best()
             ckpt_path = tf.train.latest_checkpoint(load_dir_best)
             self._load_from_ckpt(ckpt_path)
+            self.checkpoint.epoch.assign(self.params['load_params']['step'])
+
+    def _get_load_dir_best(self):
+        split_cache_path = self.cache_dir.split(os.sep)
+        split_cache_path[-1] = self.params['load_params']['task']
+        load_dir = os.sep.join(split_cache_path)
+        load_dir_best = os.path.join(load_dir, 'best')
+        return load_dir_best
 
     def _get_learning_rate(self):
         lrs = self.params['learning_rate_params']['learning_rates']
@@ -263,15 +268,20 @@ class UnPIE():
             if epoch % fre_save_model == 0:
                 # if epoch % fre_plot_clusters == 0:
                 #     self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
-                # if val_result['Accuracy u.f.l.'] > self.best_val_acc:
-                #     print('Saving model...')
-                #     self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
-                #     self.best_check_manager.save(checkpoint_number=epoch)
+                if val_result['Accuracy u.f.l.'] > self.best_val_acc:
+                    print('Saving model...')
+                    self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
+                    self.best_check_manager.save(checkpoint_number=epoch)
 
                 #     print("Saving clusters...")
                 #     self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
                 self.last_check_manager.save(checkpoint_number=epoch)
 
+        # Check if a best model was saved for this task, else take the best model from the previous task
+        if not os.path.exists(self.best_check_dir):
+            load_dir_best = self._get_load_dir_best()
+            # copy the best model from the previous task
+            os.system('cp -r %s %s' % (load_dir_best, self.best_check_dir))
 
     def save_memory_bank(self, memory_bank, y, save_path, epoch, is_best=False):
         memory_bank_dir = os.path.join(save_path, 'memory_bank')
@@ -398,8 +408,8 @@ class UnPIE():
         top_labels = tf.gather(all_labels, top_indices) # retrieve the labels of the nearest neighbors
         top_labels_one_hot = tf.one_hot(top_labels, num_classes)
         top_prob = tf.exp(top_dist / instance_t)
-        top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1)
-        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1)
+        top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1) # Each one-hot encoded label is weighted by its corresponding probability.
+        top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1) # Averages the weighted probabilities across the kk neighbors for each test sample.
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
         accuracy = sklearn.metrics.accuracy_score(y, curr_pred)
