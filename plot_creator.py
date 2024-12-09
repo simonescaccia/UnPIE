@@ -102,11 +102,14 @@ for i in tqdm(range(len(training_steps))):
     val_log_file_path = os.path.join(cache_dir, params['val_log_file'])
     
     train_df = get_df(log_file_path)
+    # Extract only Epoch and Loss columns and compute the mean of the loss for each epoch 
+    train_df_epoch = train_df[['Epoch', 'Loss']].groupby('Epoch').mean().reset_index()
     val_df = get_df(val_log_file_path)
-    
+
     # save train_df plot
     save_plot(train_df, 'Step', 'Loss', 'Training loss', 'Step', 'Loss', os.path.join(cache_dir, 'train_loss.png'))
     save_plot(train_df, 'Step', 'Learning rate', 'Training learning rate', 'Step', 'Learning rate', os.path.join(cache_dir, 'train_lr.png'))
+    save_plot(train_df_epoch, 'Epoch', 'Loss', 'Training loss per epoch', 'Epoch', 'Loss', os.path.join(cache_dir, 'train_loss_epoch.png'))
 
     # save val_df plot
     df_keys = list(val_df.keys())

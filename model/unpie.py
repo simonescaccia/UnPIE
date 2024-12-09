@@ -178,6 +178,9 @@ class UnPIE():
         steps_per_epoch = self.params['learning_rate_params']['steps_per_epoch']
         boundaries = self.params['learning_rate_params']['boundaries']
 
+        print('\nBoundaries: ', boundaries)
+        print('Learning rates: ', lrs, '\n')
+
         if boundaries is None:
             return lambda *args: lrs[0]
         boundaries = [x * steps_per_epoch for x in boundaries]
@@ -374,7 +377,7 @@ class UnPIE():
     def _run_test_loop(self, test_type):
         test_result = self._run_inference_loop('test')
         self.test_log_writer.write(
-                '%s: %s\n' % (f'test results {test_type}: ', str(test_result)))
+                '%s: %s\n' % (f'test results {test_type} {self.checkpoint.epoch.numpy()}: ', str(test_result)))
         print(test_result)
 
 
