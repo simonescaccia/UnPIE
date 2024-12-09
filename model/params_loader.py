@@ -74,11 +74,18 @@ class ParamsLoader:
 
         # learning_rate_params: build the learning rate
         # For now, just stay the same
-        lrs = self.args['learning_rates']
-        b = self.args[self.setting]['lr_boundaries']
+        train_num_epochs = self.args[self.setting]['train_num_epochs']
+        init_lr = self.args[self.setting]['init_lr']
+        target_lr = self.args[self.setting]['target_lr']
+        lr_decay_start = self.args[self.setting]['lr_decay_start']
+        lr_decay = self.args[self.setting]['lr_decay']
+        lr_decay_steps = self.args[self.setting]['lr_decay_steps']
+        boundaries = list(range(lr_decay_start, train_num_epochs, lr_decay_steps))
+        learning_rates = [init_lr - (lr_decay * i) if init_lr - (lr_decay * i) > target_lr else target_lr \
+                           for i in range(len(boundaries) + 1)]
         learning_rate_params = {
-            'learning_rates': [float(rate) for rate in lrs.split(",")],
-            'boundaries': [int(boundary) for boundary in b.split(',')] if b else None,
+            'learning_rates': learning_rates,
+            'boundaries': boundaries,
             'steps_per_epoch': (dataset_len // self.args['batch_size']) + (dataset_len % self.args['batch_size'] > 0),
         }
 
