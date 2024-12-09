@@ -181,8 +181,8 @@ class UnPIE():
         print('\nBoundaries: ', boundaries)
         print('Learning rates: ', lrs, '\n')
 
-        if boundaries is None:
-            return lambda *args: lrs[0]
+        if not boundaries:
+            return lambda *_: lrs[0]
         boundaries = [x * steps_per_epoch for x in boundaries]
         return tf.keras.optimizers.schedules.PiecewiseConstantDecay(
             boundaries=boundaries,
