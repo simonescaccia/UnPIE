@@ -219,10 +219,15 @@ class UnPIE():
         train_dataloader = self.params['datasets']['train']['dataloader']
         num_steps = self.params['train_params']['num_steps']
         train_step = num_steps * self.checkpoint.epoch
+        first_step = True
 
         for epoch in range(self.checkpoint.epoch+1, self.params['train_params']['num_epochs']+1):
 
             for x, b, a, y, i in iter(train_dataloader):
+
+                if clstr_update_per_epoch and first_step:
+                    self._recompute_clusters()
+                    first_step = False 
 
                 x = tf.cast(x, tf.float32)
                 b = tf.cast(b, tf.float32)
@@ -245,15 +250,9 @@ class UnPIE():
 
                 self.log_writer.write(message + '\n')
 
-                # Recompute clusters for LA task
-                if clstr_update_per_epoch and (train_step == 1 or \
-                        train_step % (num_steps // clstr_update_per_epoch) == 0):
-                    print("Recomputing clusters...")
-                    if self.cluster_alg == 'kmeans':
-                        cluster_alg = Kmeans(self.kmeans_k, self.memory_bank)
-                    else:
-                        cluster_alg = Density(self.memory_bank, self.percentiles)
-                    self.cluster_labels.assign(cluster_alg.recompute_clusters())                        
+                # Recompute clusters
+                if clstr_update_per_epoch and (train_step % (num_steps // clstr_update_per_epoch) == 0):
+                   self._recompute_clusters()
 
             self.checkpoint.epoch.assign_add(1)
 
@@ -267,14 +266,14 @@ class UnPIE():
             # Save checkpoint
             if epoch % fre_save_model == 0:
                 # if epoch % fre_plot_clusters == 0:
-                #     self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
+                #     self._save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
                 if val_result['Accuracy u.f.l.'] > self.best_val_acc:
                     print('Saving model...')
                     self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
                     self.best_check_manager.save(checkpoint_number=epoch)
 
                 #     print("Saving clusters...")
-                #     self.save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
+                #     self._save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
                 self.last_check_manager.save(checkpoint_number=epoch)
 
         # Check if a best model was saved for this task, else take the best model from the previous task
@@ -283,7 +282,15 @@ class UnPIE():
             # copy the best model from the previous task
             os.system('cp -r %s %s' % (load_dir_best, self.best_check_dir))
 
-    def save_memory_bank(self, memory_bank, y, save_path, epoch, is_best=False):
+    def _recompute_clusters(self):
+        print("Recomputing clusters...")
+        if self.cluster_alg == 'kmeans':
+            cluster_alg = Kmeans(self.kmeans_k, self.memory_bank)
+        else:
+            cluster_alg = Density(self.memory_bank, self.percentiles)
+        self.cluster_labels.assign(cluster_alg.recompute_clusters())     
+    
+    def _save_memory_bank(self, memory_bank, y, save_path, epoch, is_best=False):
         memory_bank_dir = os.path.join(save_path, 'memory_bank')
         os.system('mkdir -p %s' % memory_bank_dir)
 
