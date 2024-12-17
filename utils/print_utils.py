@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
+import pandas as pd
 import tensorflow as tf
 from utils.pie_utils import jitter_bbox, squarify
 
@@ -38,7 +39,7 @@ def print_model_size(model, model_name):
     print('')
     print(model_name, f" memory: {memory_mb:.2f} MB\n")
 
-def print_image_with_bbox(image, df):
+def _plot_image_with_bbox(image, df):
     # Convert CV image to PIL image
     image1 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     image2 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
@@ -59,7 +60,27 @@ def print_image_with_bbox(image, df):
     plt.axis('off')
     plt.show()
 
-def print_gpu_memory():
+def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set_id, vid, frame_num):
+    # good frames:
+    # sid, vid, frameid
+    # 6, 2, 14053
+    # 6, 4, 10147    
+    if set_id != 'set06' or vid == 'video_0001':
+        return
+    values = df[type_column].value_counts()
+    values_keys = values.keys()
+    if ped_type in values_keys and traffic_type in values_keys and values[traffic_type] > 3 and values[ped_type] > 2:
+         print("frame: ", frame_num)
+         _plot_image(image)
+
+def _plot_image(image):
+    # Convert CV image to PIL image
+    image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+    plt.imshow(image)
+    plt.axis('off')
+    plt.show()
+
+def _print_gpu_memory():
     # get tensorflow memory info
     info = tf.config.experimental.get_memory_info('GPU:0')
     # print memory info in Bytes

@@ -10,7 +10,7 @@ from model.instance_model import InstanceModel
 from model.memory_bank import MemoryBank
 from model.self_loss import get_selfloss
 from model.unpie_network import UnPIENetwork
-from utils.print_utils import print_gpu_memory, print_separator, write_dict
+from utils.print_utils import print_separator, write_dict
 from utils.vie_utils import tuple_get_one
 
 import sys
