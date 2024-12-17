@@ -46,7 +46,7 @@ from pathlib import PurePath
 from dataset.pretrained_extractor import PretrainedExtractor
 from PIL import Image
 from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress, merge_directory
-from utils.print_utils import print_separator
+from utils.print_utils import plot_image, print_separator
 
 class PIE(object):
     def __init__(self, data_opts, data_sets, regen_database=False, data_path=''):
@@ -493,7 +493,7 @@ class PIE(object):
             with open(img_save_path, 'wb') as fid:
                 pickle.dump(img_features, fid, pickle.HIGHEST_PROTOCOL)        
 
-    def _process_set(self, set_id, set_folder_path, extract_frames, ped_dataframe):
+    def _process_set(self, set_id, set_folder_path, extract_frames, ped_dataframe: pd.DataFrame):
         print('Extracting frames from', set_id)
 
         for vid, frames in sorted(extract_frames.items()):
@@ -519,6 +519,8 @@ class PIE(object):
                     # Retrieve the image path, bbox, id from the annotation dataframe
                     df = ped_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))
                     
+                    plot_image(image, df, self.ped_type, self.traffic_type, 'type', set_id, vid, frame_num)
+
                     # Apply the function extract_features to each row of the dataframe
                     df.apply(
                         lambda row, image=image, set_id=set_id, vid=vid, frame_num=frame_num: 
