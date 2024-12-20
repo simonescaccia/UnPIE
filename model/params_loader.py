@@ -149,6 +149,7 @@ class ParamsLoader:
             "gcn_dim": self.args['gcn_dim'],
             "drop_conv": self.args['drop_conv'],
             "drop_tcn": self.args['drop_tcn'],
+            "drop_lstm": self.args['drop_lstm'],
             "num_input_layers": self.args['num_input_layers'],
             "num_middle_layers": self.args['num_middle_layers'],
             "num_middle_2_layers": self.args['num_middle_2_layers'],
@@ -161,6 +162,7 @@ class ParamsLoader:
             "is_scene": self.args['is_scene'],
             "share_edge_importance": self.args['share_edge_importance'],
             "cluster_alg": self.args['cluster_alg'],
+            "num_classes": self.args['num_classes']
         }
         return model_params
 

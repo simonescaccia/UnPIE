@@ -101,6 +101,11 @@ class UnPIE():
         self.last_check_manager = tf.train.CheckpointManager(self.checkpoint, self.last_check_dir, max_to_keep=1)
         self.best_check_manager = tf.train.CheckpointManager(self.checkpoint, self.best_check_dir, max_to_keep=1)
 
+        self.monitor_metric = 'Accuracy s.l.' if self.task == 'SUP' else 'Accuracy u.f.l.'
+
+        # Loss
+        if self.task == 'SUP':
+            self.sup_loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
     def get_memory_bank(self):
         return self.memory_bank
@@ -108,16 +113,26 @@ class UnPIE():
     def get_cluster_labels(self):
         return self.cluster_labels
 
-    def _build_network(self, x, b, a, i, train):
+    def _build_network(self, x, b, a, y, i, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
-        res = self._build_output(x, b, a, i, train, **model_func_params)
+        res = self._build_output(x, b, a, y, i, train, **model_func_params)
         return res
     
     def _build_output(
         self,
-        x, b, a, i, train,
+        x, b, a, y, i, train,
         **kwargs):
+
+        if kwargs['task'] == 'SUP':
+            output = self.model(x, b, a, train)
+
+            if not train:
+                return output
+
+            one_hot_labels = tf.one_hot(y, kwargs['num_classes'])
+            loss = self.sup_loss_fn(one_hot_labels, output)
+            return {'loss': loss}
 
         output = self.model(x, b, a, train)
         output = tf.nn.l2_normalize(output, axis=1)
@@ -200,14 +215,14 @@ class UnPIE():
         
         return loss_retval
 
-    def _loss(self, x, b, a, i):
-        y_ = self._build_network(x, b, a, i, train=True)
+    def _loss(self, x, b, a, y, i):
+        y_ = self._build_network(x, b, a, y, i, train=True)
         loss = self._build_loss(y_)
         return loss
 
-    def _grad(self, x, b, a, i):
+    def _grad(self, x, b, a, y, i):
         with tf.GradientTape() as tape:
-            loss_value = self._loss(x, b, a, i)
+            loss_value = self._loss(x, b, a, y, i)
         return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
 
     @tf.function
@@ -242,7 +257,7 @@ class UnPIE():
                 self.start_time = time.time()
                 
                 # Optimize the model
-                loss_value, grads = self._grad(x, b, a, i)
+                loss_value, grads = self._grad(x, b, a, y, i)
                 self._apply_gradients(grads)                
 
                 duration = time.time() - self.start_time
@@ -270,9 +285,9 @@ class UnPIE():
             if epoch % fre_save_model == 0:
                 # if epoch % fre_plot_clusters == 0:
                 #     self._save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
-                if val_result['Accuracy u.f.l.'] > self.best_val_acc:
+                if val_result[self.monitor_metric] > self.best_val_acc:
                     print('Saving model...')
-                    self.best_val_acc.assign(val_result['Accuracy u.f.l.'])
+                    self.best_val_acc.assign(val_result[self.monitor_metric])
                     self.best_check_manager.save(checkpoint_number=epoch)
 
                 #     print("Saving clusters...")
@@ -334,12 +349,15 @@ class UnPIE():
     # Validation functions
     def _build_inference_targets(self, y, i, outputs):
         target_params = self.params['inference_params']['targets']
-        targets = self._perf_func_kNN(y, outputs, **target_params)
-        # targets.update(self._perf_func_unsup(y, i, outputs))
+        if self.task == 'SUP':
+            targets = self._perf_func_sup(y, outputs)
+        else:
+            targets = self._perf_func_kNN(y, outputs, **target_params)
+            # targets.update(self._perf_func_unsup(y, i, outputs))
         return targets
 
     def _inference_func(self, x, b, a, y, i):        
-        outputs = self._build_network(x, b, a, i, train=False)
+        outputs = self._build_network(x, b, a, y, i, train=False)
         targets = self._build_inference_targets(y, i, outputs)
         return targets
 
@@ -433,17 +451,36 @@ class UnPIE():
             'Precision u.f.l.': precision
         }
     
+    def _perf_func_sup(
+            self, 
+            y, output):
+        # Convert logits to probabilities using softmax
+        curr_output = tf.nn.softmax(output, axis=-1)
+        # Compute predicted classes: most confident class
+        curr_output = tf.argmax(curr_output, axis=-1)
+        curr_output = tf.squeeze(curr_output)
+
+        accuracy = sklearn.metrics.accuracy_score(y, curr_output)
+        f1_score = sklearn.metrics.f1_score(y, curr_output, zero_division=0)
+        # auc = sklearn.metrics.roc_auc_score(y, curr_pred)
+        precision = sklearn.metrics.precision_score(y, curr_output, zero_division=0)
+        return {
+            'Accuracy s.l.': accuracy,
+            'F1 s.l.': f1_score,
+            # 'AUC u.f.l.': auc,
+            'Precision s.l.': precision
+        } 
     
     # Compute metrics for unsupervised learning
     def _perf_func_unsup(
-            slf,
+            self,
             y, i, output):
         _, cluster_labels = output # cluster_labels: [num_kmeans_k, data_len] or [num_percentiles, data_len]        
 
         cluster_labels = tf.transpose(cluster_labels)
         cluster_labels = tf.gather(cluster_labels, i, axis=0) # [bs, num_kmeans_k] or [bs, num_percentiles]
 
-        if slf.cluster_alg == 'kmeans':
+        if self.cluster_alg == 'kmeans':
             # for each sample in bs get the most frequent cluster label
             y_pred = tf.argmax(
                 tf.math.bincount(cluster_labels, axis=-1), # [bs, 2]
@@ -462,7 +499,7 @@ class UnPIE():
         else: # Density
             metrics = {}
             # compute the metrics for each percentile
-            for idx, percentile in enumerate(slf.percentiles):
+            for idx, percentile in enumerate(self.percentiles):
                 y_pred = cluster_labels[:, idx]
                 accuracy = sklearn.metrics.accuracy_score(y, y_pred)
                 metrics[f'Accuracy u.l. {percentile}'] = accuracy
