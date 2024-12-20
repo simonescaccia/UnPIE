@@ -64,33 +64,43 @@ def _plot_image_with_bbox(image, df):
 def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set_id, vid, frame_num):
     # good frames:
     # sid, vid, frameid
-    # 6, 2, 14053
-    # 6, 4, 10147
+    # 6, 2, 14053, wait cross
+    # 6, 4, 10147, wait cross bike
+    # 6, 1, 14272, social
+    # 6, 1, 16748
     save = True
     if save:
         # save frame
-        if set_id == 'set06' and vid == 'video_0004' and frame_num == 10147:
+        target_frame = 16748
+        target_video = 'video_0001'
+        target_set = 'set06'
+        if set_id == target_set and vid == target_video and (frame_num == target_frame-1 or frame_num == target_frame or frame_num == target_frame+1):
             os.system('mkdir -p images')
             file_path = f'images/{set_id}-{vid}-{frame_num}.png'
             _plot_image(image, save, file_path)
     else:
         # show frames
-        if set_id != 'set06' or vid != 'video_0004':
+        len_min_traffic = 0
+        len_min_ped = 1
+        len_max_ped = 1
+        if set_id != 'set06':
             return
         values = df[type_column].value_counts()
         values_keys = values.keys()
-        if ped_type in values_keys and traffic_type in values_keys and values[traffic_type] > 3 and values[ped_type] > 2:
+        if ped_type in values_keys and traffic_type in values_keys and \
+            values[traffic_type] > len_min_traffic and \
+            values[ped_type] >= len_min_ped and values[ped_type] <= len_max_ped:
             print("frame: ", frame_num)
             _plot_image(image, save)
 
 def _plot_image(image, save, file_path=None):
     # Convert CV image to PIL image
-    image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-    plt.imshow(image)
+    image2 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+    plt.imshow(image2)
     plt.axis('off')
     if save:
         print("Saving ", file_path)
-        plt.savefig(file_path)
+        cv2.imwrite(file_path, image)
     else:    
         plt.show()
 

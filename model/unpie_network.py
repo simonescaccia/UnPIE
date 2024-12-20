@@ -5,12 +5,17 @@ from model.unpie_st_gcn import UnPIESTGCN
 from model.unpie_temporal_aggregator import UnPIETemporalAggregator
 
 class UnPIENetwork(tf.keras.Model):
-    def __init__(self, **kwargs):
+    def __init__(self, **params):
         super(UnPIENetwork, self).__init__()
 
-        self.gcn = UnPIESTGCN(**kwargs)
-        self.temporal_aggregator = UnPIETemporalAggregator(**kwargs)
-    
+        self.gcn = UnPIESTGCN(**params)
+        self.temporal_aggregator = UnPIETemporalAggregator(**params)
+
+        self.fcn = tf.keras.layers.Dense(params['num_classes'])
+        self.drop_lstm = tf.keras.layers.Dropout(params['drop_lstm'])
+
+        self.task = params['task']
+
     def __call__(self, x, b, a, training): 
         '''
         Args:
@@ -23,4 +28,9 @@ class UnPIENetwork(tf.keras.Model):
         ped_feat = self.gcn(x, b, a, training) # ped_feat shape: (batch_size, seq_len, emb_dim)
         # Aggregate temporal features
         ped_feat = self.temporal_aggregator(ped_feat) # ped_feat shape: (batch_size, emb_dim)
+
+        if self.task == 'SUP':
+            ped_feat = tf.nn.tanh(self.drop_lstm(ped_feat))
+            ped_feat = self.fcn(ped_feat) # ped_feat shape: (batch_size, num_classes)
+        
         return ped_feat

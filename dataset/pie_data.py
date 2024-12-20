@@ -519,7 +519,7 @@ class PIE(object):
                     # Retrieve the image path, bbox, id from the annotation dataframe
                     df = ped_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))
                     
-                    plot_image(image, df, self.ped_type, self.traffic_type, 'type', set_id, vid, frame_num)
+                    # plot_image(image, df, self.ped_type, self.traffic_type, 'type', set_id, vid, frame_num)
 
                     # Apply the function extract_features to each row of the dataframe
                     df.apply(
