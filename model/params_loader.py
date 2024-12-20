@@ -69,7 +69,7 @@ class ParamsLoader:
     def _get_loss_lr_opt_params_from_arg(self, dataset_len):
         # loss_params: parameters to build the loss
         loss_params = {
-            'agg_func_kwargs': {'weight_decay': self.args['weight_decay']},
+            'agg_func_kwargs': {'weight_decay': self.args[self.setting]['weight_decay']},
         }
 
         # learning_rate_params: build the learning rate
