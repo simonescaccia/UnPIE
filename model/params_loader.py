@@ -168,13 +168,6 @@ class ParamsLoader:
         }
         return model_params
 
-    def _get_input_shape(self):
-        num_channels = self.args['channel_dim']
-        input_shape = {
-            'num_channels': num_channels,
-        }
-        return input_shape
-
     def get_plot_params(self):
         save_params, _ = self._get_save_load_params_from_arg()
         plot_params = {
@@ -231,9 +224,8 @@ class ParamsLoader:
         save_params, load_params = self._get_save_load_params_from_arg()
         pie_params = self.get_pie_params()
 
-        self.args['emb_dim'] = self.args['scene_gcn_dim'] + self.args['gcn_dim']
+        self.args['emb_dim'] = self.args['scene_num_input_layers'] + self.args['gcn_output_layer_dim']
         self.args['kmeans_k'] = [self.args['num_classes']] * self.args['num_kmeans']
-        self.args['input_shape'] = self._get_input_shape()
 
         model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])
         model_params = {
