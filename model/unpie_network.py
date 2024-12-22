@@ -30,6 +30,5 @@ class UnPIENetwork(tf.keras.Model):
 
         if self.task == 'SUP':
             ped_feat = self.fcn(ped_feat) # ped_feat shape: (batch_size, 1)
-            ped_feat = tf.squeeze(ped_feat, axis=-1) # ped_feat shape: (batch_size)
         
         return ped_feat

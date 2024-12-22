@@ -10,7 +10,7 @@ from model.instance_model import InstanceModel
 from model.memory_bank import MemoryBank
 from model.self_loss import get_selfloss
 from model.unpie_network import UnPIENetwork
-from utils.print_utils import print_separator, write_dict
+from utils.print_utils import print_gpu_memory, print_separator, write_dict
 from utils.vie_utils import tuple_get_one
 
 import sys
@@ -214,19 +214,14 @@ class UnPIE():
         
         return loss_retval
 
-    def _loss(self, x, b, a, y, i):
-        y_ = self._build_network(x, b, a, y, i, train=True)
-        loss = self._build_loss(y_)
-        return loss
-
-    def _grad(self, x, b, a, y, i):
-        with tf.GradientTape() as tape:
-            loss_value = self._loss(x, b, a, y, i)
-        return loss_value, tape.gradient(loss_value, self.model.trainable_variables)
-
     @tf.function
-    def _apply_gradients(self, grads):
+    def _train_step(self, x, b, a, y, i):
+        with tf.GradientTape() as tape:
+            y_ = self._build_network(x, b, a, y, i, train=True)
+            loss = self._build_loss(y_)
+        grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+        return loss
 
     def _run_train_loop(self):
         clstr_update_per_epoch = self.params['train_params']['clstr_update_per_epoch']
@@ -256,8 +251,7 @@ class UnPIE():
                 self.start_time = time.time()
                 
                 # Optimize the model
-                loss_value, grads = self._grad(x, b, a, y, i)
-                self._apply_gradients(grads)                
+                loss_value = self._train_step(x, b, a, y, i)
 
                 duration = time.time() - self.start_time
 
@@ -407,16 +401,16 @@ class UnPIE():
         self.test_log_writer.close()
         print_separator('UnPIE testing ended')
 
+    def _exclude_batch_norm(self, name):
+        return 'batch_normalization' not in name
 
     # Loss functions
     def _reg_loss(self, loss, weight_decay):
-        def exclude_batch_norm(name):
-            return 'batch_normalization' not in name
         # Add weight decay to the loss.
         l2_loss = weight_decay * tf.add_n(
                 [tf.nn.l2_loss(tf.cast(v, tf.float32))
                     for v in self.model.trainable_variables
-                    if exclude_batch_norm(v.name)])
+                    if self._exclude_batch_norm(v.name)])
         loss_all = tf.add(loss, l2_loss)
         return loss_all
     
@@ -453,9 +447,9 @@ class UnPIE():
     def _perf_func_sup(
             self, 
             y, output):
-        # output shape after sigmoid activation: (batch_size,)
+        # output shape after sigmoid activation: (batch_size, 1)
 
-        curr_output = tf.cast(output > 0.5, tf.int32)  
+        curr_output = tf.cast(output > 0.5, tf.int32)
 
         accuracy = sklearn.metrics.accuracy_score(y, curr_output)
         f1_score = sklearn.metrics.f1_score(y, curr_output, zero_division=0)
