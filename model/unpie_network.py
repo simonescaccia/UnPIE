@@ -11,8 +11,7 @@ class UnPIENetwork(tf.keras.Model):
         self.gcn = UnPIESTGCN(**params)
         self.temporal_aggregator = UnPIETemporalAggregator(**params)
 
-        self.fcn = tf.keras.layers.Dense(params['num_classes'])
-        self.drop_lstm = tf.keras.layers.Dropout(params['drop_lstm'])
+        self.fcn = tf.keras.layers.Dense(1, activation='sigmoid')
 
         self.task = params['task']
 
@@ -30,7 +29,7 @@ class UnPIENetwork(tf.keras.Model):
         ped_feat = self.temporal_aggregator(ped_feat) # ped_feat shape: (batch_size, emb_dim)
 
         if self.task == 'SUP':
-            ped_feat = tf.nn.tanh(self.drop_lstm(ped_feat))
-            ped_feat = self.fcn(ped_feat) # ped_feat shape: (batch_size, num_classes)
+            ped_feat = self.fcn(ped_feat) # ped_feat shape: (batch_size, 1)
+            ped_feat = tf.squeeze(ped_feat, axis=-1) # ped_feat shape: (batch_size)
         
         return ped_feat

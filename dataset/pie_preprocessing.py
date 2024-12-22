@@ -57,15 +57,20 @@ class PIEPreprocessing(object):
             max_nodes_dict = {}
             max_num_nodes = max(train_features['max_num_nodes'], val_features['max_num_nodes'], test_features['max_num_nodes'])
 
+        # One-hot classes
+        one_hot_classes = self._get_one_hot_classes(
+            [train_features['obj_classes'], val_features['obj_classes'], test_features['obj_classes']]
+        )
+
         print('Max number of nodes in a graph: {}'.format(max_num_nodes))
         print('Classes max number of nodes: {}'.format(max_nodes_dict))
 
         # Load the data
         test_dataset = None
         test_len = 0
-        train_dataloader, train_len = self._get_dataloader('train', train_features, max_nodes_dict, max_num_nodes)
-        val_dataloader, val_len = self._get_dataloader('val', val_features, max_nodes_dict, max_num_nodes)
-        test_dataset, test_len = self._get_dataloader('test', test_features, max_nodes_dict, max_num_nodes)
+        train_dataloader, train_len = self._get_dataloader('train', train_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+        val_dataloader, val_len = self._get_dataloader('val', val_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+        test_dataset, test_len = self._get_dataloader('test', test_features, max_nodes_dict, max_num_nodes, one_hot_classes)
 
         return {
             'train': {
@@ -85,19 +90,29 @@ class PIEPreprocessing(object):
             }
         }
 
-    def _normalize_bbox(self, bbox):
-        '''
-        Normalize the bounding box coordinates
-        '''
-        img_height = self.img_height
-        img_width = self.img_width
+    def _get_one_hot_classes(self, list_obj_classes):
+        # Get classes
+        classes_set = set(
+            obj_class
+            for split in list_obj_classes
+            for seq in split
+            for frame in seq
+            for obj_class in frame
+        )
+        classes_set.add(self.ped_class)
+        classes_set.add(self.other_ped_class)
 
-        bbox[0] = bbox[0] / img_width
-        bbox[1] = bbox[1] / img_height
-        bbox[2] = bbox[2] / img_width
-        bbox[3] = bbox[3] / img_height
+        # One-hot encode classes
+        classes_list = sorted(classes_set)  # Sorting ensures consistent order between different trainings
+        class_to_index = {cls: i for i, cls in enumerate(classes_list)}
 
-        return bbox
+        # One-hot encoding
+        one_hot_encoding = {
+            cls: [1 if i == idx else 0 for i in range(len(classes_list))]
+            for cls, idx in class_to_index.items()
+        }
+
+        return one_hot_encoding
     
     def _get_features(self, data_split):
         # Generate data sequences
@@ -117,11 +132,12 @@ class PIEPreprocessing(object):
 
         return features_d
 
-    def _get_dataloader(self, data_split, features_d, max_nodes_dict, max_num_nodes):
+    def _get_dataloader(self, data_split, features_d, max_nodes_dict, max_num_nodes, one_hot_classes):
         pie_dataset = PIEGraphDataset(
             features_d,
             max_nodes_dict,
             max_num_nodes,
+            one_hot_classes,
             [self.ped_class, self.other_ped_class],
             self.edge_importance,
             transform_a=UnPIEGCN.transform,

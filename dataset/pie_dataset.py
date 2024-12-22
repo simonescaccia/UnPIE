@@ -7,14 +7,17 @@ from utils.pie_utils import bbox_center, update_progress
 np.set_printoptions(linewidth=np.inf)
 
 class PIEGraphDataset(torch.utils.data.Dataset):
-    def __init__(self, features, max_nodes_dict, max_num_nodes, ped_classes, edge_importance, height, width, edge_weigths, transform_a=None):
+    def __init__(self, features, max_nodes_dict, max_num_nodes, one_hot_classes, ped_classes, edge_importance, height, width, edge_weigths, transform_a=None):
         self.edge_weigths = edge_weigths
         self.features = features
         self.transform_a = transform_a
         self.max_nodes_dict = max_nodes_dict
         self.max_num_nodes = max_num_nodes
+        self.one_hot_classes = one_hot_classes
         self.ped_classes = ped_classes
         self.edge_importance = edge_importance
+        self.img_height = height
+        self.img_width = width
         self.normalization_factor = np.linalg.norm([height, width])
         self.x, self.b, self.a, self.y, self.i = self._compute_graphs()
 
@@ -34,6 +37,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         max_num_nodes = self.max_num_nodes
         ped_classes = self.ped_classes
         edge_importance = self.edge_importance
+        one_hot_classes = self.one_hot_classes
 
         ped_feats = features['ped_feats'] # [num_seqs, seq_len, emb_dim]
         ped_bboxes = features['ped_bboxes'] # [num_seqs, seq_len, 4]
@@ -64,7 +68,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
 
         # Pre-allocate for the sequence
         x_seq = np.zeros((num_seqs, seq_len, max_num_nodes, ped_feats[0][0].shape[0]), dtype=np.float32)
-        b_seq = np.zeros((num_seqs, seq_len, max_num_nodes, 4), dtype=np.float32)
+        b_seq = np.zeros((num_seqs, seq_len, max_num_nodes, 4+len(one_hot_classes)), dtype=np.float32)
         a_seq = np.zeros((num_seqs, seq_len, max_num_nodes, max_num_nodes), dtype=np.float32)
         y_seq = np.zeros((num_seqs,), dtype=np.uint8)
 
@@ -75,7 +79,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
             for j in range(seq_len):
                 # Pedestrian node
                 x_seq[i, j, 0, :] = ped_feats[i][j]
-                b_seq[i, j, 0, :] = ped_bboxes[i][j]
+                b_seq[i, j, 0, :] = np.concatenate((self._normalize_bbox(ped_bboxes[i][j].copy()), one_hot_classes[self.ped_classes[0]]))
                 ped_position = bbox_center(ped_bboxes[i][j])
                 num_node = 1
 
@@ -87,7 +91,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                         num_node = obj_class_pos[obj_class]['init_pos'] + obj_class_pos[obj_class]['count']
 
                     x_seq[i, j, num_node, :] = obj_feat
-                    b_seq[i, j, num_node, :] = obj_bbox
+                    b_seq[i, j, num_node, :] = np.concatenate((self._normalize_bbox(obj_bbox.copy()), one_hot_classes[obj_class]))
                     
                     if not self.edge_weigths:
                         edge_weights[num_node] = 1
@@ -109,7 +113,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                     num_node = other_ped_init_pos
                 for k, (other_ped_feat, other_ped_bbox) in enumerate(zip(other_ped_feats[i][j], other_ped_bboxes[i][j])):
                     x_seq[i, j, num_node, :] = other_ped_feat
-                    b_seq[i, j, num_node, :] = other_ped_bbox
+                    b_seq[i, j, num_node, :] = np.concatenate((self._normalize_bbox(other_ped_bbox.copy()), one_hot_classes[self.ped_classes[1]]))
                     if not self.edge_weigths:
                         edge_weights[num_node] = 1
                     else:    
@@ -145,6 +149,20 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         elif self.edge_weigths == 'norm_compl':
             distance = 1 - (distance / self.normalization_factor)
         return distance
+    
+    def _normalize_bbox(self, bbox):
+        '''
+        Normalize the bounding box coordinates
+        '''
+        img_height = self.img_height
+        img_width = self.img_width
+
+        bbox[0] = bbox[0] / img_width
+        bbox[1] = bbox[1] / img_height
+        bbox[2] = bbox[2] / img_width
+        bbox[3] = bbox[3] / img_height
+
+        return bbox
 
     def __getitem__(self, index):
         return self.x[index], self.b[index], self.a[index], self.y[index], self.i[index]

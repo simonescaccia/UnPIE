@@ -21,17 +21,16 @@ REGULARIZER = tf.keras.regularizers.l2(l=0.0001)
             :math:`C` is the number of incoming channels
 """
 class SGCN(tf.keras.Model):
-    def __init__(self, filters, dropout_conv):
+    def __init__(self, 
+                 channel_out, 
+                 dropout_conv):
         super().__init__()
-        self.conv = tf.keras.layers.Conv2D(filters,
-                                           kernel_size=1,
+        self.conv = tf.keras.layers.Conv2D(channel_out,
+                                           kernel_size= (1, 1),
+                                           stride = (1, 1),
+                                           dilation_rate = (1, 1),
                                            padding='same',
-                                           kernel_initializer=tf.keras.initializers.VarianceScaling(
-                                               scale=2.,
-                                               mode="fan_out",
-                                               distribution="truncated_normal"),
-                                           data_format='channels_first',
-                                           kernel_regularizer=REGULARIZER)
+                                           data_format='channels_first',)
         self.drop = tf.keras.layers.Dropout(dropout_conv)
 
     def call(self, x, a, training):
@@ -65,59 +64,55 @@ class SGCN(tf.keras.Model):
 """
 class STGCN(tf.keras.Model):
     def __init__(self, 
-                 filters, 
-                 kernel_size=[3, 3], 
-                 stride=1, 
-                 activation='relu',
-                 residual=True, 
-                 downsample=False,
-                 dropout_conv=0,
-                 dropout_tcn=0):
+                 channel_out, 
+                 kernel_size,
+                 use_mdn,
+                 stride,
+                 residual,
+                 dropout_conv,
+                 dropout_tcn,
+                 downsample):
         super().__init__()
-        self.sgcn = SGCN(filters, dropout_conv)
+        
+        self.use_mdn = use_mdn
+        
+        self.sgcn = SGCN(channel_out, dropout_conv, kernel_size[1])
 
         self.tgcn = tf.keras.Sequential()
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
-        self.tgcn.add(tf.keras.layers.Activation(activation))
-        self.tgcn.add(tf.keras.layers.Conv2D(filters,
-                                             kernel_size=[kernel_size[0], 1],
-                                             strides=[stride, 1],
+        self.tgcn.add(tf.keras.layers.PreLu())
+        self.tgcn.add(tf.keras.layers.Conv2D(channel_out,
+                                             kernel_size=(kernel_size[0], 1),
+                                             strides=(stride, 1)),
                                              padding='same',
-                                             kernel_initializer=tf.keras.initializers.VarianceScaling(
-                                                 scale=2.,
-                                                 mode="fan_out",
-                                                 distribution="truncated_normal"),
-                                             data_format='channels_first',
-                                             kernel_regularizer=REGULARIZER))
+                                             data_format='channels_first',)
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
         self.tgcn.add(tf.keras.layers.Dropout(dropout_tcn))
 
-        self.act = tf.keras.layers.Activation(activation)
+        self.act = tf.keras.layers.PreLu()
 
         if not residual:
-            self.residual = lambda x, training=False: 0
+            self.residual = lambda x, training: 0
         elif residual and stride == 1 and not downsample:
-            self.residual = lambda x, training=False: x
+            self.residual = lambda x, training: x
         else:
             self.residual = tf.keras.Sequential()
-            self.residual.add(tf.keras.layers.Conv2D(filters,
-                                                     kernel_size=[1, 1],
-                                                     strides=[stride, 1],
+            self.residual.add(tf.keras.layers.Conv2D(channel_out,
+                                                     kernel_size=(1, 1),
+                                                     strides=(stride, 1),
                                                      padding='same',
-                                                     kernel_initializer=tf.keras.initializers.VarianceScaling(
-                                                         scale=2.,
-                                                         mode="fan_out",
-                                                         distribution="truncated_normal"),
-                                                     data_format='channels_first',
-                                                     kernel_regularizer=REGULARIZER))
+                                                     data_format='channels_first',))
             self.residual.add(tf.keras.layers.BatchNormalization(axis=1))
 
     def call(self, x, a, training):
+
         res = self.residual(x, training)
         x, a = self.sgcn(x, a, training)
-        x = self.tgcn(x, training)
-        x += res
-        x = self.act(x)
+        x = self.tgcn(x, training) + res
+
+        if not self.use_mdn:
+            x = self.act(x)
+
         return x, a
 
 
@@ -137,21 +132,25 @@ class UnPIESTGCN(tf.keras.Model):
     def __init__(self, **params):
         super(UnPIESTGCN, self).__init__()
 
-        num_input_layers = params['num_input_layers']
-        num_middle_layers = params['num_middle_layers']
-        num_middle_2_layers = params['num_middle_2_layers']
-        num_gcn_final_layers = params['num_gcn_final_layers']
-        input_dim = params['input_dim']
-        middle_dim = params['middle_dim']
-        middle_2_dim = params['middle_2_dim']
-        gcn_dim = params['gcn_dim']
-        scene_gcn_dim = params['scene_gcn_dim']
+        gcn_num_input_layers = params['gcn_num_input_layers']
+        gcn_num_middle_layers = params['gcn_num_middle_layers']
+        gcn_num_middle_2_layers = params['gcn_num_middle_2_layers']
+        gcn_num_output_layers = params['gcn_num_output_layers']
+        gcn_input_layer_dim = params['gcn_input_layer_dim']
+        gcn_middle_layer_dim = params['gcn_middle_layer_dim']
+        gcn_middle_2_layer_dim = params['gcn_middle_2_layer_dim']
+        gcn_output_layer_dim = params['gcn_output_layer_dim']
+        scene_input_layer_dim = params['scene_input_layer_dim']
+        scene_output_layer_dim = params['scene_output_layer_dim']
+        scene_num_input_layers = params['scene_num_input_layers']
+        scene_num_output_layers = params['scene_num_output_layers']
         drop_tcn = params['drop_tcn']
         drop_conv = params['drop_conv']
         num_nodes = params['num_nodes']
+        seq_len = params['seq_len']
+        stgcn_kernel_size = params['stgcn_kernel_size']
         self.edge_importance = params['edge_importance']
         self.is_scene = params['is_scene']
-        self.scene_layers = params['scene_layers']
         self.share_edge_importance = params['share_edge_importance']
 
         self.data_bn_x = tf.keras.layers.BatchNormalization(axis=1)
@@ -159,37 +158,53 @@ class UnPIESTGCN(tf.keras.Model):
             self.data_bn_b = tf.keras.layers.BatchNormalization(axis=1)
 
         self.STGCN_layers_x = []
-        for _ in range(num_input_layers):
+        for i in range(gcn_num_input_layers):
             self.STGCN_layers_x.append(
                 STGCN(
-                    input_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv,
-                    residual=True if self.STGCN_layers_x else False))
-        for i in range(num_middle_layers):
+                    channel_out=gcn_input_layer_dim, 
+                    kernel_size=[stgcn_kernel_size, seq_len], 
+                    residual=False, 
+                    stride=1,
+                    use_mdn=True, 
+                    dropout_tcn=0.5, 
+                    dropout_conv=0.5),
+                    downsample=True if i==0 else False)
+        for i in range(gcn_num_output_layers):
             self.STGCN_layers_x.append(
                 STGCN(
-                    middle_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, 
-                    downsample=True if i == 0 else False,
-                    residual=True if self.STGCN_layers_x else False))
-        for i in range(num_middle_2_layers):
-            self.STGCN_layers_x.append(
-                STGCN(
-                    middle_2_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, 
-                    downsample=True if i == 0 else False,
-                    residual=True if self.STGCN_layers_x else False))
-        for i in range(num_gcn_final_layers):
-            self.STGCN_layers_x.append(
-                STGCN(
-                    gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv, 
-                    downsample=True if i == 0 else False,
-                    residual=True if self.STGCN_layers_x else False))
+                    channel_out=gcn_output_layer_dim, 
+                    kernel_size=[stgcn_kernel_size, seq_len], 
+                    residual=True, 
+                    stride=1,
+                    use_mdn=True, 
+                    dropout_tcn=0.5, 
+                    dropout_conv=0.2),
+                    downsample=True if i==0 and gcn_output_layer_dim != gcn_input_layer_dim else False)
 
         if self.is_scene:
             self.STGCN_layers_b = []
-            for _ in range(self.scene_layers):
+            for _ in range(scene_num_input_layers):
                 self.STGCN_layers_b.append(
                     STGCN(
-                        scene_gcn_dim, dropout_tcn=drop_tcn, dropout_conv=drop_conv,
-                        residual=True if self.STGCN_layers_b else False))
+                        channel_out=scene_input_layer_dim, 
+                        kernel_size=[stgcn_kernel_size, seq_len], 
+                        residual=False, 
+                        stride=1,
+                        use_mdn=True, 
+                        dropout_tcn=0.5, 
+                        dropout_conv=0),
+                        downsample=True if i==0 else False)
+            for _ in range(scene_num_output_layers):
+                self.STGCN_layers_b.append(
+                    STGCN(
+                        channel_out=scene_output_layer_dim, 
+                        kernel_size=[stgcn_kernel_size, seq_len], 
+                        residual=True, 
+                        stride=1,
+                        use_mdn=True, 
+                        dropout_tcn=0.5, 
+                        dropout_conv=0.2),
+                        downsample=True if i==0 and scene_output_layer_dim != scene_input_layer_dim else False)
 
         if self.edge_importance:
             # Initialize edge_importance as a list of trainable variables

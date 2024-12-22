@@ -105,7 +105,7 @@ class UnPIE():
 
         # Loss
         if self.task == 'SUP':
-            self.sup_loss_fn = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+            self.sup_loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
     def get_memory_bank(self):
         return self.memory_bank
@@ -129,9 +129,8 @@ class UnPIE():
 
             if not train:
                 return output
-
-            one_hot_labels = tf.one_hot(y, kwargs['num_classes'])
-            loss = self.sup_loss_fn(one_hot_labels, output)
+            
+            loss = self.sup_loss_fn(y, output)
             return {'loss': loss}
 
         output = self.model(x, b, a, train)
@@ -454,11 +453,9 @@ class UnPIE():
     def _perf_func_sup(
             self, 
             y, output):
-        # Convert logits to probabilities using softmax
-        curr_output = tf.nn.softmax(output, axis=-1)
-        # Compute predicted classes: most confident class
-        curr_output = tf.argmax(curr_output, axis=-1)
-        curr_output = tf.squeeze(curr_output)
+        # output shape after sigmoid activation: (batch_size,)
+
+        curr_output = tf.cast(output > 0.5, tf.int32)  
 
         accuracy = sklearn.metrics.accuracy_score(y, curr_output)
         f1_score = sklearn.metrics.f1_score(y, curr_output, zero_division=0)
