@@ -426,7 +426,7 @@ class UnPIE():
             self,
             y, output, 
             instance_t,
-            k, inference_num_clips,
+            k,
             num_classes):
         all_labels = self.all_labels
         curr_dist, _ = output

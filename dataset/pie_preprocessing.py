@@ -22,7 +22,6 @@ class PIEPreprocessing(object):
         self.data_opts = params['data_opts']
         self.batch_size = params['batch_size']
         self.inference_batch_size = params['inference_batch_size']
-        self.inference_num_clips = params['inference_num_clips']
         self.img_height = params['img_height']
         self.img_width = params['img_width']
         self.edge_weigths = params['edge_weigths']
@@ -120,7 +119,6 @@ class PIEPreprocessing(object):
 
         # Generate data mini sequences
         seq_length = self.data_opts['max_size_observe']
-        seq_length = seq_length * self.inference_num_clips if data_split != 'train' else seq_length
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
         features_d = self._get_data(features_d, seq_length, seq_ovelap_rate)
 

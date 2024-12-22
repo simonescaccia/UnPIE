@@ -13,8 +13,8 @@ train_steps: 'IR,LA,SUP' # training steps
 IR:
   task: 'IR' # task name
   weight_decay: 0.0001 # loss function weight decay
-  init_lr: 0.3 # optimizer learning rates
-  target_lr: 0.01 # optimizer learning rates
+  init_lr: 0.03 # optimizer learning rates
+  target_lr: 0.03 # optimizer learning rates
   lr_decay_start: 300 # learning rate decay start
   lr_decay: 0.02 # learning rate decay
   lr_decay_steps: 30 # learning rate decay steps
@@ -29,7 +29,7 @@ LA:
   task: 'LA'
   weight_decay: 0.0001 # loss function weight decay
   init_lr: 0.03 # optimizer learning rates
-  target_lr: 0.003 # optimizer learning rates
+  target_lr: 0.03 # optimizer learning rates
   lr_decay_start: 2000 # learning rate decay start
   lr_decay: 0.002 # learning rate decay
   lr_decay_steps: 20 # learning rate decay steps
@@ -58,7 +58,7 @@ SUP:
 data_sets: 'all' # data sets to use (small, all)
 feature_extractor: 'vgg16' # feature extractor to use (vgg16, efficientnetb3)
 edge_importance: True # weights for edges in the graph.
-edge_weigths: norm_compl # Choose between False, no_norm, norm, norm_compl, compl
+edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
 num_frames: 15 # number of frames in each clip
 img_height: 1080 # video frame height
 img_width: 1920 # video frame width
@@ -76,7 +76,7 @@ gcn_num_output_layers: 2 # number of final gcn layers in the unpie network
 scene_input_layer_dim: 64 # final scene embedding dimension
 scene_output_layer_dim: 64 # final scene embedding dimension
 scene_num_input_layers: 1 # number of scene embedding layers
-scene_num_output_layers: 1 # number of scene embedding layers
+scene_num_output_layers: 0 # number of scene embedding layers
 drop_tcn: 0.0 # dropout rate for temporal convolutional network
 drop_conv: 0.0 # dropout rate for graph convolutional network
 drop_lstm: 0.4 # dropout rate for lstm

@@ -27,7 +27,7 @@ class SGCN(tf.keras.Model):
         super().__init__()
         self.conv = tf.keras.layers.Conv2D(channel_out,
                                            kernel_size= (1, 1),
-                                           stride = (1, 1),
+                                           strides = (1, 1),
                                            dilation_rate = (1, 1),
                                            padding='same',
                                            data_format='channels_first',)
@@ -76,20 +76,20 @@ class STGCN(tf.keras.Model):
         
         self.use_mdn = use_mdn
         
-        self.sgcn = SGCN(channel_out, dropout_conv, kernel_size[1])
+        self.sgcn = SGCN(channel_out, dropout_conv)
 
         self.tgcn = tf.keras.Sequential()
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
-        self.tgcn.add(tf.keras.layers.PreLu())
+        self.tgcn.add(tf.keras.layers.PReLU())
         self.tgcn.add(tf.keras.layers.Conv2D(channel_out,
                                              kernel_size=(kernel_size[0], 1),
-                                             strides=(stride, 1)),
+                                             strides=(stride, 1),
                                              padding='same',
-                                             data_format='channels_first',)
+                                             data_format='channels_first',))
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
         self.tgcn.add(tf.keras.layers.Dropout(dropout_tcn))
 
-        self.act = tf.keras.layers.PreLu()
+        self.act = tf.keras.layers.PReLU()
 
         if not residual:
             self.residual = lambda x, training: 0
@@ -167,8 +167,8 @@ class UnPIESTGCN(tf.keras.Model):
                     stride=1,
                     use_mdn=True, 
                     dropout_tcn=0.5, 
-                    dropout_conv=0.5),
-                    downsample=True if i==0 else False)
+                    dropout_conv=0.5,
+                    downsample=True if i==0 else False))
         for i in range(gcn_num_output_layers):
             self.STGCN_layers_x.append(
                 STGCN(
@@ -178,8 +178,8 @@ class UnPIESTGCN(tf.keras.Model):
                     stride=1,
                     use_mdn=True, 
                     dropout_tcn=0.5, 
-                    dropout_conv=0.2),
-                    downsample=True if i==0 and gcn_output_layer_dim != gcn_input_layer_dim else False)
+                    dropout_conv=0.2,
+                    downsample=True if i==0 and gcn_output_layer_dim != gcn_input_layer_dim else False))
 
         if self.is_scene:
             self.STGCN_layers_b = []
@@ -192,8 +192,8 @@ class UnPIESTGCN(tf.keras.Model):
                         stride=1,
                         use_mdn=True, 
                         dropout_tcn=0.5, 
-                        dropout_conv=0),
-                        downsample=True if i==0 else False)
+                        dropout_conv=0,
+                        downsample=True if i==0 else False))
             for _ in range(scene_num_output_layers):
                 self.STGCN_layers_b.append(
                     STGCN(
@@ -203,8 +203,8 @@ class UnPIESTGCN(tf.keras.Model):
                         stride=1,
                         use_mdn=True, 
                         dropout_tcn=0.5, 
-                        dropout_conv=0.2),
-                        downsample=True if i==0 and scene_output_layer_dim != scene_input_layer_dim else False)
+                        dropout_conv=0.2,
+                        downsample=True if i==0 and scene_output_layer_dim != scene_input_layer_dim else False))
 
         if self.edge_importance:
             # Initialize edge_importance as a list of trainable variables
