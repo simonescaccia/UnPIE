@@ -34,7 +34,6 @@ class ParamsLoader:
             'pie_path': config['PIE_PATH'],
             'batch_size': args['batch_size'],
             'inference_batch_size': args['inference_batch_size'],
-            'inference_num_clips': args['inference_num_clips'],
             'img_height': args['img_height'],
             'img_width': args['img_width'],
             'edge_weigths': args['edge_weigths'],
@@ -143,26 +142,29 @@ class ParamsLoader:
             "task": self.args[self.setting]['task'],
             "data_len": dataset_len,
             "emb_dim": self.args['emb_dim'],
-            "middle_dim": self.args['middle_dim'],
-            "middle_2_dim": self.args['middle_2_dim'],
-            "input_dim": self.args['channel_dim'],
-            "gcn_dim": self.args['gcn_dim'],
+            "gcn_middle_layer_dim": self.args['gcn_middle_layer_dim'],
+            "gcn_middle_2_layer_dim": self.args['gcn_middle_2_layer_dim'],
+            "gcn_input_layer_dim": self.args['gcn_input_layer_dim'],
+            "gcn_output_layer_dim": self.args['gcn_output_layer_dim'],
             "drop_conv": self.args['drop_conv'],
             "drop_tcn": self.args['drop_tcn'],
             "drop_lstm": self.args['drop_lstm'],
-            "num_input_layers": self.args['num_input_layers'],
-            "num_middle_layers": self.args['num_middle_layers'],
-            "num_middle_2_layers": self.args['num_middle_2_layers'],
-            "num_gcn_final_layers": self.args['num_gcn_final_layers'],
-            "scene_gcn_dim": self.args['scene_gcn_dim'],
-            "scene_layers": self.args['scene_layers'],
+            "gcn_num_input_layers": self.args['gcn_num_input_layers'],
+            "gcn_num_middle_layers": self.args['gcn_num_middle_layers'],
+            "gcn_num_middle_2_layers": self.args['gcn_num_middle_2_layers'],
+            "gcn_num_output_layers": self.args['gcn_num_output_layers'],
+            "scene_input_layer_dim": self.args['scene_input_layer_dim'],
+            "scene_output_layer_dim": self.args['scene_output_layer_dim'],
+            "scene_num_input_layers": self.args['scene_num_input_layers'],
+            "scene_num_output_layers": self.args['scene_num_output_layers'],
             "seq_len": self.args['num_frames'],
             "num_nodes": num_nodes,
             "edge_importance": self.args['edge_importance'],
             "is_scene": self.args['is_scene'],
             "share_edge_importance": self.args['share_edge_importance'],
             "cluster_alg": self.args['cluster_alg'],
-            "num_classes": self.args['num_classes']
+            "num_classes": self.args['num_classes'],
+            "stgcn_kernel_size": self.args['stgcn_kernel_size'],
         }
         return model_params
 
@@ -207,7 +209,6 @@ class ParamsLoader:
         inference_targets = {
             'k': self.args['kNN_inference'],
             'instance_t': self.args['instance_t'],
-            'inference_num_clips': self.args['inference_num_clips'],
             'num_classes': self.args['num_classes']
         }
 
