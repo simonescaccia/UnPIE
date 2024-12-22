@@ -104,8 +104,17 @@ def _plot_image(image, save, file_path=None):
     else:    
         plt.show()
 
-def _print_gpu_memory():
+def print_gpu_memory_2():
     # get tensorflow memory info
     info = tf.config.experimental.get_memory_info('GPU:0')
     # print memory info in Bytes
     print(f"GPU memory current: {info['current']} Bytes, peak: {info['peak']} Bytes")
+
+import subprocess as sp
+import os
+
+def print_gpu_memory(flag):
+    command = "nvidia-smi --query-gpu=memory.free --format=csv"
+    memory_free_info = sp.check_output(command.split()).decode('ascii').split('\n')[:-1][1:]
+    memory_free_values = [int(x.split()[0]) for i, x in enumerate(memory_free_info)]
+    print(flag, ": GPU memory free: ", memory_free_values)
