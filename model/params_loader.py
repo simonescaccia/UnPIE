@@ -226,7 +226,7 @@ class ParamsLoader:
         save_params, load_params = self._get_save_load_params_from_arg()
         pie_params = self.get_pie_params()
 
-        self.args['emb_dim'] = self.args['scene_num_input_layers'] + self.args['gcn_output_layer_dim']
+        self.args['emb_dim'] = self.args['scene_output_layer_dim'] + self.args['gcn_output_layer_dim']
         self.args['kmeans_k'] = [self.args['num_classes']] * self.args['num_kmeans']
 
         model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])

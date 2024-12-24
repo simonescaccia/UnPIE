@@ -1,7 +1,5 @@
 from __future__ import division, print_function, absolute_import
 import os, sys
-import torch
-import numpy as np
 import tensorflow as tf
 
 sys.path.append(os.path.abspath('../'))
