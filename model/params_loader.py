@@ -40,6 +40,8 @@ class ParamsLoader:
             'edge_importance': args['edge_importance'],
             'feature_extractor': args['feature_extractor'],
             'data_sets': args['data_sets'],
+            'pad_classes': args['pad_classes'],
+            'balance_dataset': args['balance_dataset'],
         }
         return pie_params
 

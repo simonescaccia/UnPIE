@@ -113,19 +113,19 @@ class UnPIE():
     def get_cluster_labels(self):
         return self.cluster_labels
 
-    def _build_network(self, x, b, a, y, i, train):
+    def _build_network(self, x, b, c, a, y, i, train):
         model_params = self.params['model_params']
         model_func_params = model_params['model_func_params']
-        res = self._build_output(x, b, a, y, i, train, **model_func_params)
+        res = self._build_output(x, b, c, a, y, i, train, **model_func_params)
         return res
     
     def _build_output(
         self,
-        x, b, a, y, i, train,
+        x, b, c, a, y, i, train,
         **kwargs):
 
         if kwargs['task'] == 'SUP':
-            output = self.model(x, b, a, train)
+            output = self.model(x, b, c, a, train)
 
             if not train:
                 return output
@@ -133,7 +133,7 @@ class UnPIE():
             loss = self.sup_loss_fn(y, output)
             return {'loss': loss}
 
-        output = self.model(x, b, a, train)
+        output = self.model(x, b, c, a, train)
         output = tf.nn.l2_normalize(output, axis=1)
 
         if not train:
@@ -215,9 +215,9 @@ class UnPIE():
         return loss_retval
 
     @tf.function
-    def _train_step(self, x, b, a, y, i):
+    def _train_step(self, x, b, c, a, y, i):
         with tf.GradientTape() as tape:
-            y_ = self._build_network(x, b, a, y, i, train=True)
+            y_ = self._build_network(x, b, c, a, y, i, train=True)
             loss = self._build_loss(y_)
         grads = tape.gradient(loss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
@@ -235,7 +235,7 @@ class UnPIE():
 
         for epoch in range(self.checkpoint.epoch+1, self.params['train_params']['num_epochs']+1):
 
-            for x, b, a, y, i in iter(train_dataloader):
+            for x, b, c, a, y, i in iter(train_dataloader):
 
                 if clstr_update_per_epoch and first_step:
                     self._recompute_clusters()
@@ -243,6 +243,7 @@ class UnPIE():
 
                 x = tf.cast(x, tf.float32)
                 b = tf.cast(b, tf.float32)
+                c = tf.cast(c, tf.float32)
                 a = tf.cast(a, tf.float32)
                 y = tf.cast(y, tf.int32)
                 i = tf.cast(i, tf.int32)
@@ -251,7 +252,7 @@ class UnPIE():
                 self.start_time = time.time()
                 
                 # Optimize the model
-                loss_value = self._train_step(x, b, a, y, i)
+                loss_value = self._train_step(x, b, c, a, y, i)
 
                 duration = time.time() - self.start_time
 
@@ -349,23 +350,24 @@ class UnPIE():
             # targets.update(self._perf_func_unsup(y, i, outputs))
         return targets
 
-    def _inference_func(self, x, b, a, y, i):        
-        outputs = self._build_network(x, b, a, y, i, train=False)
+    def _inference_func(self, x, b, c, a, y, i):        
+        outputs = self._build_network(x, b, c, a, y, i, train=False)
         targets = self._build_inference_targets(y, i, outputs)
         return targets
 
     def _run_inference_loop(self, dataloader_type):
         agg_res = None
 
-        for x, b, a, y, i in iter(self.params['datasets'][dataloader_type]['dataloader']):
+        for x, b, c, a, y, i in iter(self.params['datasets'][dataloader_type]['dataloader']):
 
             x = tf.cast(x, tf.float32)
             b = tf.cast(b, tf.float32)
+            c = tf.cast(c, tf.float32)
             a = tf.cast(a, tf.float32)
             y = tf.cast(y, tf.int32)
             i = tf.cast(i, tf.int32)
 
-            res = self._inference_func(x, b, a, y, i)
+            res = self._inference_func(x, b, c, a, y, i)
             agg_res = self._online_agg(agg_res, res)
 
         val_result = self._agg_func(agg_res)

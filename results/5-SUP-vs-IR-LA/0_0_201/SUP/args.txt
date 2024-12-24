@@ -56,6 +56,7 @@ data_sets: all
 feature_extractor: vgg16
 edge_importance: True
 edge_weigths: False
+balance_dataset: False
 num_frames: 15
 img_height: 1080
 img_width: 1920
