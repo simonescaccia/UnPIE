@@ -230,52 +230,60 @@ class UnPIESTGCN(tf.keras.Model):
                         for _ in self.STGCN_layers_b
                     ]
 
-    def call(self, x, b, a, training):
+    def call(self, x, b, c, a, training):
         # x: N, T, V, C
         # b: N, T, V, 4
         # a: N, T, V, V
-        x = tf.transpose(x, perm=[0, 3, 1, 2])
+        # c: N, T, V, Cl
+
+        # Feature concatenation
         if self.is_scene:
-            b = tf.transpose(b, perm=[0, 3, 1, 2])
+            # Concatenate [x, c] and [b, c]
+            x = tf.concat([x, c], axis=-1)
+            b = tf.concat([b, c], axis=-1)
+        else:
+            # Concatenate [x, b, c]
+            x = tf.concat([x, b, c], axis=-1)
 
-        NX, CX, TX, VX = x.shape
-        NB, CB, TB, VB = b.shape
-
-        x = tf.transpose(x, perm=[0, 3, 1, 2])
+        # Features branch
+        NX, TX, VX, CX = x.shape
+        x = tf.transpose(x, perm=[0, 2, 3, 1])
         x = tf.reshape(x, [NX, VX * CX, TX])
         x = self.data_bn_x(x, training)
         x = tf.reshape(x, [NX, VX, CX, TX])
         x = tf.transpose(x, perm=[0, 1, 3, 2])
         x = tf.reshape(x, [NX, CX, TX, VX])
 
+        if self.edge_importance:
+            for layer, importance in zip(self.STGCN_layers_x, self.edge_importance_x):
+                x, _ = layer(x, a * importance, training)
+        else:
+            for layer in self.STGCN_layers_x:
+                x, _ = layer(x, a, training)
+
+        x = x[:, :, :, 0] # N,CX,T, get the first node V (pedestrian) for each graph
+
         if self.is_scene:
-            b = tf.transpose(b, perm=[0, 3, 1, 2])
+            # Scene branch
+            NB, TB, VB, CB = b.shape
+            b = tf.transpose(b, perm=[0, 2, 3, 1])
             b = tf.reshape(b, [NB, VB * CB, TB])
             b = self.data_bn_b(b, training)
             b = tf.reshape(b, [NB, VB, CB, TB])
             b = tf.transpose(b, perm=[0, 1, 3, 2])
             b = tf.reshape(b, [NB, CB, TB, VB])
 
-        if self.edge_importance:
-            for layer, importance in zip(self.STGCN_layers_x, self.edge_importance_x):
-                x, _ = layer(x, a * importance, training)
-            if self.is_scene:
+            if self.edge_importance:
                 self.edge_importance_b = self.edge_importance_x if self.share_edge_importance else self.edge_importance_b
                 for layer, importance in zip(self.STGCN_layers_b, self.edge_importance_b):
                     b, _ = layer(b, a * importance, training)
-        else:
-            for layer in self.STGCN_layers_x:
-                x, _ = layer(x, a, training)
-            if self.is_scene:
+            else:
                 for layer in self.STGCN_layers_b:
                     b, _ = layer(b, a, training)
 
-        # x: N,C,T,V
-        x = x[:, :, :, 0] # N,Cx,T, get the first node V (pedestrian) for each graph
-        if self.is_scene:
-            b = b[:, :, :, 0] # N,Cb,T, get the first node V (pedestrian) for each graph
+            b = b[:, :, :, 0] # N,CB,T, get the first node V (pedestrian) for each graph
+            x = tf.concat([x, b], axis=1) # N,CX+CB,T
 
-            x = tf.concat([x, b], axis=1) # N,Cx+Cb,T
-        x = tf.transpose(x, perm=[0, 2, 1]) # N,T,Cx+Cb
+        x = tf.transpose(x, perm=[0, 2, 1]) # N,T,CX+CB
 
         return x

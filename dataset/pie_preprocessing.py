@@ -25,9 +25,10 @@ class PIEPreprocessing(object):
         self.img_height = params['img_height']
         self.img_width = params['img_width']
         self.edge_weigths = params['edge_weigths']
-        self.edge_importance = params['edge_importance']
+        self.is_pad_classes = params['edge_importance'] and params['pad_classes']
         self.feature_extractor = params['feature_extractor']
         self.data_sets = params['data_sets']
+        self.balance_dataset = params['balance_dataset']
 
         self.ped_class = 'ped'
         self.other_ped_class = 'other_ped'
@@ -48,7 +49,7 @@ class PIEPreprocessing(object):
         test_features = self._get_features('test')
 
         # Get the max number of nodes for each class across all splits
-        if self.edge_importance:
+        if self.is_pad_classes:
             max_nodes_dict, max_num_nodes = self._get_max_nodes_dict(
                 [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
             )
@@ -123,7 +124,8 @@ class PIEPreprocessing(object):
         features_d = self._get_data(features_d, seq_length, seq_ovelap_rate)
 
         # Balance the number of samples in each split
-        features_d = self.pie.balance_samples_count(features_d, label_type='intention_binary')
+        if self.balance_dataset:
+            features_d = self.pie.balance_samples_count(features_d, label_type='intention_binary')
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         features_d = self._load_features(features_d, data_split=data_split)
@@ -137,7 +139,7 @@ class PIEPreprocessing(object):
             max_num_nodes,
             one_hot_classes,
             [self.ped_class, self.other_ped_class],
-            self.edge_importance,
+            self.is_pad_classes,
             transform_a=UnPIEGCN.transform,
             height=self.img_height,
             width=self.img_width,
