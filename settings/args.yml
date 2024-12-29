@@ -20,11 +20,11 @@ IR:
   lr_decay_steps: 30 # learning rate decay steps
   train_num_workers: 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 0 # number of training epochs
+  train_num_epochs: 299 # number of training epochs
   load_task: null # load task
   load_step: null # load step
   clstr_update_per_epoch: 0 # number of cluster updates per epoch
-  instance_k: 0 # noise to add to the loss. In ImageNet 4096 is used with a set size of 1,281,167 training images.
+  instance_k: 512 # noise to add to the loss. In ImageNet 4096 is used with a set size of 1,281,167 training images.
 LA:
   task: 'LA'
   weight_decay: 0.0001 # loss function weight decay
@@ -38,7 +38,7 @@ LA:
   train_num_epochs: 0
   load_task: 'IR'
   clstr_update_per_epoch: 15 # number of cluster updates per epoch
-  instance_k: 512 # background neighbors to sample. If 0, all training samples are considered
+  instance_k: 0 # background neighbors to sample. If 0, all training samples are considered
 SUP:
   task: 'SUP'
   weight_decay: 0.001 # loss function weight decay
@@ -49,7 +49,7 @@ SUP:
   lr_decay_steps: 40 # learning rate decay steps
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 201
+  train_num_epochs: 0
   load_task: null
   clstr_update_per_epoch: null # number of cluster updates per epoch
   instance_k: null # background neighbors to sample. If 0, all training samples are considered
@@ -83,7 +83,7 @@ drop_tcn: 0.0 # dropout rate for temporal convolutional network
 drop_conv: 0.0 # dropout rate for graph convolutional network
 drop_lstm: 0.4 # dropout rate for lstm
 stgcn_kernel_size: 3 # kernel size for spatial temporal graph convolutional network
-is_scene: False # whether to use scene embeddings
+is_scene: True # whether to use scene embeddings
 share_edge_importance: False # whether to share edge importance weights between scene and node gcns
 
 # Log files
