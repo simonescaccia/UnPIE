@@ -40,26 +40,40 @@ def print_model_size(model, model_name):
     print('')
     print(model_name, f" memory: {memory_mb:.2f} MB\n")
 
-def _plot_image_with_bbox(image, df):
-    # Convert CV image to PIL image
-    image1 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-    image2 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-    image_pil = Image.fromarray(image1)
+def _plot_image_with_bbox(image, df, save, file_path=None):
+    # Image with all bounding box
+    image_all_bb = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+    image_pil = Image.fromarray(image_all_bb)
     
     for i, row in df.iterrows():
-        image_i = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        # Add the bounding box to the image
         b = list(row['bbox'])
         bbox = jitter_bbox([b],'enlarge', 2, image=image_pil)[0]
         bbox = squarify(bbox, 1, image_pil.size[0])
         bbox = list(map(int,bbox[0:4]))
-        cv2.rectangle(image_i, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
-        plt.imshow(image_i)
-        plt.axis('off')
-        plt.show()
+        cv2.rectangle(image_all_bb, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
 
-    plt.imshow(image2)
+        # Crop the bounding box from the image
+        crop = image[bbox[1]:bbox[3], bbox[0]:bbox[2]]
+        if save:
+            cv2.imwrite(f'{file_path.split(".png")[0]}-crop-{i}.png', crop)
+        else:
+            crop = cv2.cvtColor(crop,cv2.COLOR_BGR2RGB)
+            plt.imshow(crop)
+            plt.axis('off')
+            plt.show()
+
+    plt.imshow(image_all_bb)
     plt.axis('off')
-    plt.show()
+    # Remove white space
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    # Figure size same as image size: 1920x1080 pixels
+    fig = plt.gcf()
+    fig.set_size_inches(19.2, 10.8)
+    if save:
+        plt.savefig(file_path, bbox_inches='tight', pad_inches=0)
+    else:
+        plt.show()
 
 def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set_id, vid, frame_num):
     # good frames:
@@ -68,40 +82,49 @@ def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set
     # 6, 4, 10147, wait cross bike
     # 6, 1, 14272, social
     # 6, 1, 16748
+    # 2, 2, 8502, cross with less bbox
+    search = False
     save = True
-    if save:
-        # save frame
-        target_frame = 16748
-        target_video = 'video_0001'
-        target_set = 'set06'
+    show_bbox = True
+    if not search:
+        # save or show frame
+        target_frame = 8502
+        target_video = 'video_0002'
+        target_set = 'set02'
         if set_id == target_set and vid == target_video and (frame_num == target_frame-1 or frame_num == target_frame or frame_num == target_frame+1):
             os.system('mkdir -p images')
             file_path = f'images/{set_id}-{vid}-{frame_num}.png'
-            _plot_image(image, save, file_path)
+            if show_bbox:
+                _plot_image_with_bbox(image, df, save, file_path)
+            else:
+                _plot_image(image, save, file_path)
     else:
-        # show frames
-        len_min_traffic = 0
-        len_min_ped = 1
-        len_max_ped = 1
-        if set_id != 'set06':
-            return
+        # search frames
+        len_min_traffic = 5
+        len_min_ped = 2
+        len_max_ped = 6
+        target_set = 'set06'
         values = df[type_column].value_counts()
         values_keys = values.keys()
-        if ped_type in values_keys and traffic_type in values_keys and \
-            values[traffic_type] > len_min_traffic and \
-            values[ped_type] >= len_min_ped and values[ped_type] <= len_max_ped:
+        if set_id == 'set06' and \
+                ped_type in values_keys and traffic_type in values_keys and \
+                values[traffic_type] > len_min_traffic and \
+                values[ped_type] >= len_min_ped and values[ped_type] <= len_max_ped:
             print("frame: ", frame_num)
-            _plot_image(image, save)
+            if show_bbox:
+                _plot_image_with_bbox(image, df, save)
+            else:
+                _plot_image(image, save)
 
 def _plot_image(image, save, file_path=None):
-    # Convert CV image to PIL image
-    image2 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-    plt.imshow(image2)
-    plt.axis('off')
     if save:
         print("Saving ", file_path)
         cv2.imwrite(file_path, image)
-    else:    
+    else:  
+        # Convert CV image to PIL image
+        image2 = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        plt.imshow(image2)
+        plt.axis('off')  
         plt.show()
 
 def print_gpu_memory_2():
