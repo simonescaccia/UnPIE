@@ -20,6 +20,7 @@ class UnPIE():
     def __init__(self, params, args):
 
         self.params = params
+        self.args = args
 
         self.cache_dir = self.params['save_params']['cache_dir'] # Set cache directory
         self.plot_save_path = os.path.join(self.cache_dir, self.params['save_params']['plot_dir'])
@@ -40,10 +41,7 @@ class UnPIE():
             self.val_log_writer = open(self.val_log_file_path, 'a+')
         if self.params['is_test']:
             self.test_log_file_path = os.path.join(self.cache_dir, self.params['save_params']['test_log_file'])
-            self.test_log_writer = open(self.test_log_file_path, 'w')
-
-        # Write args
-        write_dict(args, os.path.join(self.cache_dir, 'args.txt'))      
+            self.test_log_writer = open(self.test_log_file_path, 'w')     
         
         # Model
         self.model = UnPIENetwork(
@@ -332,6 +330,9 @@ class UnPIE():
 
 
     def train(self):
+        # Write args
+        write_dict(self.args, os.path.join(self.cache_dir, 'args.txt')) 
+
         print_separator('Starting UnPIE training')
         self._restore_model(self.last_check_manager.latest_checkpoint)
         self._run_train_loop()
