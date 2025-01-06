@@ -1,6 +1,5 @@
 import tensorflow as tf
 
-from model.attention import AttentionLayer
 from model.unpie_st_gcn import UnPIESTGCN
 from model.unpie_temporal_aggregator import UnPIETemporalAggregator
 
