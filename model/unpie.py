@@ -122,8 +122,10 @@ class UnPIE():
         x, b, c, a, y, i, train,
         **kwargs):
 
+        inputs = (x, b, c, a)
+
         if kwargs['task'] == 'SUP':
-            output = self.model(x, b, c, a, train)
+            output = self.model(inputs, train)
 
             if not train:
                 return output
@@ -131,7 +133,7 @@ class UnPIE():
             loss = self.sup_loss_fn(y, output)
             return {'loss': loss}
 
-        output = self.model(x, b, c, a, train)
+        output = self.model(inputs, train)
         output = tf.nn.l2_normalize(output, axis=1)
 
         if not train:

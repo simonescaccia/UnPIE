@@ -1,21 +1,23 @@
 import tensorflow as tf
 
-
+from model.attention import AttentionLayer
 from model.unpie_st_gcn import UnPIESTGCN
 from model.unpie_temporal_aggregator import UnPIETemporalAggregator
 
 class UnPIENetwork(tf.keras.Model):
     def __init__(self, **params):
-        super(UnPIENetwork, self).__init__()
+        super().__init__()
 
         self.gcn = UnPIESTGCN(**params)
+        self.attention = AttentionLayer(input_dim=params['emb_dim'])
         self.temporal_aggregator = UnPIETemporalAggregator(**params)
 
         self.fcn = tf.keras.layers.Dense(1, activation='sigmoid')
 
         self.task = params['task']
 
-    def __call__(self, x, b, c, a, training): 
+    def call(self, inputs, training):
+        x, b, c, a = inputs
         '''
         Args:
             x: tf.Tensor, shape=(batch_size, seq_len, num_nodes, num_channels)

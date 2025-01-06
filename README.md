@@ -10,7 +10,7 @@ UnPIE network:
 Some modules are taken and modified from the following repositories:
 - [Pedestrian Intention Estimation (PIE) dataset](http://data.nvision2.eecs.yorku.ca/PIE_dataset/).
 - [Pedestrian intention and trajectory estimation (PIEPredict) model](https://github.com/aras62/PIEPredict).
-- [Spatial Temporal Graph Convolutional Networks for Skeleton-Based Action Recognition (ST-GCN) model](https://github.com/yysijie/st-gcn)
+- [Scene-STGCN](https://github.com/tue-mps/Scene-STGCN)
 - [Unsupervised Learning from Video with Deep Neural Embeddings (VIE) model](https://github.com/neuroailab/VIE).
 
 ## Setup

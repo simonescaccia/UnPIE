@@ -20,7 +20,7 @@ REGULARIZER = tf.keras.regularizers.l2(l=0.0001)
             :math:`V` is the number of graph nodes
             :math:`C` is the number of incoming channels
 """
-class SGCN(tf.keras.Model):
+class SGCN(tf.keras.layers.Layer):
     def __init__(self, 
                  channel_out, 
                  dropout_conv):
@@ -62,7 +62,7 @@ class SGCN(tf.keras.Model):
             :math:`T_{in}/T_{out}` is a length of input/output sequence,
             :math:`V` is the number of graph nodes.
 """
-class STGCN(tf.keras.Model):
+class STGCN(tf.keras.layers.Layer):
     def __init__(self, 
                  channel_out, 
                  kernel_size,
@@ -126,11 +126,11 @@ class STGCN(tf.keras.Model):
             :math:`T_{in}` is a length of input sequence,
             :math:`V_{in}` is the number of graph nodes.
 """
-class UnPIESTGCN(tf.keras.Model):
+class UnPIESTGCN(tf.keras.layers.Layer):
     transform = normalize_undigraph
 
     def __init__(self, **params):
-        super(UnPIESTGCN, self).__init__()
+        super().__init__()
 
         gcn_num_input_layers = params['gcn_num_input_layers']
         gcn_num_middle_layers = params['gcn_num_middle_layers']
