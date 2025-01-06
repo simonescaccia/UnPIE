@@ -9,7 +9,6 @@ class UnPIENetwork(tf.keras.Model):
         super().__init__()
 
         self.gcn = UnPIESTGCN(**params)
-        self.attention = AttentionLayer(input_dim=params['emb_dim'])
         self.temporal_aggregator = UnPIETemporalAggregator(**params)
 
         self.fcn = tf.keras.layers.Dense(1, activation='sigmoid')
