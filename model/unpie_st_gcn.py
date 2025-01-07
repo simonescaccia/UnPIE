@@ -20,11 +20,13 @@ REGULARIZER = tf.keras.regularizers.l2(l=0.0001)
             :math:`V` is the number of graph nodes
             :math:`C` is the number of incoming channels
 """
-class SGCN(tf.keras.layers.Layer):
+class SGCN(tf.keras.Model):
     def __init__(self, 
                  channel_out, 
-                 dropout_conv):
-        super().__init__()
+                 dropout_conv,
+                 params,
+                 channel_in):
+        super(SGCN, self).__init__()
         self.conv = tf.keras.layers.Conv2D(channel_out,
                                            kernel_size= (1, 1),
                                            strides = (1, 1),
@@ -33,13 +35,27 @@ class SGCN(tf.keras.layers.Layer):
                                            data_format='channels_first',)
         self.drop = tf.keras.layers.Dropout(dropout_conv)
 
-    def call(self, x, a, training):
+        self.channel_in = channel_in
+        self.seq_len = params['seq_len']
+        self.num_nodes = params['num_nodes']
+        self.batch_size = params['batch_size']
+
+    def call(self, inputs, training):
+        x, a = inputs
         # x: N, C, T, V
         # a: N, T, V, V
         x = self.drop(self.conv(x), training)
         # x = self.conv(x)
         x = tf.einsum('nctv,ntvw->nctw', x, a)
         return x, a
+    
+    def build_graph(self):
+        inputs = [
+            tf.keras.Input(shape=(self.channel_in, self.seq_len, self.num_nodes), name='x', batch_size=self.batch_size),
+            tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.num_nodes), name='a', batch_size=self.batch_size)
+        ]
+
+        return tf.keras.Model(inputs, self.call(inputs, training=False))
 
 
 """Applies a spatial temporal graph convolution over an input graph sequence.
@@ -62,7 +78,7 @@ class SGCN(tf.keras.layers.Layer):
             :math:`T_{in}/T_{out}` is a length of input/output sequence,
             :math:`V` is the number of graph nodes.
 """
-class STGCN(tf.keras.layers.Layer):
+class STGCN(tf.keras.Model):
     def __init__(self, 
                  channel_out, 
                  kernel_size,
@@ -71,12 +87,14 @@ class STGCN(tf.keras.layers.Layer):
                  residual,
                  dropout_conv,
                  dropout_tcn,
-                 downsample):
-        super().__init__()
+                 downsample,
+                 params,
+                 channel_in):
+        super(STGCN, self).__init__()
         
         self.use_mdn = use_mdn
         
-        self.sgcn = SGCN(channel_out, dropout_conv)
+        self.sgcn = SGCN(channel_out, dropout_conv, params, channel_in)
 
         self.tgcn = tf.keras.Sequential()
         self.tgcn.add(tf.keras.layers.BatchNormalization(axis=1))
@@ -104,16 +122,32 @@ class STGCN(tf.keras.layers.Layer):
                                                      data_format='channels_first',))
             self.residual.add(tf.keras.layers.BatchNormalization(axis=1))
 
-    def call(self, x, a, training):
+        self.seq_len = params['seq_len']
+        self.num_nodes = params['num_nodes']
+        self.batch_size = params['batch_size']
+        self.channel_in = channel_in
+
+    def call(self, inputs, training):
+        x, a = inputs
+        # x: N, C, T, V
+        # a: N, T, V, V
 
         res = self.residual(x, training)
-        x, a = self.sgcn(x, a, training)
+        x, a = self.sgcn(inputs, training)
         x = self.tgcn(x, training) + res
 
         if not self.use_mdn:
             x = self.act(x)
 
         return x, a
+    
+    def build_graph(self):
+        inputs = [
+            tf.keras.Input(shape=(self.channel_in, self.seq_len, self.num_nodes), name='x', batch_size=self.batch_size),
+            tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.num_nodes), name='a', batch_size=self.batch_size)
+        ]
+
+        return tf.keras.Model(inputs, self.call(inputs, training=False))
 
 
 """Spatial temporal graph convolutional networks.
@@ -126,11 +160,11 @@ class STGCN(tf.keras.layers.Layer):
             :math:`T_{in}` is a length of input sequence,
             :math:`V_{in}` is the number of graph nodes.
 """
-class UnPIESTGCN(tf.keras.layers.Layer):
+class UnPIESTGCN(tf.keras.Model):
     transform = normalize_undigraph
 
     def __init__(self, **params):
-        super().__init__()
+        super(UnPIESTGCN, self).__init__()
 
         gcn_num_input_layers = params['gcn_num_input_layers']
         gcn_num_middle_layers = params['gcn_num_middle_layers']
@@ -153,6 +187,13 @@ class UnPIESTGCN(tf.keras.layers.Layer):
         self.is_scene = params['is_scene']
         self.share_edge_importance = params['share_edge_importance']
 
+        self.seq_len = params['seq_len']
+        self.num_nodes = params['num_nodes']
+        self.output_feat_extr = params['vgg_output_size']
+        self.len_one_hot_classes = params['len_one_hot_classes']
+        self.batch_size = params['batch_size']
+        self.emb_dim = params['emb_dim']
+
         self.data_bn_x = tf.keras.layers.BatchNormalization(axis=1)
         if self.is_scene:
             self.data_bn_b = tf.keras.layers.BatchNormalization(axis=1)
@@ -168,7 +209,9 @@ class UnPIESTGCN(tf.keras.layers.Layer):
                     use_mdn=True, 
                     dropout_tcn=0.5, 
                     dropout_conv=0.5,
-                    downsample=True if i==0 else False))
+                    downsample=True if i==0 else False,
+                    params=params,
+                    channel_in=self.output_feat_extr + self.len_one_hot_classes))
         for i in range(gcn_num_output_layers):
             self.STGCN_layers_x.append(
                 STGCN(
@@ -179,7 +222,9 @@ class UnPIESTGCN(tf.keras.layers.Layer):
                     use_mdn=True, 
                     dropout_tcn=0.5, 
                     dropout_conv=0.2,
-                    downsample=True if i==0 and gcn_output_layer_dim != gcn_input_layer_dim else False))
+                    downsample=True if i==0 and gcn_output_layer_dim != gcn_input_layer_dim else False,
+                    params=params,
+                    channel_in=gcn_input_layer_dim))
 
         if self.is_scene:
             self.STGCN_layers_b = []
@@ -193,7 +238,9 @@ class UnPIESTGCN(tf.keras.layers.Layer):
                         use_mdn=True, 
                         dropout_tcn=0.5, 
                         dropout_conv=0,
-                        downsample=True if i==0 else False))
+                        downsample=True if i==0 else False,
+                        params=params,
+                        channel_in=self.output_feat_extr + self.len_one_hot_classes))
             for _ in range(scene_num_output_layers):
                 self.STGCN_layers_b.append(
                     STGCN(
@@ -204,7 +251,9 @@ class UnPIESTGCN(tf.keras.layers.Layer):
                         use_mdn=True, 
                         dropout_tcn=0.5, 
                         dropout_conv=0.2,
-                        downsample=True if i==0 and scene_output_layer_dim != scene_input_layer_dim else False))
+                        downsample=True if i==0 and scene_output_layer_dim != scene_input_layer_dim else False,
+                        params=params,
+                        channel_in=scene_input_layer_dim))
 
         if self.edge_importance:
             # Initialize edge_importance as a list of trainable variables
@@ -230,11 +279,12 @@ class UnPIESTGCN(tf.keras.layers.Layer):
                         for _ in self.STGCN_layers_b
                     ]
 
-    def call(self, x, b, c, a, training):
+    def call(self, inputs, training):
+        x, b, c, a = inputs
         # x: N, T, V, C
         # b: N, T, V, 4
-        # a: N, T, V, V
         # c: N, T, V, Cl
+        # a: N, T, V, V
 
         # Feature concatenation
         if self.is_scene:
@@ -256,10 +306,12 @@ class UnPIESTGCN(tf.keras.layers.Layer):
 
         if self.edge_importance:
             for layer, importance in zip(self.STGCN_layers_x, self.edge_importance_x):
-                x, _ = layer(x, a * importance, training)
+                inputs = (x, a * importance)
+                x, _ = layer(inputs, training)
         else:
             for layer in self.STGCN_layers_x:
-                x, _ = layer(x, a, training)
+                inputs = (x, a)
+                x, _ = layer(inputs, training)
 
         x = x[:, :, :, 0] # N,CX,T, get the first node V (pedestrian) for each graph
 
@@ -276,10 +328,12 @@ class UnPIESTGCN(tf.keras.layers.Layer):
             if self.edge_importance:
                 self.edge_importance_b = self.edge_importance_x if self.share_edge_importance else self.edge_importance_b
                 for layer, importance in zip(self.STGCN_layers_b, self.edge_importance_b):
-                    b, _ = layer(b, a * importance, training)
+                    inputs = (b, a * importance)
+                    b, _ = layer(inputs, training)
             else:
                 for layer in self.STGCN_layers_b:
-                    b, _ = layer(b, a, training)
+                    inputs = (b, a)
+                    b, _ = layer(inputs, training)
 
             b = b[:, :, :, 0] # N,CB,T, get the first node V (pedestrian) for each graph
             x = tf.concat([x, b], axis=1) # N,CX+CB,T
@@ -287,3 +341,13 @@ class UnPIESTGCN(tf.keras.layers.Layer):
         x = tf.transpose(x, perm=[0, 2, 1]) # N,T,CX+CB
 
         return x
+
+    def build_graph(self):
+        inputs = [
+            tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.output_feat_extr), name='x', batch_size=self.batch_size),
+            tf.keras.Input(shape=(self.seq_len, self.num_nodes, 4), name='b', batch_size=self.batch_size),
+            tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.len_one_hot_classes), name='c', batch_size=self.batch_size),
+            tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.num_nodes), name='a', batch_size=self.batch_size)
+        ]
+
+        return tf.keras.Model(inputs, self.call(inputs, training=False))

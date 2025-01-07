@@ -64,6 +64,10 @@ balance_dataset: False # whether to balance the dataset with same number of samp
 num_frames: 15 # number of frames in each clip
 img_height: 1080 # video frame height
 img_width: 1920 # video frame width
+vgg_input_size: 224 # input size for vgg feature extractor
+vgg_output_size: 512 # output size for vgg feature extractor after global average pooling
+efficientnet_input_size: 300 # input size for efficientnet feature extractor
+efficientnet_output_size: 1536 # output size for efficientnet feature extractor after global average pooling
 
 # Network params
 gcn_input_layer_dim: 64 # 512 output shape of vgg feature extractor
