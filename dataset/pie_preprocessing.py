@@ -76,17 +76,20 @@ class PIEPreprocessing(object):
             'train': {
                 'dataloader': train_dataloader,
                 'len': train_len,
-                'num_nodes': max_num_nodes
+                'num_nodes': max_num_nodes,
+                'len_one_hot_classes': len(one_hot_classes)
             },
             'val': {
                 'dataloader': val_dataloader,
                 'len': val_len,
-                'num_nodes': max_num_nodes
+                'num_nodes': max_num_nodes,
+                'len_one_hot_classes': len(one_hot_classes)
             },
             'test': {
                 'dataloader': test_dataset,
                 'len': test_len,
-                'num_nodes': max_num_nodes
+                'num_nodes': max_num_nodes,
+                'len_one_hot_classes': len(one_hot_classes)
             }
         }
 

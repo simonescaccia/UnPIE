@@ -404,7 +404,13 @@ class UnPIE():
         self._restore_model(self.best_check_manager.latest_checkpoint)
         self._run_test_loop('best')
         self.test_log_writer.close()
+
+        # tf.keras.utils.plot_model(self.model.gcn.build_graph(), to_file=os.path.join(self.cache_dir, 'gcn_model.png'), show_shapes=True, expand_nested=True, show_layer_names=False)
+        # tf.keras.utils.plot_model(self.model.gcn.STGCN_layers_x[0].build_graph(), to_file=os.path.join(self.cache_dir, 'st_gcn_model.png'), show_shapes=True, expand_nested=True, show_layer_names=False)
+        # tf.keras.utils.plot_model(self.model.gcn.STGCN_layers_x[0].sgcn.build_graph(), to_file=os.path.join(self.cache_dir, 'sgcn_model.png'), show_shapes=True, expand_nested=True, show_layer_names=False)
+
         print_separator('UnPIE testing ended')
+
 
     def _exclude_batch_norm(self, name):
         return 'batch_normalization' not in name

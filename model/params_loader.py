@@ -167,6 +167,9 @@ class ParamsLoader:
             "cluster_alg": self.args['cluster_alg'],
             "num_classes": self.args['num_classes'],
             "stgcn_kernel_size": self.args['stgcn_kernel_size'],
+            "len_one_hot_classes": self.args['len_one_hot_classes'],
+            "vgg_output_size": self.args['vgg_output_size'],
+            "batch_size": self.args['batch_size'],
         }
         return model_params
 
@@ -228,6 +231,7 @@ class ParamsLoader:
 
         self.args['emb_dim'] = self.args['scene_output_layer_dim'] + self.args['gcn_output_layer_dim']
         self.args['kmeans_k'] = [self.args['num_classes']] * self.args['num_kmeans']
+        self.args['len_one_hot_classes'] = datasets['train']['len_one_hot_classes']
 
         model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])
         model_params = {

@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-class UnPIETemporalAggregator(tf.keras.layers.Layer):
+class UnPIETemporalAggregator(tf.keras.Model):
     def __init__(self, **params):
         super().__init__()
         self.lstm = tf.keras.layers.LSTM(
