@@ -56,7 +56,7 @@ SUP:
 
 # Data preprocessing params
 data_sets: 'all' # data sets to use (small, all)
-feature_extractor: 'vgg16' # feature extractor to use (vgg16, efficientnetb3)
+feature_extractor: 'efficientnetb3' # feature extractor to use (vgg16, efficientnetb3)
 edge_importance: True # weights for edges in the graph.
 edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
 pad_classes: True # whether to pad classes to the same size in the adjacency matrix
@@ -64,10 +64,10 @@ balance_dataset: False # whether to balance the dataset with same number of samp
 num_frames: 15 # number of frames in each clip
 img_height: 1080 # video frame height
 img_width: 1920 # video frame width
-vgg_input_size: 224 # input size for vgg feature extractor
-vgg_output_size: 512 # output size for vgg feature extractor after global average pooling
-efficientnet_input_size: 300 # input size for efficientnet feature extractor
-efficientnet_output_size: 1536 # output size for efficientnet feature extractor after global average pooling
+vgg16_input_size: 224 # input size for vgg feature extractor
+vgg16_output_size: 512 # output size for vgg feature extractor after global average pooling
+efficientnetb3_input_size: 300 # input size for efficientnet feature extractor
+efficientnetb3_output_size: 1536 # output size for efficientnet feature extractor after global average pooling
 
 # Network params
 gcn_input_layer_dim: 64 # 512 output shape of vgg feature extractor

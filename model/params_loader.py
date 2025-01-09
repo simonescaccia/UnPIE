@@ -39,6 +39,7 @@ class ParamsLoader:
             'edge_weigths': args['edge_weigths'],
             'edge_importance': args['edge_importance'],
             'feature_extractor': args['feature_extractor'],
+            'feat_input_size': args[args['feature_extractor']+'_input_size'],
             'data_sets': args['data_sets'],
             'pad_classes': args['pad_classes'],
             'balance_dataset': args['balance_dataset'],
@@ -168,7 +169,7 @@ class ParamsLoader:
             "num_classes": self.args['num_classes'],
             "stgcn_kernel_size": self.args['stgcn_kernel_size'],
             "len_one_hot_classes": self.args['len_one_hot_classes'],
-            "vgg_output_size": self.args['vgg_output_size'],
+            "feat_output_size": self.args[self.args['feature_extractor']+'_output_size'],
             "batch_size": self.args['batch_size'],
         }
         return model_params
