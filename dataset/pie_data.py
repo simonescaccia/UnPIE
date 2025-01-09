@@ -587,13 +587,13 @@ class PIE(object):
         for feature_type in feature_types:
             source_path = self.get_path(
                 data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                model_name='vgg16_'+'none',
+                model_name=self.pretrained_extractor.model_name,
                 data_subset='all',
                 feature_type=feature_type)
             for folder in folders:
                 dest_path = self.get_path(
                     data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                    model_name='vgg16_'+'none',
+                    model_name=self.pretrained_extractor.model_name,
                     data_subset=folder,
                     feature_type=feature_type)
                 sets = self.get_image_set_ids(folder)
