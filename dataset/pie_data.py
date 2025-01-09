@@ -49,7 +49,7 @@ from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress, mer
 from utils.print_utils import plot_image, print_separator
 
 class PIE(object):
-    def __init__(self, data_opts, data_sets, regen_database=False, data_path=''):
+    def __init__(self, data_opts, data_sets, feature_extractor, feat_input_size, regen_database=False, data_path=''):
         """
         Class constructor
         :param regen_database: Whether generate the database or not
@@ -73,6 +73,9 @@ class PIE(object):
         
         self.ped_type = 'peds'
         self.traffic_type = 'objs'
+
+        self.feature_extractor = feature_extractor
+        self.feat_input_size = feat_input_size
 
         if data_sets == 'all':
             self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
@@ -485,7 +488,7 @@ class PIE(object):
             bbox = squarify(bbox, 1, image.size[0])
             bbox = list(map(int,bbox[0:4]))
             cropped_image = image.crop(bbox)
-            img_data = img_pad(cropped_image, mode='pad_resize', size=224)                    
+            img_data = img_pad(cropped_image, mode='pad_resize', size=self.feat_input_size)                    
             expanded_img = self.pretrained_extractor.preprocess(img_data)
             img_features = self.pretrained_extractor(expanded_img)
             if not os.path.exists(img_save_folder):
@@ -551,7 +554,7 @@ class PIE(object):
         :param extract_frame_type: Whether to extract 'all' frames or only the ones that are 'annotated'
                              Note: extracting 'all' features requires approx. TODO
         """  
-        self.pretrained_extractor = PretrainedExtractor() # Create extractor model
+        self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
         ped_dataframe = self._get_ped_info_per_image(
@@ -563,7 +566,7 @@ class PIE(object):
             other_ped_bboxes=sequence_data['other_ped_bboxes'],
             other_ped_ids=sequence_data['other_ped_ids'])
         
-        print_separator("Extracting features and saving on hard drive")
+        print_separator("Extracting features and saving on hard drive using the {} model".format(self.feature_extractor))
         # Extract image features
         set_folders = sets_to_extract
         for set_id in set_folders:

@@ -2,8 +2,6 @@ import tensorflow as tf
 
 from utils.graph_utils import normalize_undigraph
 
-REGULARIZER = tf.keras.regularizers.l2(l=0.0001)
-
 """The basic module for applying a spatial graph convolution.
     Args:
         filters (int): Number of channels produced by the convolution
@@ -189,7 +187,7 @@ class UnPIESTGCN(tf.keras.Model):
 
         self.seq_len = params['seq_len']
         self.num_nodes = params['num_nodes']
-        self.output_feat_extr = params['vgg_output_size']
+        self.output_feat_extr = params['feat_output_size']
         self.len_one_hot_classes = params['len_one_hot_classes']
         self.batch_size = params['batch_size']
         self.emb_dim = params['emb_dim']
