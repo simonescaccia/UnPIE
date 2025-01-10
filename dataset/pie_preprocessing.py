@@ -29,11 +29,12 @@ class PIEPreprocessing(object):
         self.feature_extractor = params['feature_extractor']
         self.data_sets = params['data_sets']
         self.balance_dataset = params['balance_dataset']
+        self.feat_input_size = params['feat_input_size']
 
         self.ped_class = 'ped'
         self.other_ped_class = 'other_ped'
 
-        self.pie = PIE(data_path=self.pie_path, data_opts=self.data_opts, data_sets=self.data_sets)
+        self.pie = PIE(data_path=self.pie_path, data_opts=self.data_opts, data_sets=self.data_sets, feat_input_size=self.feat_input_size, feature_extractor=self.feature_extractor)
 
     def get_datasets(self):
         '''
