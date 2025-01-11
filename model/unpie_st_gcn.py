@@ -45,7 +45,7 @@ class SGCN(tf.keras.Model):
         x = self.drop(self.conv(x), training)
         # x = self.conv(x)
         x = tf.einsum('nctv,ntvw->nctw', x, a)
-        return x, a
+        return x
     
     def build_graph(self):
         inputs = [
@@ -126,18 +126,18 @@ class STGCN(tf.keras.Model):
         self.channel_in = channel_in
 
     def call(self, inputs, training):
-        x, a = inputs
+        x, _ = inputs
         # x: N, C, T, V
         # a: N, T, V, V
 
         res = self.residual(x, training)
-        x, a = self.sgcn(inputs, training)
+        x = self.sgcn(inputs, training)
         x = self.tgcn(x, training) + res
 
         if not self.use_mdn:
             x = self.act(x)
 
-        return x, a
+        return x
     
     def build_graph(self):
         inputs = [
@@ -305,11 +305,11 @@ class UnPIESTGCN(tf.keras.Model):
         if self.edge_importance:
             for layer, importance in zip(self.STGCN_layers_x, self.edge_importance_x):
                 inputs = (x, a * importance)
-                x, _ = layer(inputs, training)
+                x = layer(inputs, training)
         else:
             for layer in self.STGCN_layers_x:
                 inputs = (x, a)
-                x, _ = layer(inputs, training)
+                x = layer(inputs, training)
 
         x = x[:, :, :, 0] # N,CX,T, get the first node V (pedestrian) for each graph
 
@@ -327,11 +327,11 @@ class UnPIESTGCN(tf.keras.Model):
                 self.edge_importance_b = self.edge_importance_x if self.share_edge_importance else self.edge_importance_b
                 for layer, importance in zip(self.STGCN_layers_b, self.edge_importance_b):
                     inputs = (b, a * importance)
-                    b, _ = layer(inputs, training)
+                    b = layer(inputs, training)
             else:
                 for layer in self.STGCN_layers_b:
                     inputs = (b, a)
-                    b, _ = layer(inputs, training)
+                    b = layer(inputs, training)
 
             b = b[:, :, :, 0] # N,CB,T, get the first node V (pedestrian) for each graph
             x = tf.concat([x, b], axis=1) # N,CX+CB,T
