@@ -49,14 +49,14 @@ SUP:
   lr_decay_steps: 40 # learning rate decay steps
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 301
+  train_num_epochs: 2
   load_task: null
   clstr_update_per_epoch: null # number of cluster updates per epoch
   instance_k: null # background neighbors to sample. If 0, all training samples are considered
 
 # Data preprocessing params
 data_sets: 'all' # data sets to use (small, all)
-feature_extractor: 'efficientnetb3' # feature extractor to use (vgg16, efficientnetb3)
+feature_extractor: 'vgg16' # feature extractor to use (vgg16, efficientnetb3)
 edge_importance: True # weights for edges in the graph.
 edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
 pad_classes: True # whether to pad classes to the same size in the adjacency matrix
