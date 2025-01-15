@@ -29,10 +29,13 @@ class PIEPreprocessing(object):
         self.data_sets = params['data_sets']
         self.balance_dataset = params['balance_dataset']
         self.feat_input_size = params['feat_input_size']
-        self.obj_classes = params['obj_classes']
+        self.obj_classes_list = params['obj_classes']
 
         self.ped_class = 'ped'
         self.other_ped_class = 'other_ped'
+
+        self.num_of_total_frames = 0
+        self.dataset_objs_statistics = {obj: {} for obj in self.obj_classes_list}
 
         self.pie = PIE(
             data_path=self.pie_path, 
@@ -40,7 +43,7 @@ class PIEPreprocessing(object):
             data_sets=self.data_sets, 
             feat_input_size=self.feat_input_size, 
             feature_extractor=self.feature_extractor,
-            obj_classes=self.obj_classes)
+            obj_classes_list=self.obj_classes_list)
 
     def get_datasets(self):
         '''
@@ -54,6 +57,8 @@ class PIEPreprocessing(object):
         train_features = self._get_features('train')
         val_features = self._get_features('val')
         test_features = self._get_features('test')
+
+        self._prints_dataset_statistics()
 
         # Get the max number of nodes for each class across all splits
         max_nodes_dict, _ = self._get_max_nodes_dict(
@@ -108,7 +113,7 @@ class PIEPreprocessing(object):
             for obj_class in frame
         )
         classes_set.add(self.ped_class)
-        if self.other_ped_class in self.obj_classes:
+        if self.other_ped_class in self.obj_classes_list:
             classes_set.add(self.other_ped_class)
 
         # One-hot encode classes
@@ -126,6 +131,8 @@ class PIEPreprocessing(object):
     def _get_features(self, data_split):
         # Generate data sequences
         features_d = self.pie.generate_data_trajectory_sequence(data_split, **self.data_opts)
+
+        self._extract_dataset_statistics(features_d.copy())
 
         # Generate data mini sequences
         seq_length = self.data_opts['max_size_observe']
@@ -359,4 +366,65 @@ class PIEPreprocessing(object):
         for k, v in max_nodes_dict.items():
             max_num_nodes += v
 
-        return max_nodes_dict, max_num_nodes 
+        return max_nodes_dict, max_num_nodes
+    
+    def _extract_dataset_statistics(self, dataset):
+        # images = dataset['image'].copy() # shape: (num_ped, num_frames, channels)
+        # bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, 4)
+        # obj_classes = dataset['obj_classes'].copy() # shape: (num_ped, num_frames, num_objs, obj)
+        # obj_bboxes = dataset['obj_bboxes'].copy() # shape: (num_ped, num_frames, num_objs, 4)
+        # obj_ids = dataset['obj_ids'].copy() # shape: (num_ped, num_frames, num_objs, obj)
+        # other_ped_bboxes = dataset['other_ped_bboxes'].copy() # shape: (num_ped, num_frames, num_other_peds, 4)
+        # other_ped_ids = dataset['other_ped_ids'].copy() # shape: (num_ped, num_frames, num_other_peds)
+        # ped_ids = dataset['ped_ids'].copy() # shape: (num_ped, num_frames)
+        # int_bin = dataset['intention_binary'].copy() # shape: (num_ped, num_frames)
+        for objs_seq_frames, other_peds_seq_frames in zip(dataset['obj_classes'], dataset['other_ped_ids']):
+            self.num_of_total_frames += len(objs_seq_frames)
+
+            for frame_objs, frame_other_peds in zip(objs_seq_frames, other_peds_seq_frames):
+                frame_objs_dict = {obj: 0 for obj in self.obj_classes_list}
+
+                # Objects
+                for obj in frame_objs:
+                    idx = frame_objs_dict[obj]
+                    if idx not in self.dataset_objs_statistics[obj].keys(): # obj index not found on the main dict
+                        self.dataset_objs_statistics[obj][idx] = 1
+                    else:
+                        self.dataset_objs_statistics[obj][idx] += 1
+                    frame_objs_dict[obj] += 1
+                
+                # Other peds
+                for i, _ in enumerate(frame_other_peds):
+                    if i not in self.dataset_objs_statistics['other_ped'].keys(): # other ped index not found on the main dict
+                        self.dataset_objs_statistics['other_ped'][i] = 1
+                    else:
+                        self.dataset_objs_statistics['other_ped'][i] += 1
+
+    def _prints_dataset_statistics(self):
+        # Get the maximum number of nodes within the same class
+        num_classes = len(self.dataset_objs_statistics)
+        max_num_nodes = 0
+        for key in self.dataset_objs_statistics.keys():
+            max_num_nodes = max(max_num_nodes, len(self.dataset_objs_statistics[key]))
+
+        # Create a table
+        table = np.zeros((num_classes, max_num_nodes), dtype=np.float32)
+        rows = []
+        for i, obj_key in enumerate(self.dataset_objs_statistics.keys()):
+            rows.append(obj_key)
+            for j, value in self.dataset_objs_statistics[obj_key].items():
+                table[i, j] = value
+        
+        # Compute the frequency of each occurrence
+        table = np.round(table / self.num_of_total_frames, 2)
+
+        # Compute the mean per column
+        mean_occurrence = np.round(np.mean(table, axis=0), 2)
+
+        # Print table
+        print("Table dataset objects")
+        print("rows: ", rows)
+        print(table)
+        print("Mean occurrence", mean_occurrence)
+                
+
