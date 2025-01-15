@@ -12,8 +12,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                  max_nodes_dict, 
                  max_num_nodes, 
                  one_hot_classes, 
-                 ped_classes, 
-                 is_pad_classes,
+                 ped_classes,
                  height, 
                  width, 
                  edge_weigths, 
@@ -25,7 +24,6 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         self.max_num_nodes = max_num_nodes
         self.one_hot_classes = one_hot_classes
         self.ped_classes = ped_classes
-        self.is_pad_classes = is_pad_classes
         self.img_height = height
         self.img_width = width
         self.normalization_factor = np.linalg.norm([height, width])
@@ -46,7 +44,6 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         max_nodes_dict = self.max_nodes_dict
         max_num_nodes = self.max_num_nodes
         ped_classes = self.ped_classes
-        is_pad_classes = self.is_pad_classes
         one_hot_classes = self.one_hot_classes
 
         ped_feats = features['ped_feats'] # [num_seqs, seq_len, emb_dim]
@@ -62,16 +59,15 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         print('Computing {} graphs...'.format(data_split))
 
         # Prepare objects start position. Class order: ped, obj_class_1, obj_class_2, ..., obj_class_n , other_peds
-        if is_pad_classes:
-            class_init_pos = 1
-            obj_class_pos = {}
-            for k, v in max_nodes_dict.items():
-                if k not in ped_classes:
-                    obj_class_pos[k] = {}
-                    obj_class_pos[k]['init_pos'] = class_init_pos
-                    obj_class_pos[k]['count'] = 0
-                    class_init_pos += v
-            other_ped_init_pos = class_init_pos
+        class_init_pos = 1
+        obj_class_pos = {}
+        for k, v in max_nodes_dict.items():
+            if k not in ped_classes:
+                obj_class_pos[k] = {}
+                obj_class_pos[k]['init_pos'] = class_init_pos
+                class_init_pos += 1 # only the nearest object per class
+                obj_class_pos[k]['class_nearest_obj_dist'] = self._get_distance([0, self.img_height], [self.img_width, 0]) # max distance
+        other_ped_init_pos = class_init_pos
 
         num_seqs = len(ped_feats)
         seq_len = len(ped_feats[0])
@@ -99,44 +95,45 @@ class PIEGraphDataset(torch.utils.data.Dataset):
 
                 # Object nodes
                 for k, (obj_feat, obj_bbox, obj_class) in enumerate(zip(obj_feats[i][j], obj_bboxes[i][j], obj_classes[i][j])):
-                    if is_pad_classes:
-                        num_node = obj_class_pos[obj_class]['init_pos'] + obj_class_pos[obj_class]['count']
+                    num_node = obj_class_pos[obj_class]['init_pos']
+                    obj_distance = self._get_distance(ped_position, bbox_center(obj_bboxes[i][j][k]))
+                    if obj_distance <= obj_class_pos[obj_class]['class_nearest_obj_dist']:
+                        # Select only the nearest object per class
 
-                    x_seq[i, j, num_node, :] = obj_feat
-                    b_seq[i, j, num_node, :] = self._normalize_bbox(obj_bbox.copy())
-                    c_seq[i, j, num_node, :] = one_hot_classes[obj_class]
-                    
-                    if not self.edge_weigths:
-                        edge_weights[num_node] = 1
-                    else:
-                        edge_weights[num_node] = self._get_distance(ped_position, bbox_center(obj_bboxes[i][j][k]))
-                    
-                    if is_pad_classes:
-                        obj_class_pos[obj_class]['count'] += 1
-                    else:
-                        num_node += 1
+                        obj_class_pos[obj_class]['class_nearest_obj_dist'] = obj_distance
 
-                if is_pad_classes:
-                    # Restore the object class position
-                    for k, v in obj_class_pos.items():
-                        obj_class_pos[k]['count'] = 0
+                        x_seq[i, j, num_node, :] = obj_feat
+                        b_seq[i, j, num_node, :] = self._normalize_bbox(obj_bbox.copy())
+                        c_seq[i, j, num_node, :] = one_hot_classes[obj_class]
+                    
+                        if not self.edge_weigths:
+                            edge_weights[num_node] = 1
+                        else:
+                            edge_weights[num_node] = obj_distance
+
+                # Restore the object class min position for the new iteration
+                for k, v in obj_class_pos.items():
+                    obj_class_pos[k]['class_nearest_obj_dist'] = self._get_distance([0, self.img_height], [self.img_width, 0]) # max distance
 
                 # Other pedestrian nodes
-                if is_pad_classes:
+                if self.ped_classes[1] in obj_class_pos:
                     num_node = other_ped_init_pos
-                for k, (other_ped_feat, other_ped_bbox) in enumerate(zip(other_ped_feats[i][j], other_ped_bboxes[i][j])):
+                    other_ped_min_distance = self._get_distance([0, self.img_height], [self.img_width, 0]) # max distance
+                    for k, (other_ped_feat, other_ped_bbox) in enumerate(zip(other_ped_feats[i][j], other_ped_bboxes[i][j])):
+                        
+                        other_ped_distance = self._get_distance(ped_position, bbox_center(other_ped_bboxes[i][j][k]))
 
-                    x_seq[i, j, num_node, :] = other_ped_feat
-                    b_seq[i, j, num_node, :] = self._normalize_bbox(other_ped_bbox.copy())
-                    c_seq[i, j, num_node, :] = one_hot_classes[ped_classes[1]]                    
+                        if other_ped_distance <= other_ped_min_distance:
+                                
+                            x_seq[i, j, num_node, :] = other_ped_feat
+                            b_seq[i, j, num_node, :] = self._normalize_bbox(other_ped_bbox.copy())
+                            c_seq[i, j, num_node, :] = one_hot_classes[ped_classes[1]]                    
 
-                    if not self.edge_weigths:
-                        edge_weights[num_node] = 1
-                    else:    
-                        edge_weights[num_node] = self._get_distance(ped_position, bbox_center(other_ped_bboxes[i][j][k]))
+                            if not self.edge_weigths:
+                                edge_weights[num_node] = 1
+                            else:    
+                                edge_weights[num_node] = other_ped_distance
                     
-                    num_node += 1
-
                 # Adjacency matrix: Copy the precomputed adjacency template and adjust for number of nodes
                 a_seq[i, j, 0, :] = edge_weights
                 a_seq[i, j, :, 0] = edge_weights
@@ -157,7 +154,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         return x, b, c, a, y, i
     
     def _get_distance(self, ped_position, obj_position):
-        distance = np.linalg.norm(np.array(ped_position) - np.array(obj_position))
+        distance = np.linalg.norm(np.array(ped_position) - np.array(obj_position)) # Euclidean distance between two points
         if self.edge_weigths == 'no_norm':
             pass
         elif self.edge_weigths == 'norm':
@@ -187,3 +184,14 @@ class PIEGraphDataset(torch.utils.data.Dataset):
     
     def __len__(self):
         return self.x.shape[0]
+    
+    def shuffle(self):
+        # Shuffle the dataset for ROC AUC calculation
+        seed = 42
+        rng = np.random.default_rng(seed)  # Use a reproducible random generator
+        self.i = rng.permutation(self.i)
+        self.x = self.x[self.i]
+        self.b = self.b[self.i]
+        self.c = self.c[self.i]
+        self.a = self.a[self.i]
+        self.y = self.y[self.i]

@@ -49,7 +49,7 @@ from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress, mer
 from utils.print_utils import plot_image, print_separator
 
 class PIE(object):
-    def __init__(self, data_opts, data_sets, feature_extractor, feat_input_size, regen_database=False, data_path=''):
+    def __init__(self, data_opts, data_sets, feature_extractor, feat_input_size, regen_database=False, data_path='', obj_classes=None):
         """
         Class constructor
         :param regen_database: Whether generate the database or not
@@ -76,6 +76,8 @@ class PIE(object):
 
         self.feature_extractor = feature_extractor
         self.feat_input_size = feat_input_size
+
+        self.obj_classes = obj_classes if obj_classes else ['traffic_light','vehicle','other_ped','crosswalk','transit_station','sign'] 
 
         if data_sets == 'all':
             self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
@@ -1545,7 +1547,7 @@ class PIE(object):
                         obj_frames = obj_data['frames']
                         frame_to_idx = {f: idx for idx, f in enumerate(obj_frames)}  # Precompute frame-to-index mapping
                         for idx, f in enumerate(frame_ids):
-                            if f in frame_to_idx:
+                            if f in frame_to_idx and obj_data['obj_class'] in self.obj_classes:
                                 obj_idx = frame_to_idx[f]  # Get the index directly from precomputed mapping
                                 objs_bbox[idx].append(obj_data['bbox'][obj_idx])
                                 objs_classes[idx].append(obj_data['obj_class'])
@@ -1557,7 +1559,7 @@ class PIE(object):
                         ped_frames = ped_data['frames']
                         frame_to_idx = {f: idx for idx, f in enumerate(ped_frames)} # Precompute frame-to-index mapping
                         for idx, f in enumerate(frame_ids):
-                            if f in frame_to_idx:
+                            if f in frame_to_idx and 'other_ped' in self.obj_classes:
                                 ped_idx = frame_to_idx[f]
                                 if ped != pid:
                                     other_peds_bbox[idx].append(ped_data['bbox'][ped_idx])

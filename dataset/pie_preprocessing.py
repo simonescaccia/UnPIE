@@ -25,16 +25,22 @@ class PIEPreprocessing(object):
         self.img_height = params['img_height']
         self.img_width = params['img_width']
         self.edge_weigths = params['edge_weigths']
-        self.is_pad_classes = params['edge_importance'] and params['pad_classes']
         self.feature_extractor = params['feature_extractor']
         self.data_sets = params['data_sets']
         self.balance_dataset = params['balance_dataset']
         self.feat_input_size = params['feat_input_size']
+        self.obj_classes = params['obj_classes']
 
         self.ped_class = 'ped'
         self.other_ped_class = 'other_ped'
 
-        self.pie = PIE(data_path=self.pie_path, data_opts=self.data_opts, data_sets=self.data_sets, feat_input_size=self.feat_input_size, feature_extractor=self.feature_extractor)
+        self.pie = PIE(
+            data_path=self.pie_path, 
+            data_opts=self.data_opts, 
+            data_sets=self.data_sets, 
+            feat_input_size=self.feat_input_size, 
+            feature_extractor=self.feature_extractor,
+            obj_classes=self.obj_classes)
 
     def get_datasets(self):
         '''
@@ -50,21 +56,19 @@ class PIEPreprocessing(object):
         test_features = self._get_features('test')
 
         # Get the max number of nodes for each class across all splits
-        if self.is_pad_classes:
-            max_nodes_dict, max_num_nodes = self._get_max_nodes_dict(
-                [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
-            )
-        else:
-            max_nodes_dict = {}
-            max_num_nodes = max(train_features['max_num_nodes'], val_features['max_num_nodes'], test_features['max_num_nodes'])
+        max_nodes_dict, _ = self._get_max_nodes_dict(
+            [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
+        )
 
         # One-hot classes
         one_hot_classes = self._get_one_hot_classes(
             [train_features['obj_classes'], val_features['obj_classes'], test_features['obj_classes']]
         )
+        max_num_nodes = len(one_hot_classes)
 
         print('Max number of nodes in a graph: {}'.format(max_num_nodes))
         print('Classes max number of nodes: {}'.format(max_nodes_dict))
+        print('Number of clases: {}'.format(len(one_hot_classes)))
 
         # Load the data
         test_dataset = None
@@ -104,7 +108,8 @@ class PIEPreprocessing(object):
             for obj_class in frame
         )
         classes_set.add(self.ped_class)
-        classes_set.add(self.other_ped_class)
+        if self.other_ped_class in self.obj_classes:
+            classes_set.add(self.other_ped_class)
 
         # One-hot encode classes
         classes_list = sorted(classes_set)  # Sorting ensures consistent order between different trainings
@@ -143,7 +148,6 @@ class PIEPreprocessing(object):
             max_num_nodes,
             one_hot_classes,
             [self.ped_class, self.other_ped_class],
-            self.is_pad_classes,
             transform_a=UnPIEGCN.transform,
             height=self.img_height,
             width=self.img_width,
@@ -153,6 +157,7 @@ class PIEPreprocessing(object):
         if data_split == 'train':
             return torch.utils.data.DataLoader(pie_dataset, batch_size=self.batch_size, shuffle=True), pie_dataset.__len__()
         else:
+            pie_dataset.shuffle()
             return torch.utils.data.DataLoader(pie_dataset, batch_size=self.inference_batch_size, shuffle=False), pie_dataset.__len__()
             
     def _get_data(self, dataset, seq_length, overlap):
