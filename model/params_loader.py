@@ -41,8 +41,8 @@ class ParamsLoader:
             'feature_extractor': args['feature_extractor'],
             'feat_input_size': args[args['feature_extractor']+'_input_size'],
             'data_sets': args['data_sets'],
-            'pad_classes': args['pad_classes'],
             'balance_dataset': args['balance_dataset'],
+            'obj_classes': args['obj_classes'],
         }
         return pie_params
 
@@ -233,6 +233,7 @@ class ParamsLoader:
         self.args['emb_dim'] = self.args['scene_output_layer_dim'] + self.args['gcn_output_layer_dim']
         self.args['kmeans_k'] = [self.args['num_classes']] * self.args['num_kmeans']
         self.args['len_one_hot_classes'] = datasets['train']['len_one_hot_classes']
+        self.args['obj_classes'] = self.args['obj_classes'].split(',')
 
         model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])
         model_params = {

@@ -449,13 +449,15 @@ class UnPIE():
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
         accuracy = sklearn.metrics.accuracy_score(y, curr_pred)
         f1_score = sklearn.metrics.f1_score(y, curr_pred, zero_division=0)
-        # auc = sklearn.metrics.roc_auc_score(y, curr_pred)
+        roc_auc = sklearn.metrics.roc_auc_score(y, curr_pred)
+        average_precision = sklearn.metrics.average_precision_score(y, curr_pred)
         precision = sklearn.metrics.precision_score(y, curr_pred, zero_division=0)
         return {
             'Accuracy u.f.l.': accuracy,
             'F1 u.f.l.': f1_score,
-            # 'AUC u.f.l.': auc,
-            'Precision u.f.l.': precision
+            'ROC-AUC u.f.l.': roc_auc,
+            'Precision u.f.l.': precision,
+            'Average Precision u.f.l.': average_precision
         }
     
     def _perf_func_sup(
@@ -467,12 +469,14 @@ class UnPIE():
 
         accuracy = sklearn.metrics.accuracy_score(y, curr_output)
         f1_score = sklearn.metrics.f1_score(y, curr_output, zero_division=0)
-        # auc = sklearn.metrics.roc_auc_score(y, curr_pred)
+        roc_auc = sklearn.metrics.roc_auc_score(y, curr_output)
+        average_precision = sklearn.metrics.average_precision_score(y, curr_output)
         precision = sklearn.metrics.precision_score(y, curr_output, zero_division=0)
         return {
             'Accuracy s.l.': accuracy,
             'F1 s.l.': f1_score,
-            # 'AUC u.f.l.': auc,
+            'ROC-AUC u.f.l.': roc_auc,
+            'Average Precision s.l.': average_precision,
             'Precision s.l.': precision
         } 
     
@@ -493,12 +497,14 @@ class UnPIE():
             ) # [bs]
             accuracy = sklearn.metrics.accuracy_score(y, y_pred)
             f1_score = sklearn.metrics.f1_score(y, y_pred, zero_division=0)
-            # auc = sklearn.metrics.roc_auc_score(y, y_pred)
+            roc_auc = sklearn.metrics.roc_auc_score(y, y_pred)
+            average_precision = sklearn.metrics.average_precision_score(y, y_pred)
             precision = sklearn.metrics.precision_score(y, y_pred, zero_division=0)
             return {
                 'Accuracy u.l.': accuracy,
                 'F1 u.l.': f1_score,
-                # 'AUC u.l.': auc,
+                'ROC-AUC u.l.': roc_auc,
+                'Average Precision u.l.': average_precision,
                 'Precision u.l.': precision
             }
         else: # Density
