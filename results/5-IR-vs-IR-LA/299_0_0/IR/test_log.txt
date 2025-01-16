@@ -1,0 +1,2 @@
+test results last 299: : {'Accuracy u.f.l.': 0.8191568559556787, 'F1 u.f.l.': 0.8821326893252363, 'Precision u.f.l.': 0.8537082175389619}
+test results best 14: : {'Accuracy u.f.l.': 0.7938019390581718, 'F1 u.f.l.': 0.8540716415515179, 'Precision u.f.l.': 0.8731213817666934}
