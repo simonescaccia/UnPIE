@@ -287,8 +287,8 @@ class UnPIE():
                     self.best_val_acc.assign(val_result[self.monitor_metric])
                     self.best_check_manager.save(checkpoint_number=epoch)
 
-                    # print("Saving clusters...")
-                    # self._save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
+                    print("Saving clusters...")
+                    self._save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch, is_best=True)
                 self.last_check_manager.save(checkpoint_number=epoch)
 
         # Check if a best model was saved for this task, else take the best model from the previous task

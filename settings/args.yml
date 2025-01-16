@@ -1,5 +1,5 @@
 # Training params
-instance_t: 0.07 # temperature for contrastive loss
+instance_t: 0.06 # temperature for contrastive loss
 batch_size: 256 # training batch size
 inference_batch_size: 256 # val/test batch size
 fre_plot_clusters: 50 # frequency to plot clusters (epochs)
@@ -20,7 +20,7 @@ IR:
   lr_decay_steps: 30 # learning rate decay steps
   train_num_workers: 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 0 # number of training epochs
+  train_num_epochs: 200 # number of training epochs
   load_task: null # load task
   load_step: null # load step
   clstr_update_per_epoch: 0 # number of cluster updates per epoch
@@ -49,7 +49,7 @@ SUP:
   lr_decay_steps: 40 # learning rate decay steps
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 300
+  train_num_epochs: 0
   load_task: null
   clstr_update_per_epoch: null # number of cluster updates per epoch
   instance_k: null # background neighbors to sample. If 0, all training samples are considered
@@ -59,9 +59,8 @@ data_sets: 'all' # data sets to use (small, all)
 feature_extractor: 'vgg16' # feature extractor to use (vgg16, efficientnetb3)
 edge_importance: True # weights for edges in the graph.
 edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
-pad_classes: True # whether to pad classes to the same size in the adjacency matrix
-# obj_classes: 'traffic_light,crosswalk' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
-obj_classes: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
+obj_classes: 'traffic_light,crosswalk' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
+# obj_classes: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
 balance_dataset: False # whether to balance the dataset with same number of samples per class
 num_frames: 15 # number of frames in each clip
 img_height: 1080 # video frame height
