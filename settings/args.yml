@@ -4,7 +4,7 @@ batch_size: 256 # training batch size
 inference_batch_size: 256 # val/test batch size
 fre_plot_clusters: 50 # frequency to plot clusters (epochs)
 cluster_alg: 'kmeans' # clustering algorithm to use (kmeans, density)
-kNN_inference: 200 # number of nearest neighbors to consider
+kNN_inference: 400 # number of nearest neighbors to consider
 num_kmeans: 5 # number of kmeans clusters 
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
