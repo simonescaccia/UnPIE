@@ -24,15 +24,21 @@ vgg_abl_ir_04_512_100 = {'Accuracy u.f.l.': 0.8244016560798548, 'F1 u.f.l.': 0.8
 vgg_abl_ir_04_256_100 = {'Accuracy u.f.l.': 0.8079684664246825, 'F1 u.f.l.': 0.8739542753409928, 'ROC-AUC u.f.l.': 0.8008067172025928, 'Average Precision u.f.l.': 0.923149626792096, 'Precision u.f.l.': 0.9465698317036302}
 vgg_abl_ir_04_128_100 = {'Accuracy u.f.l.': 0.8003729015426498, 'F1 u.f.l.': 0.8676261166249911, 'ROC-AUC u.f.l.': 0.8050900172726863, 'Average Precision u.f.l.': 0.9253278966871115, 'Precision u.f.l.': 0.9516182160892606}
 vgg_abl_ir_04_64_100 = {'Accuracy u.f.l.': 0.8254792422867514, 'F1 u.f.l.': 0.8885850533761059, 'ROC-AUC u.f.l.': 0.7829478126647856, 'Average Precision u.f.l.': 0.915972103376972, 'Precision u.f.l.': 0.9328043625656387}
+vgg_abl_ir_04_32_100 = {'Accuracy u.f.l.': 0.789058246370236, 'F1 u.f.l.': 0.8585457370777096, 'ROC-AUC u.f.l.': 0.8040497221892562, 'Average Precision u.f.l.': 0.9250575693907103, 'Precision u.f.l.': 0.95404549734173}
+vgg_abl_ir_04_16_100 = {'Accuracy u.f.l.': 0.821614110707804, 'F1 u.f.l.': 0.8857614873374362, 'ROC-AUC u.f.l.': 0.7817164162605587, 'Average Precision u.f.l.': 0.9156217778219342, 'Precision u.f.l.': 0.9331056162541066}
 vgg_abl_ir_04_1_100 = {'Accuracy u.f.l.': 0.8087766560798548, 'F1 u.f.l.': 0.8747273734093771, 'ROC-AUC u.f.l.': 0.7981911488915648, 'Average Precision u.f.l.': 0.9222554437989998, 'Precision u.f.l.': 0.9451308309419268}
 vgg_abl_ir_04_0_100 = {'Accuracy u.f.l.': 0.8016674228675136, 'F1 u.f.l.': 0.868375401282314, 'ROC-AUC u.f.l.': 0.8077406018333749, 'Average Precision u.f.l.': 0.9261048839329634, 'Precision u.f.l.': 0.9525829647753293}
 
 vgg_abl_ir_04_0_50 = {'Accuracy u.f.l.': 0.8171279491833031, 'F1 u.f.l.': 0.88245768574466, 'ROC-AUC u.f.l.': 0.7802857509863125, 'Average Precision u.f.l.': 0.9151731924606139, 'Precision u.f.l.': 0.9333108581869528}
+vgg_abl_ir_04_0_75 = {'Accuracy u.f.l.': 0.8083200998185118, 'F1 u.f.l.': 0.8750407136981879, 'ROC-AUC u.f.l.': 0.7886342539736164, 'Average Precision u.f.l.': 0.9183840854906019, 'Precision u.f.l.': 0.9397889958213596}
 vgg_abl_ir_04_0_100 = {'Accuracy u.f.l.': 0.8016674228675136, 'F1 u.f.l.': 0.868375401282314, 'ROC-AUC u.f.l.': 0.8077406018333749, 'Average Precision u.f.l.': 0.9261048839329634, 'Precision u.f.l.': 0.9525829647753293}
+vgg_abl_ir_04_0_125 = {'Accuracy u.f.l.': 0.824805750907441, 'F1 u.f.l.': 0.8873242693104907, 'ROC-AUC u.f.l.': 0.7947209594351178, 'Average Precision u.f.l.': 0.9204392505614425, 'Precision u.f.l.': 0.9390113369446257}
 vgg_abl_ir_04_0_150 = {'Accuracy u.f.l.': 0.7990259187840291, 'F1 u.f.l.': 0.869323762566076, 'ROC-AUC u.f.l.': 0.7699065508853483, 'Average Precision u.f.l.': 0.9115870655808141, 'Precision u.f.l.': 0.9319666827487377}
 vgg_abl_ir_04_0_200 = {'Accuracy u.f.l.': 0.804683246370236, 'F1 u.f.l.': 0.8714683889960683, 'ROC-AUC u.f.l.': 0.8000630762281645, 'Average Precision u.f.l.': 0.9233118565292275, 'Precision u.f.l.': 0.9476554139594223}
 vgg_abl_ir_04_0_250 = {'Accuracy u.f.l.': 0.8212100158802178, 'F1 u.f.l.': 0.8847481886399101, 'ROC-AUC u.f.l.': 0.7918769379360706, 'Average Precision u.f.l.': 0.9192894898859006, 'Precision u.f.l.': 0.9382604058077868}
+vgg_abl_ir_04_0_275 = {'Accuracy u.f.l.': 0.8213035957350272, 'F1 u.f.l.': 0.885558843640464, 'ROC-AUC u.f.l.': 0.7809309521629785, 'Average Precision u.f.l.': 0.9153053666738759, 'Precision u.f.l.': 0.9327115938746866}
 vgg_abl_ir_04_0_300 = {'Accuracy u.f.l.': 0.8162672980943739, 'F1 u.f.l.': 0.8813991885677717, 'ROC-AUC u.f.l.': 0.7863958081754469, 'Average Precision u.f.l.': 0.9177910586468485, 'Precision u.f.l.': 0.9372785098489607}
+vgg_abl_ir_04_0_325 = {'Accuracy u.f.l.': 0.8089000113430127, 'F1 u.f.l.': 0.8762217023290367, 'ROC-AUC u.f.l.': 0.7788206397285073, 'Average Precision u.f.l.': 0.9147247297259802, 'Precision u.f.l.': 0.934604349309171}
 vgg_abl_ir_04_0_350 = {'Accuracy u.f.l.': 0.8164544578039927, 'F1 u.f.l.': 0.8820702572769619, 'ROC-AUC u.f.l.': 0.7792858855415673, 'Average Precision u.f.l.': 0.9148918718143652, 'Precision u.f.l.': 0.9330330726063246}
 vgg_abl_ir_04_0_400 = {'Accuracy u.f.l.': 0.7917933303085299, 'F1 u.f.l.': 0.8624168407715408, 'ROC-AUC u.f.l.': 0.7845815183343404, 'Average Precision u.f.l.': 0.9174884152105081, 'Precision u.f.l.': 0.942118850484719}
 ########### effb3 ############
@@ -69,16 +75,22 @@ print("vgg_abl_ir_04_512_100: ", round_dict(vgg_abl_ir_04_512_100.copy()))
 print("vgg_abl_ir_04_256_100: ", round_dict(vgg_abl_ir_04_256_100.copy()))
 print("vgg_abl_ir_04_128_100: ", round_dict(vgg_abl_ir_04_128_100.copy()))
 print("vgg_abl_ir_04_64_100: ", round_dict(vgg_abl_ir_04_64_100.copy()))
+print("vgg_abl_ir_04_32_100: ", round_dict(vgg_abl_ir_04_32_100.copy()))
+print("vgg_abl_ir_04_16_100: ", round_dict(vgg_abl_ir_04_16_100.copy()))
 print("vgg_abl_ir_04_1_100: ", round_dict(vgg_abl_ir_04_1_100.copy()))
 print("vgg_abl_ir_04_0_100: ", round_dict(vgg_abl_ir_04_0_100.copy()))
 
 
 print("vgg_abl_ir_04_0_50: ", round_dict(vgg_abl_ir_04_0_50.copy()))
+print("vgg_abl_ir_04_0_75: ", round_dict(vgg_abl_ir_04_0_75.copy()))
 print("vgg_abl_ir_04_0_100: ", round_dict(vgg_abl_ir_04_0_100.copy()))
+print("vgg_abl_ir_04_0_125: ", round_dict(vgg_abl_ir_04_0_125.copy()))
 print("vgg_abl_ir_04_0_150: ", round_dict(vgg_abl_ir_04_0_150.copy()))
 print("vgg_abl_ir_04_0_200: ", round_dict(vgg_abl_ir_04_0_200.copy()))
 print("vgg_abl_ir_04_0_250: ", round_dict(vgg_abl_ir_04_0_250.copy()))
+print("vgg_abl_ir_04_0_275: ", round_dict(vgg_abl_ir_04_0_275.copy()))
 print("vgg_abl_ir_04_0_300: ", round_dict(vgg_abl_ir_04_0_300.copy()))
+print("vgg_abl_ir_04_0_325: ", round_dict(vgg_abl_ir_04_0_325.copy()))
 print("vgg_abl_ir_04_0_350: ", round_dict(vgg_abl_ir_04_0_350.copy()))
 print("vgg_abl_ir_04_0_400: ", round_dict(vgg_abl_ir_04_0_400.copy()))
 

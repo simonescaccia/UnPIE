@@ -1,10 +1,10 @@
 # Training params
-instance_t: 0.04 # temperature for contrastive loss
+instance_t: 0.1 # tau: temperature for contrastive loss
 batch_size: 256 # training batch size
 inference_batch_size: 256 # val/test batch size
 fre_plot_clusters: 50 # frequency to plot clusters (epochs)
 cluster_alg: 'kmeans' # clustering algorithm to use (kmeans, density)
-kNN_inference: 400 # number of nearest neighbors to consider
+kNN_inference: 275 # number of nearest neighbors to consider
 num_kmeans: 5 # number of kmeans clusters 
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
@@ -24,7 +24,7 @@ IR:
   load_task: null # load task
   load_step: null # load step
   clstr_update_per_epoch: 0 # number of cluster updates per epoch
-  instance_k: 0 # m: noise to add to the loss. In ImageNet 4096 is used with a set size of 1,281,167 training images.
+  instance_k: 4096 # m: noise to add to the loss. In ImageNet 4096 is used with a set size of 1,281,167 training images.
 LA:
   task: 'LA'
   weight_decay: 0.0001 # loss function weight decay
