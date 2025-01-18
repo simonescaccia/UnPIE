@@ -5,7 +5,7 @@ inference_batch_size: 256 # val/test batch size
 fre_plot_clusters: 0 # frequency to plot clusters (epochs)
 cluster_alg: 'kmeans' # clustering algorithm to use (kmeans, density)
 kNN_inference: 100 # number of nearest neighbors to consider
-num_kmeans: 5 # number of kmeans clusters
+num_kmeans: 2 # number of kmeans clusters
 clustering_groups: 2 # m in LA paper
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
@@ -39,7 +39,7 @@ LA:
   train_num_epochs: 75
   load_task: 'IR'
   clstr_update_per_epoch: 5 # number of cluster updates per epoch
-  instance_k: 1024 # k background neighbors to sample. If 0, all training samples are considered
+  instance_k: 512 # k background neighbors to sample. If 0, all training samples are considered
 SUP:
   task: 'SUP'
   weight_decay: 0.001 # loss function weight decay
