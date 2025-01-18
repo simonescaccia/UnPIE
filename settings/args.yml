@@ -2,11 +2,11 @@
 instance_t: 0.04 # tau: temperature for contrastive loss
 batch_size: 256 # training batch size
 inference_batch_size: 256 # val/test batch size
-fre_plot_clusters: 10 # frequency to plot clusters (epochs)
+fre_plot_clusters: 0 # frequency to plot clusters (epochs)
 cluster_alg: 'kmeans' # clustering algorithm to use (kmeans, density)
-kNN_inference: 10 # number of nearest neighbors to consider
+kNN_inference: 100 # number of nearest neighbors to consider
 num_kmeans: 5 # number of kmeans clusters
-clustering_groups: 32 # m in LA paper
+clustering_groups: 2 # m in LA paper
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
 num_classes: 2 # number of different clusters
@@ -21,7 +21,7 @@ IR:
   lr_decay_steps: 30 # learning rate decay steps
   train_num_workers: 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 0 # number of training epochs
+  train_num_epochs: 10 # number of training epochs
   load_task: null # load task
   load_step: null # load step
   clstr_update_per_epoch: 0 # number of cluster updates per epoch
@@ -36,10 +36,10 @@ LA:
   lr_decay_steps: 20 # learning rate decay steps
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 150
+  train_num_epochs: 75
   load_task: 'IR'
   clstr_update_per_epoch: 5 # number of cluster updates per epoch
-  instance_k: 32 # k background neighbors to sample. If 0, all training samples are considered
+  instance_k: 1024 # k background neighbors to sample. If 0, all training samples are considered
 SUP:
   task: 'SUP'
   weight_decay: 0.001 # loss function weight decay
