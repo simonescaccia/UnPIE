@@ -42,7 +42,7 @@ vgg_abl_ir_04_0_325 = {'Accuracy u.f.l.': 0.8089000113430127, 'F1 u.f.l.': 0.876
 vgg_abl_ir_04_0_350 = {'Accuracy u.f.l.': 0.8164544578039927, 'F1 u.f.l.': 0.8820702572769619, 'ROC-AUC u.f.l.': 0.7792858855415673, 'Average Precision u.f.l.': 0.9148918718143652, 'Precision u.f.l.': 0.9330330726063246}
 vgg_abl_ir_04_0_400 = {'Accuracy u.f.l.': 0.7917933303085299, 'F1 u.f.l.': 0.8624168407715408, 'ROC-AUC u.f.l.': 0.7845815183343404, 'Average Precision u.f.l.': 0.9174884152105081, 'Precision u.f.l.': 0.942118850484719}
 
-vgg_abl_la_2_512_5 = {}
+vgg_abl_la_2_512_5 = {'Accuracy u.f.l.': 0.8261527336660618, 'F1 u.f.l.': 0.8889852414816265, 'ROC-AUC u.f.l.': 0.7845885407477076, 'Average Precision u.f.l.': 0.9165719471639503, 'Precision u.f.l.': 0.9334819193317914}
 vgg_abl_la_4_512_5 = {}
 vgg_abl_la_8_512_5 = {}
 vgg_abl_la_16_512_5 = {}
