@@ -42,11 +42,12 @@ vgg_abl_ir_04_0_325 = {'Accuracy u.f.l.': 0.8089000113430127, 'F1 u.f.l.': 0.876
 vgg_abl_ir_04_0_350 = {'Accuracy u.f.l.': 0.8164544578039927, 'F1 u.f.l.': 0.8820702572769619, 'ROC-AUC u.f.l.': 0.7792858855415673, 'Average Precision u.f.l.': 0.9148918718143652, 'Precision u.f.l.': 0.9330330726063246}
 vgg_abl_ir_04_0_400 = {'Accuracy u.f.l.': 0.7917933303085299, 'F1 u.f.l.': 0.8624168407715408, 'ROC-AUC u.f.l.': 0.7845815183343404, 'Average Precision u.f.l.': 0.9174884152105081, 'Precision u.f.l.': 0.942118850484719}
 
-vgg_abl_la_2_512_5 = {'Accuracy u.f.l.': 0.7926426383847549, 'F1 u.f.l.': 0.861256803035657, 'ROC-AUC u.f.l.': 0.8078760064697078, 'Average Precision u.f.l.': 0.926323818236151, 'Precision u.f.l.': 0.9550034620768244}
-vgg_abl_la_4_512_5 = {'Accuracy u.f.l.': 0.7982588475499092, 'F1 u.f.l.': 0.8664741411906571, 'ROC-AUC u.f.l.': 0.7988117483858276, 'Average Precision u.f.l.': 0.9226864598584729, 'Precision u.f.l.': 0.9482484767622853}
-vgg_abl_la_8_512_5 = {'Accuracy u.f.l.': 0.81497277676951, 'F1 u.f.l.': 0.8788141186192805, 'ROC-AUC u.f.l.': 0.8086631495222794, 'Average Precision u.f.l.': 0.9262220067786464, 'Precision u.f.l.': 0.9494676239352867}
-vgg_abl_la_16_512_5 = {'Accuracy u.f.l.': 0.8163197595281307, 'F1 u.f.l.': 0.881569545362497, 'ROC-AUC u.f.l.': 0.7829277735472234, 'Average Precision u.f.l.': 0.9161318362696751, 'Precision u.f.l.': 0.9348983219028528}
-vgg_abl_la_32_512_5 = {'Accuracy u.f.l.': 0.8128700657894737, 'F1 u.f.l.': 0.8786047991695914, 'ROC-AUC u.f.l.': 0.7887705311287909, 'Average Precision u.f.l.': 0.9187595983960138, 'Precision u.f.l.': 0.9391152689652269}
+vgg_abl_la_2_512_5 = {}
+vgg_abl_la_4_512_5 = {}
+vgg_abl_la_8_512_5 = {}
+vgg_abl_la_16_512_5 = {}
+vgg_abl_la_32_512_5 = {}
+
 ########### effb3 ############
 eff_abl_sup_not_scaled = {'Accuracy s.l.': 0.8222558864265929, 'F1 s.l.': 0.8860498055178415, 'ROC-AUC u.f.l.': 0.7811706640931675, 'Average Precision s.l.': 0.9156947618073822, 'Precision s.l.': 0.9333000252796648}
 eff_abl_sup_scale = {'Accuracy s.l.': 0.7981749192059095, 'F1 s.l.': 0.8651596040016539, 'ROC-AUC u.f.l.': 0.8100376463853592, 'Average Precision s.l.': 0.9273146644871455, 'Precision s.l.': 0.9553160401795602}

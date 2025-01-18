@@ -6,7 +6,7 @@ fre_plot_clusters: 50 # frequency to plot clusters (epochs)
 cluster_alg: 'kmeans' # clustering algorithm to use (kmeans, density)
 kNN_inference: 100 # number of nearest neighbors to consider
 num_kmeans: 5 # number of kmeans clusters
-clustering_groups: 128 # m in LA paper
+clustering_groups: 512 # m in LA paper
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
 num_classes: 2 # number of different clusters
@@ -25,7 +25,7 @@ IR:
   load_task: null # load task
   load_step: null # load step
   clstr_update_per_epoch: 0 # number of cluster updates per epoch
-  instance_k: 0 # m: noise to add to the loss. In ImageNet 4096 is used with a set size of 1,281,167 training images.
+  instance_k: 9229 # m: noise to add to the loss. m in [0, 9229] for a non balanced dataset
 LA:
   task: 'LA'
   weight_decay: 0.0001 # loss function weight decay
@@ -38,7 +38,7 @@ LA:
   val_num_workers: 1
   train_num_epochs: 150
   load_task: 'IR'
-  clstr_update_per_epoch: 10 # number of cluster updates per epoch
+  clstr_update_per_epoch: 5 # number of cluster updates per epoch
   instance_k: 512 # k background neighbors to sample. If 0, all training samples are considered
 SUP:
   task: 'SUP'
