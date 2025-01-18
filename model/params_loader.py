@@ -232,7 +232,7 @@ class ParamsLoader:
         pie_params = self.get_pie_params()
 
         self.args['emb_dim'] = self.args['scene_output_layer_dim'] + self.args['gcn_output_layer_dim']
-        self.args['kmeans_k'] = [self.args['num_classes']] * self.args['num_kmeans']
+        self.args['kmeans_k'] = [self.args['clustering_groups']] * self.args['num_kmeans']
         self.args['len_one_hot_classes'] = datasets['train']['len_one_hot_classes']
         model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])
         model_params = {
