@@ -2,11 +2,11 @@
 instance_t: 0.04 # tau: temperature for contrastive loss
 batch_size: 256 # training batch size
 inference_batch_size: 256 # val/test batch size
-fre_plot_clusters: 0 # frequency to plot clusters (epochs)
+fre_plot_clusters: 5 # frequency to plot clusters (epochs)
 cluster_alg: 'kmeans' # clustering algorithm to use (kmeans, density)
 kNN_inference: 100 # number of nearest neighbors to consider
 num_kmeans: 5 # number of kmeans clusters
-clustering_groups: 32 # m in LA paper
+clustering_groups: 4 # m in LA paper
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
 num_classes: 2 # number of different clusters
