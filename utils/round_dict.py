@@ -58,6 +58,15 @@ vgg_abl_la_2_256_5_warm = {'Accuracy u.f.l.': 0.8252098457350272, 'F1 u.f.l.': 0
 vgg_abl_la_2_512_5_warm = {'Accuracy u.f.l.': 0.7970579060798548, 'F1 u.f.l.': 0.8644222977237022, 'ROC-AUC u.f.l.': 0.8104951675856711, 'Average Precision u.f.l.': 0.927330299725275, 'Precision u.f.l.': 0.955443516742688}
 vgg_abl_la_2_1024_5_warm = {'Accuracy u.f.l.': 0.8189201451905627, 'F1 u.f.l.': 0.8832036134909237, 'ROC-AUC u.f.l.': 0.7889186342850528, 'Average Precision u.f.l.': 0.9183380806603446, 'Precision u.f.l.': 0.937416930269469}
 
+vgg_abl_la_2_512_1_warm = {'Accuracy u.f.l.': 0.8256139405626135, 'F1 u.f.l.': 0.8888477617605964, 'ROC-AUC u.f.l.': 0.7807876115801029, 'Average Precision u.f.l.': 0.9151064182785198, 'Precision u.f.l.': 0.9315614030564242}
+vgg_abl_la_2_512_2_warm = {'Accuracy u.f.l.': 0.818744328493648, 'F1 u.f.l.': 0.8825702716137477, 'ROC-AUC u.f.l.': 0.7968410646160216, 'Average Precision u.f.l.': 0.9212800110948078, 'Precision u.f.l.': 0.9415294873031299}
+vgg_abl_la_2_512_3_warm = {'Accuracy u.f.l.': 0.8262874319419238, 'F1 u.f.l.': 0.8891834196115813, 'ROC-AUC u.f.l.': 0.7832083207654539, 'Average Precision u.f.l.': 0.9160185907829794, 'Precision u.f.l.': 0.9327006551407951}
+vgg_abl_la_2_512_4_warm = {'Accuracy u.f.l.': 0.8268262250453721, 'F1 u.f.l.': 0.8894495479505367, 'ROC-AUC u.f.l.': 0.7853249436585203, 'Average Precision u.f.l.': 0.9168234899218008, 'Precision u.f.l.': 0.9336904192373168}
+vgg_abl_la_2_512_5_warm = {'Accuracy u.f.l.': 0.7970579060798548, 'F1 u.f.l.': 0.8644222977237022, 'ROC-AUC u.f.l.': 0.8104951675856711, 'Average Precision u.f.l.': 0.927330299725275, 'Precision u.f.l.': 0.955443516742688}
+vgg_abl_la_2_512_6_warm = {'Accuracy u.f.l.': 0.8031491039019963, 'F1 u.f.l.': 0.8711147157988697, 'ROC-AUC u.f.l.': 0.788053304192415, 'Average Precision u.f.l.': 0.9181769629473955, 'Precision u.f.l.': 0.9406113479643954}
+vgg_abl_la_2_512_7_warm = {'Accuracy u.f.l.': 0.8260180353901997, 'F1 u.f.l.': 0.8889260876984838, 'ROC-AUC u.f.l.': 0.7841198952416912, 'Average Precision u.f.l.': 0.9164484558516359, 'Precision u.f.l.': 0.9333525526220585}
+vgg_abl_la_2_512_8_warm = {'Accuracy u.f.l.': 0.8262874319419238, 'F1 u.f.l.': 0.8891110837019127, 'ROC-AUC u.f.l.': 0.7843883018172079, 'Average Precision u.f.l.': 0.9164901028783216, 'Precision u.f.l.': 0.9333380678466907}
+
 ########### effb3 ############
 eff_abl_sup_not_scaled = {'Accuracy s.l.': 0.8222558864265929, 'F1 s.l.': 0.8860498055178415, 'ROC-AUC u.f.l.': 0.7811706640931675, 'Average Precision s.l.': 0.9156947618073822, 'Precision s.l.': 0.9333000252796648}
 eff_abl_sup_scale = {'Accuracy s.l.': 0.7981749192059095, 'F1 s.l.': 0.8651596040016539, 'ROC-AUC u.f.l.': 0.8100376463853592, 'Average Precision s.l.': 0.9273146644871455, 'Precision s.l.': 0.9553160401795602}
@@ -104,7 +113,6 @@ print("vgg_abl_ir_04_16_100: ", round_dict(vgg_abl_ir_04_16_100.copy()))
 print("vgg_abl_ir_04_1_100: ", round_dict(vgg_abl_ir_04_1_100.copy()))
 print("vgg_abl_ir_04_0_100: ", round_dict(vgg_abl_ir_04_0_100.copy()))
 
-
 print("vgg_abl_ir_04_0_50: ", round_dict(vgg_abl_ir_04_0_50.copy()))
 print("vgg_abl_ir_04_0_75: ", round_dict(vgg_abl_ir_04_0_75.copy()))
 print("vgg_abl_ir_04_0_100: ", round_dict(vgg_abl_ir_04_0_100.copy()))
@@ -135,13 +143,23 @@ print("vgg_abl_la_2_256_5_warm: ", round_dict(vgg_abl_la_2_256_5_warm.copy()))
 print("vgg_abl_la_2_512_5_warm: ", round_dict(vgg_abl_la_2_512_5_warm.copy()))
 print("vgg_abl_la_2_1024_5_warm: ", round_dict(vgg_abl_la_2_1024_5_warm.copy()))
 
+print("vgg_abl_la_2_512_1_warm: ", round_dict(vgg_abl_la_2_512_1_warm.copy()))
+print("vgg_abl_la_2_512_2_warm: ", round_dict(vgg_abl_la_2_512_2_warm.copy()))
+print("vgg_abl_la_2_512_3_warm: ", round_dict(vgg_abl_la_2_512_3_warm.copy()))
+print("vgg_abl_la_2_512_4_warm: ", round_dict(vgg_abl_la_2_512_4_warm.copy()))
+print("vgg_abl_la_2_512_5_warm: ", round_dict(vgg_abl_la_2_512_5_warm.copy()))
+print("vgg_abl_la_2_512_6_warm: ", round_dict(vgg_abl_la_2_512_6_warm.copy()))
+print("vgg_abl_la_2_512_7_warm: ", round_dict(vgg_abl_la_2_512_7_warm.copy()))
+print("vgg_abl_la_2_512_8_warm: ", round_dict(vgg_abl_la_2_512_8_warm.copy()))
+
 print("eff_abl_not_scaled", round_dict(eff_abl_sup_not_scaled.copy()))
 print("eff_abl_scale", round_dict(eff_abl_sup_scale.copy()))
 
-print(dict_to_table_row("vgg_abl_la_2_16_5_warm", round_dict(vgg_abl_la_2_16_5_warm.copy())))
-print(dict_to_table_row("vgg_abl_la_2_32_5_warm", round_dict(vgg_abl_la_2_32_5_warm.copy())))
-print(dict_to_table_row("vgg_abl_la_2_64_5_warm", round_dict(vgg_abl_la_2_64_5_warm.copy())))
-print(dict_to_table_row("vgg_abl_la_2_128_5_warm", round_dict(vgg_abl_la_2_128_5_warm.copy())))
-print(dict_to_table_row("vgg_abl_la_2_256_5_warm", round_dict(vgg_abl_la_2_256_5_warm.copy())))
+print(dict_to_table_row("vgg_abl_la_2_512_1_warm", round_dict(vgg_abl_la_2_512_1_warm.copy())))
+print(dict_to_table_row("vgg_abl_la_2_512_2_warm", round_dict(vgg_abl_la_2_512_2_warm.copy())))
+print(dict_to_table_row("vgg_abl_la_2_512_3_warm", round_dict(vgg_abl_la_2_512_3_warm.copy())))
+print(dict_to_table_row("vgg_abl_la_2_512_4_warm", round_dict(vgg_abl_la_2_512_4_warm.copy())))
 print(dict_to_table_row("vgg_abl_la_2_512_5_warm", round_dict(vgg_abl_la_2_512_5_warm.copy())))
-print(dict_to_table_row("vgg_abl_la_2_1024_5_warm", round_dict(vgg_abl_la_2_1024_5_warm.copy())))
+print(dict_to_table_row("vgg_abl_la_2_512_6_warm", round_dict(vgg_abl_la_2_512_6_warm.copy())))
+print(dict_to_table_row("vgg_abl_la_2_512_7_warm", round_dict(vgg_abl_la_2_512_7_warm.copy())))
+print(dict_to_table_row("vgg_abl_la_2_512_8_warm", round_dict(vgg_abl_la_2_512_8_warm.copy())))

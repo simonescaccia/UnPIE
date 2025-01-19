@@ -330,7 +330,7 @@ class UnPIE():
 
         # Save the memory bank
         best = '_best' if is_best else ''
-        file_name = os.path.join(memory_bank_dir, f'epoch_{epoch}_memory_bank{best}.npy')
+        file_name = os.path.join(memory_bank_dir, f'epoch_{epoch:04d}_memory_bank{best}.npy')
         np.save(file_name, memory_bank.as_tensor().numpy())
 
 
