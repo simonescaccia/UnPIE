@@ -1,2 +1,0 @@
-test results last 200: : {'Accuracy s.l.': 0.7550843253968255, 'F1 s.l.': 0.688214658659401, 'Precision s.l.': 0.827996239294381}
-test results best 67: : {'Accuracy s.l.': 0.7703373015873015, 'F1 s.l.': 0.7161885340390841, 'Precision s.l.': 0.8413991170873755}

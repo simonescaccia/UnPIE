@@ -100,6 +100,8 @@ class UnPIE():
         self.best_check_manager = tf.train.CheckpointManager(self.checkpoint, self.best_check_dir, max_to_keep=1)
 
         self.monitor_metric = 'Accuracy s.l.' if self.task == 'SUP' else 'Accuracy u.f.l.'
+        # self.monitor_metric = 'Precision s.l.' if self.task == 'SUP' else 'Precision u.f.l.'
+        
 
         # Loss
         if self.task == 'SUP':
