@@ -11,8 +11,8 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 def plot_cluster(save_path):
-    is_single_plot = True
-    is_plot_grid = False
+    is_single_plot = False
+    is_plot_grid = True
 
     algorithm = 'PCA_TSNE'
     # load the true labels
