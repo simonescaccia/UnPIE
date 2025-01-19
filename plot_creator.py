@@ -11,6 +11,9 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 def plot_cluster(save_path):
+    is_single_plot = True
+    is_plot_grid = False
+
     algorithm = 'PCA_TSNE'
     # load the true labels
     file_name = os.path.join(save_path, 'true_labels.npy')
@@ -23,21 +26,26 @@ def plot_cluster(save_path):
     memory_bank_path = os.path.join(save_path, 'memory_bank')
     if not os.path.exists(memory_bank_path):
         return
+    
     # read all files in the directory
     files = os.listdir(memory_bank_path)
-    for file in tqdm(files):
-        # get the epoch number from the file name
-        epoch = file.split('_')[1]
-        # read the memory bank
-        memory_bank = np.load(os.path.join(memory_bank_path, file))
-        # reduce the data dimention using PCA and 
-        pca = PCA(n_components=50)
-        tsne = TSNE(n_components=2)
-        data_pca = pca.fit_transform(memory_bank)
-        data_tsne = tsne.fit_transform(data_pca)
-        # plot clusters
-        plot_cluster_epoch(save_path, data_tsne, epoch, y, algorithm)
-
+    
+    if is_single_plot:
+        for file in tqdm(files):
+            # get the epoch number from the file name
+            epoch = file.split('_')[1]
+            # read the memory bank
+            memory_bank = np.load(os.path.join(memory_bank_path, file))
+            # reduce the data dimention using PCA and 
+            pca = PCA(n_components=50)
+            tsne = TSNE(n_components=2)
+            data_pca = pca.fit_transform(memory_bank)
+            data_tsne = tsne.fit_transform(data_pca)
+            # plot clusters
+            plot_cluster_epoch(save_path, data_tsne, epoch, y, algorithm)
+    
+    if is_plot_grid:
+        _plot_grid(files, memory_bank_path, save_path, y, algorithm)
 
 def plot_cluster_epoch(save_path, data_2d, epoch, y, algorithm):
     alg_path = os.path.join(save_path, algorithm)
@@ -48,7 +56,7 @@ def plot_cluster_epoch(save_path, data_2d, epoch, y, algorithm):
     unique_labels = unique_labels[::-1]
     for label in unique_labels:
         label_points = data_2d[y == label]
-        plt.scatter(label_points[:, 0], label_points[:, 1], label=f'Label {label}', s=5)
+        plt.scatter(label_points[:, 0], label_points[:, 1], label=f'{label}', s=5)
     plt.title('{}: True Labels Visualized in 2D'.format(algorithm))
     plt.xlabel('Component 1')
     plt.ylabel('Component 2')
@@ -57,6 +65,58 @@ def plot_cluster_epoch(save_path, data_2d, epoch, y, algorithm):
     # Save the figure
     os.system('mkdir -p %s' % alg_path)
     file_name = os.path.join(alg_path, f'epoch_{epoch}_{algorithm}.png')
+    plt.savefig(file_name)
+    plt.close()  # Close the figure to avoid interactive display
+
+def _plot_grid(files, memory_bank_path, save_path, y, algorithm):
+    img_x = 3
+    img_y = 2
+    size_factor = 3
+
+    fig, axs = plt.subplots(img_x, img_y, figsize=(img_y*size_factor, img_x*size_factor))
+    unique_labels = np.unique(y)
+    unique_labels = unique_labels[::-1]
+    alg_path = os.path.join(save_path, algorithm)
+    order_labels = ['a', 'b', 'c', 'd', 'e', 'f']
+
+    i = 0
+    files = sorted(files)
+    for file in tqdm(files):
+        if 'best' in file:
+            continue
+        # get the epoch number from the file name
+        epoch = file.split('_')[1]
+        # read the memory bank
+        memory_bank = np.load(os.path.join(memory_bank_path, file))
+        # reduce the data dimention using PCA and 
+        pca = PCA(n_components=50)
+        tsne = TSNE(n_components=2)
+        data_pca = pca.fit_transform(memory_bank)
+        data_tsne = tsne.fit_transform(data_pca)
+
+        axis = axs[i//img_y, i%img_y]
+        axis.axis('off')
+        # Add order label in the top-left corner of each subplot
+        epoch = int(epoch)-10
+        grid_order_label = f'{order_labels[i]}:{epoch:02d}'
+        axis.text(0.05, 0.9, grid_order_label, transform=axis.transAxes,
+        fontsize=14, color='black')
+
+        for label in unique_labels:
+            label_points = data_tsne[y == label]
+            axis.scatter(label_points[:, 0], label_points[:, 1], label=f'{label}', s=1)
+            # Label legend in the top corner of the figure
+            if i//img_y == 0 and i%img_y == img_y-1:
+                axis.legend(loc='upper right')
+
+        i += 1
+
+    # Adjust layout
+    fig.tight_layout()
+
+    # Save the figure
+    os.system('mkdir -p %s' % alg_path)
+    file_name = os.path.join(alg_path, f'grid_{algorithm}.png')
     plt.savefig(file_name)
     plt.close()  # Close the figure to avoid interactive display
 
