@@ -1,2 +1,0 @@
-test results last 75: : {'Accuracy u.f.l.': 0.822264916061706, 'F1 u.f.l.': 0.9022394212422142, 'ROC-AUC u.f.l.': 0.5023848502449935, 'Average Precision u.f.l.': 0.8225418202678902, 'Precision u.f.l.': 0.8225418575469615}
-test results best 64: : {'Accuracy u.f.l.': 0.8205365245009075, 'F1 u.f.l.': 0.8839079743040601, 'ROC-AUC u.f.l.': 0.7968711255421593, 'Average Precision u.f.l.': 0.9213421418339642, 'Precision u.f.l.': 0.9413606728260172}

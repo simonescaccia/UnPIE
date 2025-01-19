@@ -1,0 +1,3 @@
+{'Accuracy u.f.l.': 0.7083333333333334, 'F1 u.f.l.': 0.8289773616646962, 'ROC-AUC u.f.l.': 0.5, 'Average Precision u.f.l.': 0.7083333333333334, 'Precision u.f.l.': 0.7083333333333334, 'Epoch': 1}
+{'Accuracy u.f.l.': 0.747664858815427, 'F1 u.f.l.': 0.8122130352661278, 'ROC-AUC u.f.l.': 0.7310415170610739, 'Average Precision u.f.l.': 0.8238560336064222, 'Precision u.f.l.': 0.8576033956408652, 'Epoch': 2}
+{'Accuracy u.f.l.': 0.7083333333333334, 'F1 u.f.l.': 0.8289773616646962, 'ROC-AUC u.f.l.': 0.5, 'Average Precision u.f.l.': 0.7083333333333334, 'Precision u.f.l.': 0.7083333333333334, 'Epoch': 3}

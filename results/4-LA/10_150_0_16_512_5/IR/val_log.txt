@@ -1,0 +1,10 @@
+{'Accuracy u.f.l.': 0.7090435606060607, 'F1 u.f.l.': 0.8292587470425378, 'ROC-AUC u.f.l.': 0.5016866961838499, 'Average Precision u.f.l.': 0.709010662243881, 'Precision u.f.l.': 0.7090101381461676, 'Epoch': 1}
+{'Accuracy u.f.l.': 0.7473097451790633, 'F1 u.f.l.': 0.8119078962790405, 'ROC-AUC u.f.l.': 0.7307971377844367, 'Average Precision u.f.l.': 0.8237289890874512, 'Precision u.f.l.': 0.8575387812189262, 'Epoch': 2}
+{'Accuracy u.f.l.': 0.7473097451790633, 'F1 u.f.l.': 0.8119078962790405, 'ROC-AUC u.f.l.': 0.7307971377844367, 'Average Precision u.f.l.': 0.8237289890874512, 'Precision u.f.l.': 0.8575387812189262, 'Epoch': 3}
+{'Accuracy u.f.l.': 0.7083333333333334, 'F1 u.f.l.': 0.8289773616646962, 'ROC-AUC u.f.l.': 0.5, 'Average Precision u.f.l.': 0.7083333333333334, 'Precision u.f.l.': 0.7083333333333334, 'Epoch': 4}
+{'Accuracy u.f.l.': 0.7473097451790633, 'F1 u.f.l.': 0.8119078962790405, 'ROC-AUC u.f.l.': 0.7307971377844367, 'Average Precision u.f.l.': 0.8237289890874512, 'Precision u.f.l.': 0.8575387812189262, 'Epoch': 5}
+{'Accuracy u.f.l.': 0.7465995179063362, 'F1 u.f.l.': 0.8113106074509385, 'ROC-AUC u.f.l.': 0.7303083792311619, 'Average Precision u.f.l.': 0.8234767932677745, 'Precision u.f.l.': 0.857405091379354, 'Epoch': 6}
+{'Accuracy u.f.l.': 0.7076231060606061, 'F1 u.f.l.': 0.8284986959453886, 'ROC-AUC u.f.l.': 0.49951124144672526, 'Average Precision u.f.l.': 0.7081397060521394, 'Precision u.f.l.': 0.7081376014077786, 'Epoch': 7}
+{'Accuracy u.f.l.': 0.708688446969697, 'F1 u.f.l.': 0.8291508576365114, 'ROC-AUC u.f.l.': 0.5006493506493507, 'Average Precision u.f.l.': 0.7085923573975045, 'Precision u.f.l.': 0.7085923573975045, 'Epoch': 8}
+{'Accuracy u.f.l.': 0.7090435606060607, 'F1 u.f.l.': 0.8293251422263804, 'ROC-AUC u.f.l.': 0.5012987012987012, 'Average Precision u.f.l.': 0.708853421021236, 'Precision u.f.l.': 0.708853421021236, 'Epoch': 9}
+{'Accuracy u.f.l.': 0.7065577651515151, 'F1 u.f.l.': 0.8277519620696979, 'ROC-AUC u.f.l.': 0.49873901450119984, 'Average Precision u.f.l.': 0.7078098566598836, 'Precision u.f.l.': 0.7078069295900179, 'Epoch': 10}
