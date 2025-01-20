@@ -181,6 +181,7 @@ class UnPIE():
             ckpt_path = tf.train.latest_checkpoint(load_dir_best)
             self._load_from_ckpt(ckpt_path)
             self.checkpoint.epoch.assign(self.params['load_params']['step'])
+            self.best_val_acc = tf.Variable(0.0, trainable=False, dtype=tf.float32)
 
     def _get_load_dir_best(self):
         split_cache_path = self.cache_dir.split(os.sep)
@@ -282,7 +283,7 @@ class UnPIE():
 
             # Save checkpoint
             if epoch % fre_save_model == 0:
-                if fre_plot_clusters != 0 and epoch % fre_plot_clusters == 0:
+                if fre_plot_clusters != 0 and epoch % fre_plot_clusters == 2:
                     self._save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
                 if val_result[self.monitor_metric] > self.best_val_acc:
                     print('Saving model...')
