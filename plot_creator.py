@@ -10,9 +10,9 @@ from utils.print_utils import print_separator
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-def plot_cluster(save_path):
-    is_single_plot = False
-    is_plot_grid = True
+def plot_cluster(save_path, step):
+    is_single_plot = True
+    is_plot_grid = False
 
     algorithm = 'PCA_TSNE'
     # load the true labels
@@ -44,7 +44,7 @@ def plot_cluster(save_path):
             # plot clusters
             plot_cluster_epoch(save_path, data_tsne, epoch, y, algorithm)
     
-    if is_plot_grid:
+    if is_plot_grid and step == 'LA':
         _plot_grid(files, memory_bank_path, save_path, y, algorithm)
 
 def plot_cluster_epoch(save_path, data_2d, epoch, y, algorithm):
@@ -110,6 +110,8 @@ def _plot_grid(files, memory_bank_path, save_path, y, algorithm):
                 axis.legend(loc='upper right')
 
         i += 1
+        if i == 6:
+            break
 
     # Adjust layout
     fig.tight_layout()
@@ -183,5 +185,5 @@ for i in tqdm(range(len(training_steps))):
     
     # plot clusters
     plot_save_path = os.path.join(cache_dir, params['plot_dir'])
-    plot_cluster(plot_save_path)
+    plot_cluster(plot_save_path, training_steps[i])
 
