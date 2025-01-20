@@ -1,2 +1,0 @@
-test results last 1000: : {'Accuracy s.l.': 0.7645891043397969, 'F1 s.l.': 0.8413498672648168, 'ROC-AUC u.f.l.': 0.767747714820176, 'Average Precision s.l.': 0.9119147805062522, 'Precision s.l.': 0.9401881596900696}
-test results best 11: : {'Accuracy s.l.': 0.7981749192059095, 'F1 s.l.': 0.8651596040016539, 'ROC-AUC u.f.l.': 0.8100376463853592, 'Average Precision s.l.': 0.9273146644871455, 'Precision s.l.': 0.9553160401795602}
