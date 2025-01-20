@@ -283,7 +283,7 @@ class UnPIE():
 
             # Save checkpoint
             if epoch % fre_save_model == 0:
-                if fre_plot_clusters != 0 and epoch % fre_plot_clusters == 2:
+                if fre_plot_clusters != 0 and epoch % fre_plot_clusters == 0:
                     self._save_memory_bank(self.memory_bank, train_dataloader.dataset.y, self.plot_save_path, epoch)
                 if val_result[self.monitor_metric] > self.best_val_acc:
                     print('Saving model...')
