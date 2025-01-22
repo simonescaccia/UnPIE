@@ -1,0 +1,4 @@
+model_checkpoint_path: "ckpt-25"
+all_model_checkpoint_paths: "ckpt-25"
+all_model_checkpoint_timestamps: 1737224320.0764823
+last_preserved_timestamp: 1737224266.976935

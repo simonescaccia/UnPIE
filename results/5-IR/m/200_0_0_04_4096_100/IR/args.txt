@@ -1,0 +1,94 @@
+instance_t: 0.04
+batch_size: 256
+inference_batch_size: 256
+fre_plot_clusters: 50
+cluster_alg: kmeans
+kNN_inference: 100
+num_kmeans: 5
+fre_save_model: 1
+fre_valid: 1
+num_classes: 2
+train_steps: IR,LA,SUP
+IR:
+  task: IR
+  weight_decay: 0.0001
+  init_lr: 0.03
+  target_lr: 0.03
+  lr_decay_start: 10000
+  lr_decay: 0.02
+  lr_decay_steps: 30
+  train_num_workers: 1
+  val_num_workers: 1
+  train_num_epochs: 200
+  load_task: None
+  load_step: None
+  clstr_update_per_epoch: 0
+  instance_k: 4096
+LA:
+  task: LA
+  weight_decay: 0.0001
+  init_lr: 0.03
+  target_lr: 0.03
+  lr_decay_start: 10000
+  lr_decay: 0.002
+  lr_decay_steps: 20
+  train_num_workers: 1
+  val_num_workers: 1
+  train_num_epochs: 0
+  load_task: IR
+  clstr_update_per_epoch: 0
+  instance_k: 0
+SUP:
+  task: SUP
+  weight_decay: 0.001
+  init_lr: 0.001
+  target_lr: 0.001
+  lr_decay_start: 10000
+  lr_decay: 0.002
+  lr_decay_steps: 40
+  train_num_workers: 1
+  val_num_workers: 1
+  train_num_epochs: 0
+  load_task: None
+  clstr_update_per_epoch: None
+  instance_k: None
+data_sets: all
+feature_extractor: vgg16
+edge_importance: True
+edge_weigths: False
+obj_classes: traffic_light,crosswalk
+balance_dataset: False
+num_frames: 15
+img_height: 1080
+img_width: 1920
+vgg16_input_size: 224
+vgg16_output_size: 512
+efficientnetb3_input_size: 300
+efficientnetb3_output_size: 1536
+gcn_input_layer_dim: 64
+gcn_middle_layer_dim: 256
+gcn_middle_2_layer_dim: 128
+gcn_output_layer_dim: 64
+gcn_num_input_layers: 1
+gcn_num_middle_layers: 0
+gcn_num_middle_2_layers: 0
+gcn_num_output_layers: 2
+scene_input_layer_dim: 64
+scene_output_layer_dim: 64
+scene_num_input_layers: 1
+scene_num_output_layers: 0
+drop_tcn: 0.0
+drop_conv: 0.0
+drop_lstm: 0.4
+stgcn_kernel_size: 3
+is_scene: True
+share_edge_importance: False
+train_log_file: log.txt
+val_log_file: val_log.txt
+val_prediction_file: val_predictions.txt
+test_log_file: test_log.txt
+cache_dir: checkpoints
+plot_dir: cluster_plots
+emb_dim: 128
+kmeans_k: [2, 2, 2, 2, 2]
+len_one_hot_classes: 3

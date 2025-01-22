@@ -1,0 +1,2 @@
+edge_weights = self.normalization_factor- edge_weights
+High value to near objects

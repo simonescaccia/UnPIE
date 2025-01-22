@@ -2,15 +2,32 @@ import torch
 import numpy as np
 import tensorflow as tf
 
-from utils.pie_utils import update_progress
+from utils.pie_utils import bbox_center, update_progress
+
+np.set_printoptions(linewidth=np.inf)
 
 class PIEGraphDataset(torch.utils.data.Dataset):
-    def __init__(self, features, normalize_bbox, transform_a=None):
-        # self.x, self.a, self.i, self.y = self._compute_graphs(features, normalize_bbox, transform_a)
+    def __init__(self, 
+                 features, 
+                 max_nodes_dict, 
+                 max_num_nodes, 
+                 one_hot_classes, 
+                 ped_classes,
+                 height, 
+                 width, 
+                 edge_weigths, 
+                 transform_a=None):
+        self.edge_weigths = edge_weigths
         self.features = features
-        self.normalize_bbox = normalize_bbox
         self.transform_a = transform_a
-        self.x, self.a, self.y, self.i = self._compute_graphs()
+        self.max_nodes_dict = max_nodes_dict
+        self.max_num_nodes = max_num_nodes
+        self.one_hot_classes = one_hot_classes
+        self.ped_classes = ped_classes
+        self.img_height = height
+        self.img_width = width
+        self.normalization_factor = np.linalg.norm([height, width])
+        self.x, self.b, self.c, self.a, self.y, self.i = self._compute_graphs()
 
 
     def _compute_graphs(self):
@@ -23,76 +40,158 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         - The node features are the concatenation of the features and the bounding boxes
         '''
         features = self.features
-        normalize_bbox = self.normalize_bbox
         transform_a = self.transform_a
+        max_nodes_dict = self.max_nodes_dict
+        max_num_nodes = self.max_num_nodes
+        ped_classes = self.ped_classes
+        one_hot_classes = self.one_hot_classes
 
-        ped_feats = features['ped_feats'] # [num_seq, num_frames, emb_dim]
-        ped_bboxes = features['ped_bboxes'] # [num_seq, num_frames, 4]
-        ped_labels = features['intention_binary'] # [num_seq, 1]
-        obj_feats = features['obj_feats'] # [num_seq, num_frames, num_obj, emb_dim]
-        obj_bboxes = features['obj_bboxes'] # [num_seq, num_frames, num_obj, 4]
-        other_ped_feats = features['other_ped_feats'] # [num_seq, num_frames, num_other_ped, emb_dim]
-        other_ped_bboxes = features['other_ped_bboxes'] # [num_seq, num_frames, num_other_ped, 4]
+        ped_feats = features['ped_feats'] # [num_seqs, seq_len, emb_dim]
+        ped_bboxes = features['ped_bboxes'] # [num_seqs, seq_len, 4]
+        ped_labels = features['intention_binary'] # [num_seqs, 1]
+        obj_feats = features['obj_feats'] # [num_seqs, seq_len, num_obj, emb_dim]
+        obj_bboxes = features['obj_bboxes'] # [num_seqs, seq_len, num_obj, 4]
+        obj_classes = features['obj_classes'] # [num_seqs, seq_len, num_obj, str_len]
+        other_ped_feats = features['other_ped_feats'] # [num_seqs, seq_len, num_other_ped, emb_dim]
+        other_ped_bboxes = features['other_ped_bboxes'] # [num_seqs, seq_len, num_other_ped, 4]
         data_split = features['data_split']
-        max_num_nodes = features['max_num_nodes']
 
         print('Computing {} graphs...'.format(data_split))
 
-        num_seq = len(ped_feats)
-        num_frames = len(ped_feats[0])
-        
-         # Precompute number of nodes and adjacency template to reduce redundant calculations
-        adj_template = np.zeros((max_num_nodes, max_num_nodes), dtype=int)
-        adj_template[0, 1:max_num_nodes] = 1  # Central node connected to others
-        adj_template[1:max_num_nodes, 0] = 1  # Other nodes connected to central node
+        # Prepare objects start position. Class order: ped, obj_class_1, obj_class_2, ..., obj_class_n , other_peds
+        class_init_pos = 1
+        obj_class_pos = {}
+        for k, v in max_nodes_dict.items():
+            if k not in ped_classes:
+                obj_class_pos[k] = {}
+                obj_class_pos[k]['init_pos'] = class_init_pos
+                class_init_pos += 1 # only the nearest object per class
+                obj_class_pos[k]['class_nearest_obj_dist'] = self._get_distance([0, self.img_height], [self.img_width, 0]) # max distance
+        other_ped_init_pos = class_init_pos
+
+        num_seqs = len(ped_feats)
+        seq_len = len(ped_feats[0])
 
         # Pre-allocate for the sequence
-        x_seq = np.zeros((num_seq, num_frames, max_num_nodes, ped_feats[0][0].shape[0] + ped_bboxes[0][0].shape[0]), dtype=np.float32)  
-        a_seq = np.zeros((num_seq, num_frames, max_num_nodes, max_num_nodes), dtype=np.uint8)
-        y_seq = np.zeros((num_seq,), dtype=np.uint8)
+        x_seq = np.zeros((num_seqs, seq_len, max_num_nodes, ped_feats[0][0].shape[0]), dtype=np.float32)
+        b_seq = np.zeros((num_seqs, seq_len, max_num_nodes, 4), dtype=np.float32)
+        c_seq = np.zeros((num_seqs, seq_len, max_num_nodes, len(one_hot_classes)), dtype=np.float32)
+        a_seq = np.zeros((num_seqs, seq_len, max_num_nodes, max_num_nodes), dtype=np.float32)
+        y_seq = np.zeros((num_seqs,), dtype=np.uint8)
 
-        for i in range(num_seq):
-            update_progress(i / num_seq)
+        for i in range(num_seqs):
+            update_progress(i / num_seqs)
             y_seq[i] = ped_labels[i]
 
-            for j in range(num_frames):
+            for j in range(seq_len):
                 # Pedestrian node
-                num_nodes = 1
-                ped_node = np.concatenate((ped_feats[i][j], normalize_bbox(ped_bboxes[i][j])))
-                x_seq[i, j, 0, :] = ped_node
+                x_seq[i, j, 0, :] = ped_feats[i][j]
+                b_seq[i, j, 0, :] = self._normalize_bbox(ped_bboxes[i][j].copy())
+                c_seq[i, j, 0, :] = one_hot_classes[ped_classes[0]]
+                ped_position = bbox_center(ped_bboxes[i][j])
+                num_node = 1
+
+                edge_weights = np.zeros((max_num_nodes,), dtype=np.float32) 
 
                 # Object nodes
-                for k, obj_feat in enumerate(obj_feats[i][j]):
-                    obj_node = np.concatenate((obj_feat, normalize_bbox(obj_bboxes[i][j][k])))
-                    x_seq[i, j, num_nodes, :] = obj_node
-                    num_nodes += 1
-                
-                # Other pedestrian nodes
-                for k, other_ped_feat in enumerate(other_ped_feats[i][j]):
-                    other_ped_node = np.concatenate((other_ped_feat, normalize_bbox(other_ped_bboxes[i][j][k])))
-                    x_seq[i, j, num_nodes, :] = other_ped_node
-                    num_nodes += 1
+                for k, (obj_feat, obj_bbox, obj_class) in enumerate(zip(obj_feats[i][j], obj_bboxes[i][j], obj_classes[i][j])):
+                    num_node = obj_class_pos[obj_class]['init_pos']
+                    obj_distance = self._get_distance(ped_position, bbox_center(obj_bboxes[i][j][k]))
+                    if obj_distance <= obj_class_pos[obj_class]['class_nearest_obj_dist']:
+                        # Select only the nearest object per class
 
+                        obj_class_pos[obj_class]['class_nearest_obj_dist'] = obj_distance
+
+                        x_seq[i, j, num_node, :] = obj_feat
+                        b_seq[i, j, num_node, :] = self._normalize_bbox(obj_bbox.copy())
+                        c_seq[i, j, num_node, :] = one_hot_classes[obj_class]
+                    
+                        if not self.edge_weigths:
+                            edge_weights[num_node] = 1
+                        else:
+                            edge_weights[num_node] = obj_distance
+
+                # Restore the object class min position for the new iteration
+                for k, v in obj_class_pos.items():
+                    obj_class_pos[k]['class_nearest_obj_dist'] = self._get_distance([0, self.img_height], [self.img_width, 0]) # max distance
+
+                # Other pedestrian nodes
+                if self.ped_classes[1] in obj_class_pos:
+                    num_node = other_ped_init_pos
+                    other_ped_min_distance = self._get_distance([0, self.img_height], [self.img_width, 0]) # max distance
+                    for k, (other_ped_feat, other_ped_bbox) in enumerate(zip(other_ped_feats[i][j], other_ped_bboxes[i][j])):
+                        
+                        other_ped_distance = self._get_distance(ped_position, bbox_center(other_ped_bboxes[i][j][k]))
+
+                        if other_ped_distance <= other_ped_min_distance:
+                                
+                            x_seq[i, j, num_node, :] = other_ped_feat
+                            b_seq[i, j, num_node, :] = self._normalize_bbox(other_ped_bbox.copy())
+                            c_seq[i, j, num_node, :] = one_hot_classes[ped_classes[1]]                    
+
+                            if not self.edge_weigths:
+                                edge_weights[num_node] = 1
+                            else:    
+                                edge_weights[num_node] = other_ped_distance
+                    
                 # Adjacency matrix: Copy the precomputed adjacency template and adjust for number of nodes
-                a_seq[i, j, :, :] = adj_template
-                if num_nodes < max_num_nodes:
-                    a_seq[i, j, num_nodes:, :] = 0  # Zero out rows and columns beyond the active node count
-                    a_seq[i, j, :, num_nodes:] = 0  # Zero out rows and columns beyond the active node count
-                    if transform_a is not None:
-                        a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
+                a_seq[i, j, 0, :] = edge_weights
+                a_seq[i, j, :, 0] = edge_weights
+
+                if transform_a is not None:
+                    a_seq[i, j, :, :] = transform_a(a_seq[i, j, :, :])
 
         update_progress(1)
         print('')
 
         x = x_seq
+        b = b_seq
+        c = c_seq
         a = a_seq
         y = y_seq
-        i = np.arange(num_seq)
+        i = np.arange(num_seqs)
 
-        return x, a, y, i
+        return x, b, c, a, y, i
+    
+    def _get_distance(self, ped_position, obj_position):
+        distance = np.linalg.norm(np.array(ped_position) - np.array(obj_position)) # Euclidean distance between two points
+        if self.edge_weigths == 'no_norm':
+            pass
+        elif self.edge_weigths == 'norm':
+            distance = distance / self.normalization_factor
+        elif self.edge_weigths == 'compl':
+            distance = self.normalization_factor - distance
+        elif self.edge_weigths == 'norm_compl':
+            distance = 1 - (distance / self.normalization_factor)
+        return distance
+    
+    def _normalize_bbox(self, bbox):
+        '''
+        Normalize the bounding box coordinates
+        '''
+        img_height = self.img_height
+        img_width = self.img_width
+
+        bbox[0] = bbox[0] / img_width
+        bbox[1] = bbox[1] / img_height
+        bbox[2] = bbox[2] / img_width
+        bbox[3] = bbox[3] / img_height
+
+        return bbox
 
     def __getitem__(self, index):
-        return self.x[index], self.a[index], self.y[index], self.i[index]
+        return self.x[index], self.b[index], self.c[index], self.a[index], self.y[index], self.i[index]
     
     def __len__(self):
         return self.x.shape[0]
+    
+    def shuffle(self):
+        # Shuffle the dataset for ROC AUC calculation
+        seed = 42
+        rng = np.random.default_rng(seed)  # Use a reproducible random generator
+        self.i = rng.permutation(self.i)
+        self.x = self.x[self.i]
+        self.b = self.b[self.i]
+        self.c = self.c[self.i]
+        self.a = self.a[self.i]
+        self.y = self.y[self.i]

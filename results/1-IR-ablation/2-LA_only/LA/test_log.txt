@@ -1,0 +1,1 @@
+test results: : {'top1_50NN': 0.59334415}
