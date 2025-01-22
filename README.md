@@ -1,10 +1,10 @@
 # UnPIE
-Unsupervised Pedestrian Intention Estimation with Graph Neural Networks
+Unsupervised learning based Pedestrian Intention Estimation with Graph Neural Networks.
 
 ![graph_representation](/images/Figure_4.png)
 
 UnPIE network:
-![unpie_network](/images/UnPIE.jpg)
+![unpie_network](/images/unpie2_white.png)
 
 ## Credits
 Some modules are taken and modified from the following repositories:
@@ -101,18 +101,19 @@ Run the following command to extract and save all the image features needed by t
   ```bash
   python extract_features.py
   ```
-![feature_extraction](/images/Feature%20extraction.png)
-![vgg16](/images/vgg16.png)
+![feature_extraction](/images/feature_extraction_2_white.png)
 
 ## Training and testing
 
   Training:
   ```bash
-  sh  run_training.sh
+  sh  run_training_x.sh
   ```
 
   Testing:
   ```bash
-  sh run_testing.sh
+  sh run_testing_x.sh
   ```
+
+where x can be SUP for supervised learning, IR or IR_LA for unsupervised learning.
 
