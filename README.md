@@ -10,6 +10,7 @@ UnPIE network:
 Some modules are taken and modified from the following repositories:
 - [Pedestrian Intention Estimation (PIE) dataset](http://data.nvision2.eecs.yorku.ca/PIE_dataset/).
 - [Pedestrian intention and trajectory estimation (PIEPredict) model](https://github.com/aras62/PIEPredict).
+- [Scene-STGCN](https://github.com/tue-mps/Scene-STGCN)
 - [Unsupervised Learning from Video with Deep Neural Embeddings (VIE) model](https://github.com/neuroailab/VIE).
 
 ## Setup
@@ -50,6 +51,19 @@ Deactivate environment:
   ```bash
   conda deactivate
   ```
+
+### Docker environment
+
+Build Dockerfile
+  ```bash
+  docker build -t unpie:v1 .
+  ```
+
+Run docker container
+  ```bash
+  docker run --rm -it -v /local/path/to/PIE_dataset:/PIE_dataset --name unpie-v1-c1 --gpus device= unpie:v1
+  ```
+
 
 ### UnPIE setup
 

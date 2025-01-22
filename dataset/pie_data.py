@@ -28,7 +28,7 @@ SOFTWARE.
 
 Updated by: Simone Scaccia
 """
-import pickle5 as pickle
+import pickle
 # import pickle (tensorflow 2)
 import cv2
 import sys
@@ -46,10 +46,10 @@ from pathlib import PurePath
 from dataset.pretrained_extractor import PretrainedExtractor
 from PIL import Image
 from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress, merge_directory
-from utils.print_utils import print_separator
+from utils.print_utils import plot_image, print_separator
 
 class PIE(object):
-    def __init__(self, regen_database=False, data_path=''):
+    def __init__(self, data_opts, data_sets, feature_extractor, feat_input_size, regen_database=False, data_path='', obj_classes_list=None):
         """
         Class constructor
         :param regen_database: Whether generate the database or not
@@ -69,36 +69,29 @@ class PIE(object):
         self.clips_path = join(self.pie_path, 'PIE_clips')
         self.images_path = join(self.pie_path, 'images')
         
-        self.data_opts = {'fstride': 1,
-            'sample_type': 'all', 
-            'height_rng': [0, float('inf')],
-            'squarify_ratio': 0,
-            'data_split_type': 'default',  #  kfold, random, default
-            'seq_type': 'intention', #  crossing , intention
-            'min_track_size': 0, #  discard tracks that are shorter
-            'max_size_observe': 15,  # number of observation frames
-            'max_size_predict': 5,  # number of prediction frames
-            'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
-            'balance': True,  # balance the training and testing samples
-            'crop_type': 'context',  # crop 2x size of bbox around the pedestrian
-            'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
-            'encoder_input_type': [],
-            'decoder_input_type': ['bbox'],
-            'output_type': ['intention_binary']
-            }
+        self.data_opts = data_opts
         
         self.ped_type = 'peds'
         self.traffic_type = 'objs'
 
-        # self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
-        #                        'val': ['set05', 'set06'],
-        #                        'test': ['set03'],
-        #                        'all': ['set01', 'set02', 'set03',
-        #                                'set04', 'set05', 'set06']}
-        self.image_set_nums = {'train': ['set04'],
-                               'val': ['set06'],
-                               'test': ['set03'],
-                               'all': ['set03', 'set04', 'set06']}
+        self.feature_extractor = feature_extractor
+        self.feat_input_size = feat_input_size
+
+        self.obj_classes_list = obj_classes_list if obj_classes_list else ['traffic_light','vehicle','other_ped','crosswalk','transit_station','sign'] 
+
+        if data_sets == 'all':
+            self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
+                                'val': ['set05', 'set06'],
+                                'test': ['set03'],
+                                'all': ['set01', 'set02', 'set03',
+                                        'set04', 'set05', 'set06']}
+        elif data_sets == 'small':
+            self.image_set_nums = {'train': ['set04'],
+                            'val': ['set06'],
+                            'test': ['set03'],
+                            'all': ['set03', 'set04', 'set06']}
+        else:
+            print('Invalid data_sets. Please choose from "all" or "small"')
 
     # Path generators
     @property
@@ -141,6 +134,7 @@ class PIE(object):
         for folder in self.image_set_nums:
             if set_id in self.image_set_nums[folder]:
                 return folder
+        print('\nSet id not found in the image set! Please check self.image_set_nums\n')
 
     def _get_image_path(self, sid, vid, fid):
         """
@@ -310,48 +304,24 @@ class PIE(object):
                 print('\n')
 
     def get_path(self,
-                 type_save='models', # model or data
-                 models_save_folder='',
-                 model_name='convlstm_encdec',
-                 file_name='',
-                 data_subset='',
-                 data_type='',
-                 save_root_folder='',
-                 feature_type=''):
+                 model_name,
+                 data_subset,
+                 data_type,
+                 feature_type):
         """
         A path generator method for saving model and config data. Creates directories
         as needed.
-        :param type_save: Specifies whether data or model is saved.
-        :param models_save_folder: model name (e.g. train function uses timestring "%d%b%Y-%Hh%Mm%Ss")
-        :param model_name: model name (either trained convlstm_encdec model or vgg16)
-        :param file_name: Actual file of the file (e.g. model.h5, history.h5, config.pkl)
-        :param data_subset: train, test or val
+        :param model_name: model name
+        :param data_subset: all, train, test or val
         :param data_type: type of the data (e.g. features_context_pad_resize)
-        :param save_root_folder: The root folder for saved data.
+        :param feature_type: type of the feature (e.g. ped, traffic)
         :return: The full path for the save folder
         """
-        if save_root_folder == '':
-            save_root_folder = os.path.join(self.pie_path, 'data')
-
-        assert(type_save in ['models', 'data'])
-        if data_type != '':
-            assert(any([d in data_type for d in ['images', 'features']]))
-        root = os.path.join(save_root_folder, type_save)
-
-        if type_save == 'models':
-            save_path = os.path.join(save_root_folder, 'pie', 'intention', models_save_folder)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            return os.path.join(save_path, file_name), save_path
-        else:
-            assert feature_type != ''
-            assert data_subset != ''
-            assert data_type != ''
-            assert model_name != ''
-            save_path = os.path.join(root, 'pie', feature_type, data_subset, data_type, model_name)
-            if not os.path.exists(save_path):
-                os.makedirs(save_path)
-            return save_path
+        root = os.path.join(self.pie_path, 'data')
+        save_path = os.path.join(root, model_name, data_type, feature_type, data_subset)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        return save_path
 
     def get_tracks(self, dataset, data_type, seq_length, overlap):
         """
@@ -472,6 +442,7 @@ class PIE(object):
                         'id': op_id_i,
                         'type': self.ped_type
                     })
+        update_progress(1)
 
         # Create dataframe once from the accumulated data
         df = pd.DataFrame(data)
@@ -495,17 +466,17 @@ class PIE(object):
         :param image: The image
         :param save_path: The path to save the features
         """
-        save_path = self.get_path(type_save='data',
-                                  data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                  model_name='vgg16_'+'none',
-                                  data_subset='all',
-                                  feature_type=feature_type)
+        save_path = self.get_path(
+            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+            model_name=self.pretrained_extractor.model_name,
+            data_subset='all',
+            feature_type=feature_type)
         dest_folder = self.get_folder_from_set(set_id)
-        dest_path = self.get_path(type_save='data',
-                                  data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                  model_name='vgg16_'+'none',
-                                  data_subset=dest_folder,
-                                  feature_type=feature_type)
+        dest_path = self.get_path(
+            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+            model_name=self.pretrained_extractor.model_name,
+            data_subset=dest_folder,
+            feature_type=feature_type)
         img_save_folder = os.path.join(save_path, set_id, vid_id)
         img_save_path = os.path.join(img_save_folder, img_name+'_'+ped_id+'.pkl')
         img_dest_folder = os.path.join(dest_path, set_id, vid_id)
@@ -519,7 +490,7 @@ class PIE(object):
             bbox = squarify(bbox, 1, image.size[0])
             bbox = list(map(int,bbox[0:4]))
             cropped_image = image.crop(bbox)
-            img_data = img_pad(cropped_image, mode='pad_resize', size=224)                    
+            img_data = img_pad(cropped_image, mode='pad_resize', size=self.feat_input_size)                    
             expanded_img = self.pretrained_extractor.preprocess(img_data)
             img_features = self.pretrained_extractor(expanded_img)
             if not os.path.exists(img_save_folder):
@@ -527,7 +498,7 @@ class PIE(object):
             with open(img_save_path, 'wb') as fid:
                 pickle.dump(img_features, fid, pickle.HIGHEST_PROTOCOL)        
 
-    def _process_set(self, set_id, set_folder_path, extract_frames, ped_dataframe):
+    def _process_set(self, set_id, set_folder_path, extract_frames, ped_dataframe: pd.DataFrame):
         print('Extracting frames from', set_id)
 
         for vid, frames in sorted(extract_frames.items()):
@@ -553,6 +524,8 @@ class PIE(object):
                     # Retrieve the image path, bbox, id from the annotation dataframe
                     df = ped_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))
                     
+                    # plot_image(image, df, self.ped_type, self.traffic_type, 'type', set_id, vid, frame_num)
+
                     # Apply the function extract_features to each row of the dataframe
                     df.apply(
                         lambda row, image=image, set_id=set_id, vid=vid, frame_num=frame_num: 
@@ -570,6 +543,7 @@ class PIE(object):
 
                 success, image = vidcap.read()
                 frame_num += 1
+            self.update_progress(1)
 
             if num_frames != img_count:
                 print('num images don\'t match {}/{}'.format(num_frames, img_count))
@@ -582,7 +556,7 @@ class PIE(object):
         :param extract_frame_type: Whether to extract 'all' frames or only the ones that are 'annotated'
                              Note: extracting 'all' features requires approx. TODO
         """  
-        self.pretrained_extractor = PretrainedExtractor() # Create extractor model  
+        self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
         ped_dataframe = self._get_ped_info_per_image(
@@ -594,7 +568,7 @@ class PIE(object):
             other_ped_bboxes=sequence_data['other_ped_bboxes'],
             other_ped_ids=sequence_data['other_ped_ids'])
         
-        print_separator("Extracting features and saving on hard drive")
+        print_separator("Extracting features and saving on hard drive using the {} model".format(self.feature_extractor))
         # Extract image features
         set_folders = sets_to_extract
         for set_id in set_folders:
@@ -613,17 +587,17 @@ class PIE(object):
         folders = ['train', 'val', 'test']
         feature_types = [self.ped_type, self.traffic_type]
         for feature_type in feature_types:
-            source_path = self.get_path(type_save='data',
-                                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                model_name='vgg16_'+'none',
-                                data_subset='all',
-                                feature_type=feature_type)
+            source_path = self.get_path(
+                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                model_name=self.pretrained_extractor.model_name,
+                data_subset='all',
+                feature_type=feature_type)
             for folder in folders:
-                dest_path = self.get_path(type_save='data',
-                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                    model_name='vgg16_'+'none',
-                                    data_subset=folder,
-                                    feature_type=feature_type)
+                dest_path = self.get_path(
+                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+                    model_name=self.pretrained_extractor.model_name,
+                    data_subset=folder,
+                    feature_type=feature_type)
                 sets = self.get_image_set_ids(folder)
                 for set_id in sets:
                     # Move the folder set_id from source_path to path
@@ -1527,7 +1501,7 @@ class PIE(object):
         image_seq, pids_seq = [], []
         box_seq, center_seq, occ_seq = [], [], []
         set_ids, _pids = self._get_data_ids(image_set, params) if type(image_set) == str else (image_set, None)
-        obj_boxes_seq, other_ped_boxes_seq = [], []
+        obj_classes_seq, obj_boxes_seq, other_ped_boxes_seq = [], [], []
         obj_ids_seq, other_ped_ids_seq = [], []
 
         print("set_ids", set_ids)
@@ -1568,13 +1542,15 @@ class PIE(object):
                     # Get the objects in the frame
                     objs_bbox = [[] for _ in range(len(boxes))]
                     objs_ids = [[] for _ in range(len(boxes))]
+                    objs_classes = [[] for _ in range(len(boxes))]
                     for obj, obj_data in trff_annots.items():
                         obj_frames = obj_data['frames']
                         frame_to_idx = {f: idx for idx, f in enumerate(obj_frames)}  # Precompute frame-to-index mapping
                         for idx, f in enumerate(frame_ids):
-                            if f in frame_to_idx:
+                            if f in frame_to_idx and obj_data['obj_class'] in self.obj_classes_list:
                                 obj_idx = frame_to_idx[f]  # Get the index directly from precomputed mapping
                                 objs_bbox[idx].append(obj_data['bbox'][obj_idx])
+                                objs_classes[idx].append(obj_data['obj_class'])
                                 objs_ids[idx].append(obj)
                     # Get the other pedestrians in the frame
                     other_peds_bbox = [[] for _ in range(len(boxes))]
@@ -1583,7 +1559,7 @@ class PIE(object):
                         ped_frames = ped_data['frames']
                         frame_to_idx = {f: idx for idx, f in enumerate(ped_frames)} # Precompute frame-to-index mapping
                         for idx, f in enumerate(frame_ids):
-                            if f in frame_to_idx:
+                            if f in frame_to_idx and 'other_ped' in self.obj_classes_list:
                                 ped_idx = frame_to_idx[f]
                                 if ped != pid:
                                     other_peds_bbox[idx].append(ped_data['bbox'][ped_idx])
@@ -1599,6 +1575,7 @@ class PIE(object):
                     ped_ids = [[pid]] * len(boxes)
                     pids_seq.append(ped_ids[::seq_stride])
 
+                    obj_classes_seq.append(objs_classes[::seq_stride])
                     obj_boxes_seq.append(objs_bbox[::seq_stride])
                     obj_ids_seq.append(objs_ids[::seq_stride])
                     other_ped_boxes_seq.append(other_peds_bbox[::seq_stride])
@@ -1610,6 +1587,7 @@ class PIE(object):
 
         return {'image': image_seq,
                 'bbox': box_seq,
+                'obj_classes': obj_classes_seq,
                 'obj_bboxes': obj_boxes_seq,
                 'obj_ids': obj_ids_seq,
                 'other_ped_bboxes': other_ped_boxes_seq,

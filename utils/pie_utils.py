@@ -93,6 +93,11 @@ def img_pad(img, mode = 'warp', size = 224):
                     (size-img_size [1])//2))
         return padded_image
 
+def bbox_center(bbox):
+    '''
+    Returns the center of the bounding box
+    '''
+    return [(bbox[2] + bbox[0])/2, (bbox[3] + bbox[1])/2] # [width, height]
 
 def squarify(bbox, squarify_ratio, img_width):
     width = abs(bbox[0] - bbox[2])

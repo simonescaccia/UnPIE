@@ -1,41 +1,100 @@
-vgg_out_shape: '4096' # output shape of feature extractor
-weight_decay: 0.0001 # loss function weight decay
-init_lr: 0.0003 # optimizer initial learning rate
-target_lr: null # optimizer target learning rate
-ramp_up_epoch: 1 # learning rate ramp up epoch
-cache_dir: 'checkpoints' # directory to save model checkpoints
-instance_t: 0.07 # temperature for contrastive loss
-num_classes: 2 # number of different clusters
-num_frames: 15 # number of frames in each clip
-middle_dim: 512 # middle layer dimension in the unpie network
-emb_dim: 128 # final embedding dimension
-img_height: 1080 # video frame height
-img_width: 1920 # video frame width
-batch_size: 32 # training batch size
-inference_batch_size: 32 # val/test batch size
-inference_num_clips: 5 # number of clips to sample from each video
-clstr_update_per_epoch: 10 # number of cluster updates per epoch
-kNN_inference: 50 # number of nearest neighbors to consider
-instance_k: 4096 # background neighbors to sample
+# Training params
+instance_t: 0.04 # tau: temperature for contrastive loss
+batch_size: 256 # training batch size
+inference_batch_size: 256 # val/test batch size
+fre_plot_clusters: 0 # frequency to plot clusters (epochs)
+cluster_alg: 'kmeans' # clustering algorithm to use (kmeans, density)
+kNN_inference: 100 # number of nearest neighbors to consider
+num_kmeans: 5 # number of kmeans clusters
+clustering_groups: 8 # m in LA paper
 fre_save_model: 1 # frequency to save model checkpoint (epochs)
 fre_valid: 1 # frequency to validate model (epochs)
+num_classes: 2 # number of different clusters
+train_steps: 'IR,LA,SUP' # training steps
+IR:
+  task: 'IR' # task name
+  weight_decay: 0.0001 # loss function weight decay
+  init_lr: 0.03 # optimizer learning rates
+  target_lr: 0.03 # optimizer learning rates
+  lr_decay_start: 10000 # learning rate decay start
+  lr_decay: 0.02 # learning rate decay
+  lr_decay_steps: 30 # learning rate decay steps
+  train_num_workers: 1 # number of workers for training data loader
+  val_num_workers: 1 # number of workers for validation data loader
+  train_num_epochs: 10 # number of training epochs
+  load_task: null # load task
+  load_step: null # load step
+  clstr_update_per_epoch: 0 # number of cluster updates per epoch
+  instance_k: 0 # m: noise to add to the loss. m in [0, 9229] for a non balanced dataset; m in [0, 5245] for a balanced dataset 
+LA:
+  task: 'LA'
+  weight_decay: 0.0001 # loss function weight decay
+  init_lr: 0.03 # optimizer learning rates
+  target_lr: 0.03 # optimizer learning rates
+  lr_decay_start: 10000 # learning rate decay start
+  lr_decay: 0.002 # learning rate decay
+  lr_decay_steps: 20 # learning rate decay steps
+  train_num_workers: 1
+  val_num_workers: 1
+  train_num_epochs: 50
+  load_task: 'IR'
+  clstr_update_per_epoch: 5 # number of cluster updates per epoch
+  instance_k: 512 # k background neighbors to sample. If 0, all training samples are considered
+SUP:
+  task: 'SUP'
+  weight_decay: 0.001 # loss function weight decay
+  init_lr: 0.001 # optimizer learning rates
+  target_lr: 0.001 # optimizer learning rates
+  lr_decay_start: 10000 # learning rate decay start
+  lr_decay: 0.002 # learning rate decay
+  lr_decay_steps: 40 # learning rate decay steps
+  train_num_workers: 1
+  val_num_workers: 1
+  train_num_epochs: 0
+  load_task: null
+  clstr_update_per_epoch: null # number of cluster updates per epoch
+  instance_k: null
+
+# Data preprocessing params
+data_sets: 'all' # data sets to use (small, all)
+feature_extractor: 'efficientnetb3' # feature extractor to use (vgg16, efficientnetb3)
+edge_importance: True # weights for edges in the graph.
+edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
+obj_classes: 'traffic_light,crosswalk' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
+# obj_classes: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
+balance_dataset: False # whether to balance the dataset with same number of samples per class
+num_frames: 15 # number of frames in each clip
+img_height: 1080 # video frame height
+img_width: 1920 # video frame width
+vgg16_input_size: 224 # input size for vgg feature extractor
+vgg16_output_size: 512 # output size for vgg feature extractor after global average pooling
+efficientnetb3_input_size: 300 # input size for efficientnet feature extractor
+efficientnetb3_output_size: 1536 # output size for efficientnet feature extractor after global average pooling
+
+# Network params
+gcn_input_layer_dim: 512 # 512 output shape of vgg feature extractor
+gcn_middle_layer_dim: 256 # middle layer dimension in the unpie network
+gcn_middle_2_layer_dim: 128 # second middle layer dimension in the unpie network
+gcn_output_layer_dim: 64 # final gcn layer dimension
+gcn_num_input_layers: 1 # number of input layers in the unpie network
+gcn_num_middle_layers: 0 # number of middle layers in the unpie network
+gcn_num_middle_2_layers: 0 # number of second middle layers in the unpie network
+gcn_num_output_layers: 2 # number of final gcn layers in the unpie network
+scene_input_layer_dim: 64 # final scene embedding dimension
+scene_output_layer_dim: 64 # final scene embedding dimension
+scene_num_input_layers: 1 # number of scene embedding layers
+scene_num_output_layers: 0 # number of scene embedding layers
+drop_tcn: 0.0 # dropout rate for temporal convolutional network
+drop_conv: 0.0 # dropout rate for graph convolutional network
+drop_lstm: 0.4 # dropout rate for lstm
+stgcn_kernel_size: 3 # kernel size for spatial temporal graph convolutional network
+is_scene: True # whether to use scene embeddings
+share_edge_importance: False # whether to share edge importance weights between scene and node gcns
+
+# Log files
 train_log_file: 'log.txt' # training log file
 val_log_file: 'val_log.txt' # validation log file
 val_prediction_file: 'val_predictions.txt' # validation prediction file
 test_log_file: 'test_log.txt' # test log file
-train_steps: 'IR,LA' # training steps
-IR:
-  task: 'IR' # task name
-  lr_boundaries: null # learning rate boundaries
-  train_num_workers': 1 # number of workers for training data loader
-  val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 0 # number of training epochs
-  load_task: null # load task
-  load_step: null # load step
-LA:
-  task: 'LA'
-  lr_boundaries: '1000,2000'
-  train_num_workers': 1
-  val_num_workers: 1
-  train_num_epochs: 100
-  load_task: 'IR'
+cache_dir: 'checkpoints' # directory to save model checkpoints
+plot_dir: 'cluster_plots' # directory to save plots

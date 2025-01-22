@@ -38,21 +38,27 @@ class InstanceModel(object):
                            + (1 - self.instance_m) * self.embed_output)
         return tf.nn.l2_normalize(new_data_memory, axis=1)
 
-    def __get_lbl_equal(self, each_k_idx, cluster_labels, top_idxs, k):
+    def _get_lbl_equal(self, each_k_idx, cluster_labels, top_idxs, k):
         batch_labels = tf.gather(
                 cluster_labels[each_k_idx], 
-                self.i)
+                self.i) # [bs]
         if k > 0:
             top_cluster_labels = tf.gather(cluster_labels[each_k_idx], top_idxs)
             batch_labels = repeat_1d_tensor(batch_labels, k)
             curr_equal = tf.equal(batch_labels, top_cluster_labels)
         else:
             curr_equal = tf.equal(
-                    tf.expand_dims(batch_labels, axis=1), 
-                    tf.expand_dims(cluster_labels[each_k_idx], axis=0))
+                tf.expand_dims(batch_labels, axis=1), # [bs, 1]
+                tf.expand_dims(cluster_labels[each_k_idx], axis=0) # [1, data_len]
+            ) # [bs, data_len], for each label of the batch, which sample in the data has the same label
         return curr_equal
 
-    def __get_prob_from_equal(self, curr_equal, exponents):
+    def _get_prob_from_equal(self, curr_equal, exponents):
+        '''
+        Assign probabilities to the samples if they belong to the same cluster as the batch sample.
+        Exponents represent the similarity of the samples to the batch sample.
+        Probability of a sample being recognized as a sample of the same cluster:
+        '''
         probs = tf.reduce_sum(
             tf.where(
                 curr_equal,
@@ -62,12 +68,13 @@ class InstanceModel(object):
         return probs
 
     def get_cluster_classification_loss(
-            self, cluster_labels, 
-            k=None):
-        if not k:
-            k = self.instance_k
+            self, cluster_labels):
+        '''
+        Compute the loss starting from the cluster labels
+        '''
+        k = self.instance_k
         # ignore all but the top k nearest examples
-        all_dps = self.memory_bank.get_all_dot_products(self.embed_output)
+        all_dps = self.memory_bank.get_all_dot_products(self.embed_output) # small dot product means more similar to the embedding
         top_dps, top_idxs = tf.nn.top_k(all_dps, k=k, sorted=False)
         if k > 0:
             exponents = self._softmax(top_dps)
@@ -77,14 +84,14 @@ class InstanceModel(object):
         no_kmeans = cluster_labels.get_shape().as_list()[0]
         all_equal = None
         for each_k_idx in range(no_kmeans):
-            curr_equal = self.__get_lbl_equal(
+            curr_equal = self._get_lbl_equal(
                     each_k_idx, cluster_labels, top_idxs, k)
 
             if all_equal is None:
                 all_equal = curr_equal
             else:
-                all_equal = tf.logical_or(all_equal, curr_equal)
-        probs = self.__get_prob_from_equal(all_equal, exponents)
+                all_equal = tf.logical_or(all_equal, curr_equal) # True if any of the two is True
+        probs = self._get_prob_from_equal(all_equal, exponents)
 
         assert_shape(probs, [self.batch_size])
         loss = -tf.reduce_mean(tf.math.log(probs + 1e-7))

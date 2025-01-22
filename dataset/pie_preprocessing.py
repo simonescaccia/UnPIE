@@ -1,8 +1,7 @@
 import os
 import torch
 import numpy as np
-import pickle5 as pickle
-import tensorflow as tf
+import pickle
 
 from pathlib import PurePath
 
@@ -23,13 +22,30 @@ class PIEPreprocessing(object):
         self.data_opts = params['data_opts']
         self.batch_size = params['batch_size']
         self.inference_batch_size = params['inference_batch_size']
-        self.inference_num_clips = params['inference_num_clips']
         self.img_height = params['img_height']
         self.img_width = params['img_width']
+        self.edge_weigths = params['edge_weigths']
+        self.feature_extractor = params['feature_extractor']
+        self.data_sets = params['data_sets']
+        self.balance_dataset = params['balance_dataset']
+        self.feat_input_size = params['feat_input_size']
+        self.obj_classes_list = params['obj_classes']
 
-        self.pie = PIE(data_path=self.pie_path)
+        self.ped_class = 'ped'
+        self.other_ped_class = 'other_ped'
 
-    def get_datasets(self, is_test):
+        self.num_of_total_frames = 0
+        self.dataset_objs_statistics = {obj: {} for obj in self.obj_classes_list}
+
+        self.pie = PIE(
+            data_path=self.pie_path, 
+            data_opts=self.data_opts, 
+            data_sets=self.data_sets, 
+            feat_input_size=self.feat_input_size, 
+            feature_extractor=self.feature_extractor,
+            obj_classes_list=self.obj_classes_list)
+
+    def get_datasets(self):
         '''
         Build the inputs for the clustering computation
         '''
@@ -37,68 +53,118 @@ class PIEPreprocessing(object):
         print_separator('PIE preprocessing')
 
         # Load the data
+        test_features= None
+        train_features = self._get_features('train')
+        val_features = self._get_features('val')
+        test_features = self._get_features('test')
+
+        self._prints_dataset_statistics()
+
+        # Get the max number of nodes for each class across all splits
+        max_nodes_dict, _ = self._get_max_nodes_dict(
+            [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
+        )
+
+        # One-hot classes
+        one_hot_classes = self._get_one_hot_classes(
+            [train_features['obj_classes'], val_features['obj_classes'], test_features['obj_classes']]
+        )
+        max_num_nodes = len(one_hot_classes)
+
+        print('Max number of nodes in a graph: {}'.format(max_num_nodes))
+        print('Classes max number of nodes: {}'.format(max_nodes_dict))
+        print('Number of clases: {}'.format(len(one_hot_classes)))
+
+        # Load the data
         test_dataset = None
         test_len = 0
-        train_dataloader, train_len = self._get_dataloader('train')
-        val_dataloader, val_len = self._get_dataloader('val')
-        if is_test:
-            test_dataset, test_len = self._get_dataloader('test')
+        train_dataloader, train_len = self._get_dataloader('train', train_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+        val_dataloader, val_len = self._get_dataloader('val', val_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+        test_dataset, test_len = self._get_dataloader('test', test_features, max_nodes_dict, max_num_nodes, one_hot_classes)
 
         return {
             'train': {
                 'dataloader': train_dataloader,
-                'len': train_len
+                'len': train_len,
+                'num_nodes': max_num_nodes,
+                'len_one_hot_classes': len(one_hot_classes)
             },
             'val': {
                 'dataloader': val_dataloader,
-                'len': val_len
+                'len': val_len,
+                'num_nodes': max_num_nodes,
+                'len_one_hot_classes': len(one_hot_classes)
             },
             'test': {
                 'dataloader': test_dataset,
-                'len': test_len
+                'len': test_len,
+                'num_nodes': max_num_nodes,
+                'len_one_hot_classes': len(one_hot_classes)
             }
         }
 
-    def _normalize_bbox(self, bbox):
-        '''
-        Normalize the bounding box coordinates
-        '''
-        img_height = self.img_height
-        img_width = self.img_width
+    def _get_one_hot_classes(self, list_obj_classes):
+        # Get classes
+        classes_set = set(
+            obj_class
+            for split in list_obj_classes
+            for seq in split
+            for frame in seq
+            for obj_class in frame
+        )
+        classes_set.add(self.ped_class)
+        if self.other_ped_class in self.obj_classes_list:
+            classes_set.add(self.other_ped_class)
 
-        bbox[0] = bbox[0] / img_width
-        bbox[1] = bbox[1] / img_height
-        bbox[2] = bbox[2] / img_width
-        bbox[3] = bbox[3] / img_height
+        # One-hot encode classes
+        classes_list = sorted(classes_set)  # Sorting ensures consistent order between different trainings
+        class_to_index = {cls: i for i, cls in enumerate(classes_list)}
 
-        return bbox
+        # One-hot encoding
+        one_hot_encoding = {
+            cls: [1 if i == idx else 0 for i in range(len(classes_list))]
+            for cls, idx in class_to_index.items()
+        }
+
+        return one_hot_encoding
     
-    def _get_dataloader(self, data_split):
+    def _get_features(self, data_split):
         # Generate data sequences
         features_d = self.pie.generate_data_trajectory_sequence(data_split, **self.data_opts)
 
+        self._extract_dataset_statistics(features_d.copy())
+
         # Generate data mini sequences
         seq_length = self.data_opts['max_size_observe']
-        seq_length = seq_length * self.inference_num_clips if data_split != 'train' else seq_length
         seq_ovelap_rate = self.data_opts['seq_overlap_rate']
         features_d = self._get_data(features_d, seq_length, seq_ovelap_rate)
 
         # Balance the number of samples in each split
-        features_d = self.pie.balance_samples_count(features_d, label_type='intention_binary')
+        if self.balance_dataset:
+            features_d = self.pie.balance_samples_count(features_d, label_type='intention_binary')
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         features_d = self._load_features(features_d, data_split=data_split)
 
-        # x, a, i, y = PIEGraphDataset(
+        return features_d
+
+    def _get_dataloader(self, data_split, features_d, max_nodes_dict, max_num_nodes, one_hot_classes):
         pie_dataset = PIEGraphDataset(
-            features_d, 
+            features_d,
+            max_nodes_dict,
+            max_num_nodes,
+            one_hot_classes,
+            [self.ped_class, self.other_ped_class],
             transform_a=UnPIEGCN.transform,
-            normalize_bbox=self._normalize_bbox
+            height=self.img_height,
+            width=self.img_width,
+            edge_weigths=self.edge_weigths
         )
 
         if data_split == 'train':
             return torch.utils.data.DataLoader(pie_dataset, batch_size=self.batch_size, shuffle=True), pie_dataset.__len__()
         else:
+            pie_dataset.shuffle()
             return torch.utils.data.DataLoader(pie_dataset, batch_size=self.inference_batch_size, shuffle=False), pie_dataset.__len__()
             
     def _get_data(self, dataset, seq_length, overlap):
@@ -112,6 +178,7 @@ class PIEPreprocessing(object):
         """
         images = dataset['image'].copy() # shape: (num_ped, num_frames, num_seq)
         bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, num_seq, 4)
+        obj_classes = dataset['obj_classes'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 1)
         obj_bboxes = dataset['obj_bboxes'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 4)
         obj_ids = dataset['obj_ids'].copy() # shape: (num_ped, num_frames, num_seq, num_objs, 1)
         other_ped_bboxes = dataset['other_ped_bboxes'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 4)
@@ -126,6 +193,7 @@ class PIEPreprocessing(object):
 
         bboxes = self._get_tracks(bboxes, seq_length, overlap_stride)
         images = self._get_tracks(images, seq_length, overlap_stride)
+        obj_classes = self._get_tracks(obj_classes, seq_length, overlap_stride)
         obj_bboxes = self._get_tracks(obj_bboxes, seq_length, overlap_stride)
         obj_ids = self._get_tracks(obj_ids, seq_length, overlap_stride)
         other_ped_bboxes = self._get_tracks(other_ped_bboxes, seq_length, overlap_stride)
@@ -139,6 +207,7 @@ class PIEPreprocessing(object):
 
         return {'images': images,
                 'bboxes': bboxes,
+                'obj_classes': obj_classes,
                 'obj_bboxes': obj_bboxes,
                 'obj_ids': obj_ids,
                 'other_ped_bboxes': other_ped_bboxes,
@@ -162,30 +231,35 @@ class PIEPreprocessing(object):
         img_sequences = data['images']
         ped_ids = data['ped_ids']
         obj_ids = data['obj_ids']
+        obj_classes = data['obj_classes']
         other_ped_ids = data['other_ped_ids']
 
         # load the feature files if exists
-        peds_load_path = self.pie.get_path(type_save='data',
-                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                    model_name='vgg16_'+'none',
-                                    data_subset = data_split,
-                                    feature_type=self.pie.get_ped_type())
-        objs_load_path = self.pie.get_path(type_save='data',
-                                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                                    model_name='vgg16_'+'none',
-                                    data_subset = data_split,
-                                    feature_type=self.pie.get_traffic_type())
+        peds_load_path = self.pie.get_path(
+            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+            model_name=self.feature_extractor,
+            data_subset = data_split,
+            feature_type=self.pie.get_ped_type())
+        objs_load_path = self.pie.get_path(
+            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
+            model_name=self.feature_extractor,
+            data_subset = data_split,
+            feature_type=self.pie.get_traffic_type())
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_split, peds_load_path))
 
         ped_sequences, obj_sequences, other_ped_sequences = [], [], []
-        max_num_nodes = 0 # max number of nodes in a sequence, for padding
+        max_class_nodes = {} # max number of nodes in a sequence, for padding
+        max_num_nodes = 0
         i = -1
         for seq, pid in zip(img_sequences, ped_ids):
             i += 1
             update_progress(i / len(img_sequences))
             ped_seq, obj_seq, other_ped_seq = [], [], []
-            for imp, p, o, op in zip(seq, pid, obj_ids[i], other_ped_ids[i]):
+            for imp, p, o, o_c, op in zip(seq, pid, obj_ids[i], obj_classes[i], other_ped_ids[i]):
+                # padding
+                nodes_dict = {}
                 num_nodes = 0
+
                 set_id = PurePath(imp).parts[-3]
                 vid_id = PurePath(imp).parts[-2]
                 img_name = PurePath(imp).parts[-1].split('.')[0]
@@ -202,12 +276,13 @@ class PIEPreprocessing(object):
                         img_features = pickle.load(fid, encoding='bytes')
                 img_features = np.squeeze(img_features) # VGG16 output
                 ped_seq.append(img_features)
+                nodes_dict[self.ped_class] = 1
                 num_nodes += 1
 
                 # object image features
                 obj_seq_i = []
                 img_save_folder = os.path.join(objs_load_path, set_id, vid_id)
-                for obj_id in o:
+                for obj_id, obj_class in zip(o, o_c):
                     img_save_path = os.path.join(img_save_folder, img_name+'_'+obj_id+'.pkl')
                     if not os.path.exists(img_save_path):
                         Exception("Image features not found at {}".format(img_save_path))
@@ -218,6 +293,7 @@ class PIEPreprocessing(object):
                             img_features = pickle.load(fid, encoding='bytes')
                     img_features = np.squeeze(img_features)
                     obj_seq_i.append(img_features)
+                    nodes_dict[obj_class] = nodes_dict[obj_class] + 1 if obj_class in nodes_dict else 1
                     num_nodes += 1
                 obj_seq.append(obj_seq_i)
 
@@ -235,9 +311,12 @@ class PIEPreprocessing(object):
                             img_features = pickle.load(fid, encoding='bytes')
                     img_features = np.squeeze(img_features)
                     other_ped_seq_i.append(img_features)
+                    nodes_dict[self.other_ped_class] = nodes_dict[self.other_ped_class] + 1 if self.other_ped_class in nodes_dict else 1
                     num_nodes += 1
                 other_ped_seq.append(other_ped_seq_i)
 
+                # update max_nodes_dict
+                max_class_nodes, _ = self._get_max_nodes_dict([max_class_nodes, nodes_dict])
                 max_num_nodes = max(max_num_nodes, num_nodes)
 
             ped_sequences.append(ped_seq)
@@ -251,9 +330,11 @@ class PIEPreprocessing(object):
             'other_ped_feats': other_ped_sequences,
             'ped_bboxes': data['bboxes'],
             'obj_bboxes': data['obj_bboxes'],
+            'obj_classes': data['obj_classes'],
             'other_ped_bboxes': data['other_ped_bboxes'],
             'intention_binary': data['intention_binary'], # shape: [num_seqs, 1]
             'data_split': data_split,
+            'max_nodes_dict': max_class_nodes,
             'max_num_nodes': max_num_nodes
         }
         return features
@@ -269,3 +350,81 @@ class PIEPreprocessing(object):
                          range(0,len(seq)\
                         - seq_length + 1, overlap_stride)])
         return sub_seqs
+    
+    def _get_max_nodes_dict(self, dict_list):
+        # get the max number of nodes for each class in dict_list
+        max_nodes_dict = {}
+        for d in dict_list:
+            for k, v in d.items():
+                if k in max_nodes_dict:
+                    max_nodes_dict[k] = max(max_nodes_dict[k], v)
+                else:
+                    max_nodes_dict[k] = v
+
+        # count the number of nodes in the final dict
+        max_num_nodes = 0
+        for k, v in max_nodes_dict.items():
+            max_num_nodes += v
+
+        return max_nodes_dict, max_num_nodes
+    
+    def _extract_dataset_statistics(self, dataset):
+        # images = dataset['image'].copy() # shape: (num_ped, num_frames, channels)
+        # bboxes = dataset['bbox'].copy() # shape: (num_ped, num_frames, 4)
+        # obj_classes = dataset['obj_classes'].copy() # shape: (num_ped, num_frames, num_objs, obj)
+        # obj_bboxes = dataset['obj_bboxes'].copy() # shape: (num_ped, num_frames, num_objs, 4)
+        # obj_ids = dataset['obj_ids'].copy() # shape: (num_ped, num_frames, num_objs, obj)
+        # other_ped_bboxes = dataset['other_ped_bboxes'].copy() # shape: (num_ped, num_frames, num_other_peds, 4)
+        # other_ped_ids = dataset['other_ped_ids'].copy() # shape: (num_ped, num_frames, num_other_peds)
+        # ped_ids = dataset['ped_ids'].copy() # shape: (num_ped, num_frames)
+        # int_bin = dataset['intention_binary'].copy() # shape: (num_ped, num_frames)
+        for objs_seq_frames, other_peds_seq_frames in zip(dataset['obj_classes'], dataset['other_ped_ids']):
+            self.num_of_total_frames += len(objs_seq_frames)
+
+            for frame_objs, frame_other_peds in zip(objs_seq_frames, other_peds_seq_frames):
+                frame_objs_dict = {obj: 0 for obj in self.obj_classes_list}
+
+                # Objects
+                for obj in frame_objs:
+                    idx = frame_objs_dict[obj]
+                    if idx not in self.dataset_objs_statistics[obj].keys(): # obj index not found on the main dict
+                        self.dataset_objs_statistics[obj][idx] = 1
+                    else:
+                        self.dataset_objs_statistics[obj][idx] += 1
+                    frame_objs_dict[obj] += 1
+                
+                # Other peds
+                for i, _ in enumerate(frame_other_peds):
+                    if i not in self.dataset_objs_statistics['other_ped'].keys(): # other ped index not found on the main dict
+                        self.dataset_objs_statistics['other_ped'][i] = 1
+                    else:
+                        self.dataset_objs_statistics['other_ped'][i] += 1
+
+    def _prints_dataset_statistics(self):
+        # Get the maximum number of nodes within the same class
+        num_classes = len(self.dataset_objs_statistics)
+        max_num_nodes = 0
+        for key in self.dataset_objs_statistics.keys():
+            max_num_nodes = max(max_num_nodes, len(self.dataset_objs_statistics[key]))
+
+        # Create a table
+        table = np.zeros((num_classes, max_num_nodes), dtype=np.float32)
+        rows = []
+        for i, obj_key in enumerate(self.dataset_objs_statistics.keys()):
+            rows.append(obj_key)
+            for j, value in self.dataset_objs_statistics[obj_key].items():
+                table[i, j] = value
+        
+        # Compute the frequency of each occurrence
+        table = np.round(table / self.num_of_total_frames, 2)
+
+        # Compute the mean per column
+        mean_occurrence = np.round(np.mean(table, axis=0), 2)
+
+        # Print table
+        print("Table dataset objects")
+        print("rows: ", rows)
+        print(table)
+        print("Mean occurrence", mean_occurrence)
+                
+
