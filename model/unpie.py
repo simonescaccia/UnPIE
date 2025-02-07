@@ -455,12 +455,14 @@ class UnPIE():
         roc_auc = sklearn.metrics.roc_auc_score(y, curr_pred)
         average_precision = sklearn.metrics.average_precision_score(y, curr_pred)
         precision = sklearn.metrics.precision_score(y, curr_pred, zero_division=0)
+        recall = sklearn.metrics.recall_score(y, curr_pred, zero_division=0)
         return {
             'Accuracy u.f.l.': accuracy,
+            'AUC u.f.l.': roc_auc,
             'F1 u.f.l.': f1_score,
-            'ROC-AUC u.f.l.': roc_auc,
             'Average Precision u.f.l.': average_precision,
-            'Precision u.f.l.': precision
+            'Precision u.f.l.': precision,
+            'Recall u.f.l.': recall
         }
     
     def _perf_func_sup(
@@ -475,12 +477,14 @@ class UnPIE():
         roc_auc = sklearn.metrics.roc_auc_score(y, curr_output)
         average_precision = sklearn.metrics.average_precision_score(y, curr_output)
         precision = sklearn.metrics.precision_score(y, curr_output, zero_division=0)
+        recall = sklearn.metrics.recall_score(y, curr_output, zero_division=0)
         return {
             'Accuracy s.l.': accuracy,
+            'AUC u.f.l.': roc_auc,
             'F1 s.l.': f1_score,
-            'ROC-AUC u.f.l.': roc_auc,
             'Average Precision s.l.': average_precision,
             'Precision s.l.': precision,
+            'Recall s.l.': recall
         } 
     
     # Compute metrics for unsupervised learning
@@ -503,12 +507,14 @@ class UnPIE():
             roc_auc = sklearn.metrics.roc_auc_score(y, y_pred)
             average_precision = sklearn.metrics.average_precision_score(y, y_pred)
             precision = sklearn.metrics.precision_score(y, y_pred, zero_division=0)
+            recall = sklearn.metrics.recall_score(y, y_pred, zero_division=0)
             return {
                 'Accuracy u.l.': accuracy,
+                'AUC u.l.': roc_auc,
                 'F1 u.l.': f1_score,
-                'ROC-AUC u.l.': roc_auc,
                 'Average Precision u.l.': average_precision,
                 'Precision u.l.': precision,
+                'Recall u.l.': recall
             }
         else: # Density
             metrics = {}
