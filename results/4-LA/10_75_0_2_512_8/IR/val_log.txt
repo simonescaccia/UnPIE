@@ -1,9 +1,0 @@
-{'Accuracy u.f.l.': 0.7083333333333334, 'F1 u.f.l.': 0.8289773616646962, 'ROC-AUC u.f.l.': 0.5, 'Average Precision u.f.l.': 0.7083333333333334, 'Precision u.f.l.': 0.7083333333333334, 'Epoch': 1}
-{'Accuracy u.f.l.': 0.708688446969697, 'F1 u.f.l.': 0.8291511451341907, 'ROC-AUC u.f.l.': 0.500668449197861, 'Average Precision u.f.l.': 0.7085951426024956, 'Precision u.f.l.': 0.7085951426024956, 'Epoch': 2}
-{'Accuracy u.f.l.': 0.7083333333333334, 'F1 u.f.l.': 0.8289773616646962, 'ROC-AUC u.f.l.': 0.5, 'Average Precision u.f.l.': 0.7083333333333334, 'Precision u.f.l.': 0.7083333333333334, 'Epoch': 3}
-{'Accuracy u.f.l.': 0.7458892906336089, 'F1 u.f.l.': 0.810654191915587, 'ROC-AUC u.f.l.': 0.7297970730449316, 'Average Precision u.f.l.': 0.8231900090347305, 'Precision u.f.l.': 0.8572245293790709, 'Epoch': 4}
-{'Accuracy u.f.l.': 0.6981211260330579, 'F1 u.f.l.': 0.7667659938303643, 'ROC-AUC u.f.l.': 0.6964901779363459, 'Average Precision u.f.l.': 0.8054138501907079, 'Precision u.f.l.': 0.8461523102485287, 'Epoch': 5}
-{'Accuracy u.f.l.': 0.6625236742424243, 'F1 u.f.l.': 0.7941583345911767, 'ROC-AUC u.f.l.': 0.47786755116398577, 'Average Precision u.f.l.': 0.6997490449230426, 'Precision u.f.l.': 0.6987706755887628, 'Epoch': 6}
-{'Accuracy u.f.l.': 0.7040719696969697, 'F1 u.f.l.': 0.8260135520338636, 'ROC-AUC u.f.l.': 0.4974565960737722, 'Average Precision u.f.l.': 0.707302331853439, 'Precision u.f.l.': 0.7072911951555855, 'Epoch': 7}
-{'Accuracy u.f.l.': 0.6732631714876033, 'F1 u.f.l.': 0.7373785781456271, 'ROC-AUC u.f.l.': 0.6915229954343524, 'Average Precision u.f.l.': 0.8042253538233879, 'Precision u.f.l.': 0.855950461939468, 'Epoch': 8}
-{'Accuracy u.f.l.': 0.7079782196969697, 'F1 u.f.l.': 0.8287273753358235, 'ROC-AUC u.f.l.': 0.4997417355371901, 'Average Precision u.f.l.': 0.7082225581348243, 'Precision u.f.l.': 0.7082219251336899, 'Epoch': 9}

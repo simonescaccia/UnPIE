@@ -36,7 +36,7 @@ LA:
   lr_decay_steps: 20 # learning rate decay steps
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 50
+  train_num_epochs: 40
   load_task: 'IR'
   clstr_update_per_epoch: 5 # number of cluster updates per epoch
   instance_k: 512 # k background neighbors to sample. If 0, all training samples are considered
@@ -57,7 +57,7 @@ SUP:
 
 # Data preprocessing params
 data_sets: 'all' # data sets to use (small, all)
-feature_extractor: 'efficientnetb3' # feature extractor to use (vgg16, efficientnetb3)
+feature_extractor: 'vgg16' # feature extractor to use (vgg16, efficientnetb3)
 edge_importance: True # weights for edges in the graph.
 edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
 obj_classes: 'traffic_light,crosswalk' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
@@ -72,7 +72,7 @@ efficientnetb3_input_size: 300 # input size for efficientnet feature extractor
 efficientnetb3_output_size: 1536 # output size for efficientnet feature extractor after global average pooling
 
 # Network params
-gcn_input_layer_dim: 512 # 512 output shape of vgg feature extractor
+gcn_input_layer_dim: 64 # 512 output shape of vgg feature extractor
 gcn_middle_layer_dim: 256 # middle layer dimension in the unpie network
 gcn_middle_2_layer_dim: 128 # second middle layer dimension in the unpie network
 gcn_output_layer_dim: 64 # final gcn layer dimension

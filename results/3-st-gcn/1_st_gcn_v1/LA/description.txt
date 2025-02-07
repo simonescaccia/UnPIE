@@ -1,1 +1,0 @@
-ST-GCN implementation: 512 512 - 256 256 - 128 128 128, lr = 0.0003
