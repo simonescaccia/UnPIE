@@ -58,9 +58,9 @@ vgg_abl_la_2_512_5_warm = {'Accuracy u.f.l.': 0.7970579060798548, 'F1 u.f.l.': 0
 vgg_abl_la_2_1024_5_warm = {'Accuracy u.f.l.': 0.8189201451905627, 'F1 u.f.l.': 0.8832036134909237, 'ROC-AUC u.f.l.': 0.7889186342850528, 'Average Precision u.f.l.': 0.9183380806603446, 'Precision u.f.l.': 0.937416930269469}
 
 vgg_abl_bal_sup = {'Accuracy s.l.': 0.7980587121212122, 'F1 s.l.': 0.7891993612278217, 'ROC-AUC u.f.l.': 0.8011841610098768, 'Average Precision s.l.': 0.7379875199151269, 'Precision s.l.': 0.8085847498524893}
-vgg_abl_bal_ir_noise = {'Accuracy u.f.l.': 0.7813683712121212, 'F1 u.f.l.': 0.7568803002012345, 'ROC-AUC u.f.l.': 0.7808197835612741, 'Average Precision u.f.l.': 0.7272578806485946, 'Precision u.f.l.': 0.8290717130931632}
+vgg_abl_bal_ir_noise =  {'Accuracy u.f.l.': 0.7813683712121212, 'AUC u.f.l.': 0.7808197835612741, 'F1 u.f.l.': 0.7568803002012345, 'Precision u.f.l.': 0.8290717130931632, 'Recall u.f.l.': 0.697963612542444, 'Average Precision u.f.l.': 0.7272578806485946}
 vgg_abl_bal_ir_no_noise = {'Accuracy u.f.l.': 0.7994791666666667, 'F1 u.f.l.': 0.7868197681912757, 'ROC-AUC u.f.l.': 0.8004515397597324, 'Average Precision u.f.l.': 0.7413708404897282, 'Precision u.f.l.': 0.8204412323386671}
-vgg_abl_bal_la_bi_group = {'Accuracy u.f.l.': 0.8053977272727273, 'F1 u.f.l.': 0.7941036941758377, 'ROC-AUC u.f.l.': 0.8059748207381479, 'Average Precision u.f.l.': 0.7479002628845476, 'Precision u.f.l.': 0.8244058887100801}
+vgg_abl_bal_la_bi_group = {'Accuracy u.f.l.': 0.8053977272727273, 'AUC u.f.l.': 0.8059748207381479, 'F1 u.f.l.': 0.7941036941758377, 'Precision u.f.l.': 0.8244058887100801, 'Recall u.f.l.': 0.7676322733366365, 'Average Precision u.f.l.': 0.7479002628845476}
 vgg_abl_bal_la_multi_group = {'Accuracy u.f.l.': 0.7948626893939394, 'F1 u.f.l.': 0.7856243349701605, 'ROC-AUC u.f.l.': 0.7960742240776848, 'Average Precision u.f.l.': 0.7324866101316089, 'Precision u.f.l.': 0.8035911033504243}
 
 vgg_abl_la_2_512_1_warm = {'Accuracy u.f.l.': 0.8256139405626135, 'F1 u.f.l.': 0.8888477617605964, 'ROC-AUC u.f.l.': 0.7807876115801029, 'Average Precision u.f.l.': 0.9151064182785198, 'Precision u.f.l.': 0.9315614030564242}
@@ -71,6 +71,9 @@ vgg_abl_la_2_512_5_warm = {'Accuracy u.f.l.': 0.7970579060798548, 'F1 u.f.l.': 0
 vgg_abl_la_2_512_6_warm = {'Accuracy u.f.l.': 0.8031491039019963, 'F1 u.f.l.': 0.8711147157988697, 'ROC-AUC u.f.l.': 0.788053304192415, 'Average Precision u.f.l.': 0.9181769629473955, 'Precision u.f.l.': 0.9406113479643954}
 vgg_abl_la_2_512_7_warm = {'Accuracy u.f.l.': 0.8260180353901997, 'F1 u.f.l.': 0.8889260876984838, 'ROC-AUC u.f.l.': 0.7841198952416912, 'Average Precision u.f.l.': 0.9164484558516359, 'Precision u.f.l.': 0.9333525526220585}
 vgg_abl_la_2_512_8_warm = {'Accuracy u.f.l.': 0.8262874319419238, 'F1 u.f.l.': 0.8891110837019127, 'ROC-AUC u.f.l.': 0.7843883018172079, 'Average Precision u.f.l.': 0.9164901028783216, 'Precision u.f.l.': 0.9333380678466907}
+
+unpie_ir = {'Accuracy u.f.l.': 0.8260180353901997, 'AUC u.f.l.': 0.784107829386639, 'F1 u.f.l.': 0.8889093768488946, 'Precision u.f.l.': 0.9332893703600236, 'Recall u.f.l.': 0.8490314604045118, 'Average Precision u.f.l.': 0.9164187413844654}
+unpie_la = {'Accuracy u.f.l.': 0.7970579060798548, 'AUC u.f.l.': 0.8104951675856711, 'F1 u.f.l.': 0.8644222977237022, 'Precision u.f.l.': 0.955443516742688, 'Recall u.f.l.': 0.790018314891956, 'Average Precision u.f.l.': 0.927330299725275}
 
 ########### effb3 ############
 eff_abl_sup_not_scaled = {'Accuracy s.l.': 0.8222558864265929, 'F1 s.l.': 0.8860498055178415, 'ROC-AUC u.f.l.': 0.7811706640931675, 'Average Precision s.l.': 0.9156947618073822, 'Precision s.l.': 0.9333000252796648}
@@ -199,7 +202,8 @@ print("eff_v2_abl_unbal_la_multi_group: ", round_dict(eff_v2_abl_unbal_la_multi_
 print("eff_abl_not_scaled", round_dict(eff_abl_sup_not_scaled.copy()))
 print("eff_abl_scale", round_dict(eff_abl_sup_scale.copy()))
 
-print(dict_to_table_row("eff_v2_abl_unbal_ir_noise", round_dict(eff_v2_abl_unbal_ir_noise.copy())))
-print(dict_to_table_row("eff_v2_abl_unbal_ir_no_noise", round_dict(eff_v2_abl_unbal_ir_no_noise.copy())))
-print(dict_to_table_row("eff_v2_abl_unbal_la_bi_group", round_dict(eff_v2_abl_unbal_la_bi_group.copy())))
-print(dict_to_table_row("eff_v2_abl_unbal_la_multi_group", round_dict(eff_v2_abl_unbal_la_multi_group.copy())))
+print("unpie_ir", round_dict(unpie_ir.copy()))
+print("unpie_la", round_dict(unpie_la.copy()))
+
+print(dict_to_table_row("vgg_abl_bal_ir_noise", round_dict(vgg_abl_bal_ir_noise.copy())))
+print(dict_to_table_row("vgg_abl_bal_la_bi_group", round_dict(vgg_abl_bal_la_bi_group.copy())))

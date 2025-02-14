@@ -57,9 +57,6 @@ def plot_cluster_epoch(save_path, data_2d, epoch, y, algorithm):
     for label in unique_labels:
         label_points = data_2d[y == label]
         plt.scatter(label_points[:, 0], label_points[:, 1], label=f'{label}', s=5)
-    plt.title('{}: True Labels Visualized in 2D'.format(algorithm))
-    plt.xlabel('Component 1')
-    plt.ylabel('Component 2')
     plt.legend()
 
     # Save the figure

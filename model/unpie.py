@@ -460,9 +460,9 @@ class UnPIE():
             'Accuracy u.f.l.': accuracy,
             'AUC u.f.l.': roc_auc,
             'F1 u.f.l.': f1_score,
-            'Average Precision u.f.l.': average_precision,
             'Precision u.f.l.': precision,
-            'Recall u.f.l.': recall
+            'Recall u.f.l.': recall,
+            'Average Precision u.f.l.': average_precision,
         }
     
     def _perf_func_sup(
@@ -482,9 +482,9 @@ class UnPIE():
             'Accuracy s.l.': accuracy,
             'AUC u.f.l.': roc_auc,
             'F1 s.l.': f1_score,
-            'Average Precision s.l.': average_precision,
             'Precision s.l.': precision,
-            'Recall s.l.': recall
+            'Recall s.l.': recall,
+            'Average Precision s.l.': average_precision,
         } 
     
     # Compute metrics for unsupervised learning
@@ -512,9 +512,9 @@ class UnPIE():
                 'Accuracy u.l.': accuracy,
                 'AUC u.l.': roc_auc,
                 'F1 u.l.': f1_score,
-                'Average Precision u.l.': average_precision,
                 'Precision u.l.': precision,
-                'Recall u.l.': recall
+                'Recall u.l.': recall,
+                'Average Precision u.l.': average_precision,
             }
         else: # Density
             metrics = {}
