@@ -1,0 +1,2 @@
+test results last 200: : {'Accuracy u.f.l.': 0.7700047348484849, 'AUC u.f.l.': 0.7750871105461479, 'F1 u.f.l.': 0.7785455050941862, 'Precision u.f.l.': 0.7399368414895718, 'Recall u.f.l.': 0.8308105904702487, 'Average Precision u.f.l.': 0.6965507894590703}
+test results best 188: : {'Accuracy u.f.l.': 0.7813683712121212, 'AUC u.f.l.': 0.7808197835612741, 'F1 u.f.l.': 0.7568803002012345, 'Precision u.f.l.': 0.8290717130931632, 'Recall u.f.l.': 0.697963612542444, 'Average Precision u.f.l.': 0.7272578806485946}
