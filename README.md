@@ -6,7 +6,7 @@ Unsupervised learning based Pedestrian Intention Estimation with Graph Neural Ne
 UnPIE network:
 ![unpie_network](/images/unpie2.png)
 
-Unsupervised training visualizzazione:
+Unsupervised training visualization:
 Instance Recognition method  |  Local Aggregation method
 :---------------------------:|:---------------------------:
 ![](/images/mem_banks_ir.png)  |  ![](/images/mem_banks_la.png)
