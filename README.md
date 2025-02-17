@@ -4,7 +4,7 @@ Unsupervised learning based Pedestrian Intention Estimation with Graph Neural Ne
 ![graph_representation](/images/Figure_4.png)
 
 UnPIE network:
-![unpie_network](/images/unpie2_white.png)
+![unpie_network](/images/unpie2.png)
 
 ## Credits
 Some modules are taken and modified from the following repositories:
