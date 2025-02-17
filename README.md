@@ -6,6 +6,11 @@ Unsupervised learning based Pedestrian Intention Estimation with Graph Neural Ne
 UnPIE network:
 ![unpie_network](/images/unpie2.png)
 
+Unsupervised training visualizzazione:
+Instance Recognition method  |  Local Aggregation method
+:---------------------------:|:---------------------------:
+![](/images/mem_banks_ir.png)  |  ![](/images/mem_banks_la.png)
+
 ## Credits
 Some modules are taken and modified from the following repositories:
 - [Pedestrian Intention Estimation (PIE) dataset](http://data.nvision2.eecs.yorku.ca/PIE_dataset/).
