@@ -10,7 +10,7 @@ class ParamsLoader:
         self._set_environment()
 
     @staticmethod
-    def get_pie_params_static(args, config):
+    def get_dataset_params_static(args, config):
         data_opts = {
             'fstride': 1,
             'sample_type': 'all', 
@@ -29,8 +29,9 @@ class ParamsLoader:
             'decoder_input_type': ['bbox'],
             'output_type': ['intention_binary']
         }
-        pie_params = {
+        dataset_params = {
             'data_opts': data_opts,
+            'psi_path': config['PSI_PATH'],
             'pie_path': config['PIE_PATH'],
             'batch_size': args['batch_size'],
             'inference_batch_size': args['inference_batch_size'],
@@ -44,11 +45,11 @@ class ParamsLoader:
             'balance_dataset': args['balance_dataset'],
             'obj_classes': args['obj_classes'].split(','),
         }
-        return pie_params
+        return dataset_params
 
 
     def get_pie_params(self):
-        return self.get_pie_params_static(self.args, self.config)
+        return self.get_dataset_params_static(self.args, self.config)
 
 
     def get_args(self):
