@@ -4,7 +4,7 @@ import cv2
 from PIL import Image
 import pandas as pd
 import tensorflow as tf
-from utils.pie_utils import jitter_bbox, squarify
+from utils.data_utils import jitter_bbox, squarify
 
 num_dashes = 100
 

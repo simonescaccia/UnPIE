@@ -21,9 +21,12 @@ Updated by: Simone Scaccia
 import os
 import shutil
 import sys
+import cv2
 import PIL
-# from keras.utils import load_img (tensorflow 2)
-from tensorflow.keras.preprocessing.image import load_img
+import pickle
+from PIL import Image
+from keras.utils import load_img
+import numpy as np
 
 
 def update_progress(progress):
@@ -56,6 +59,79 @@ def merge_directory(source_dir, dest_dir):
 
 ######### DATA UTILITIES ##############
 
+def get_folder_from_set(set_id, video_set_nums):
+    """
+    Returns the folder name from the set id
+    :param set_id: Set id
+    :return: Folder name
+    """
+    for folder in video_set_nums:
+        if set_id in video_set_nums[folder]:
+            return folder
+    print('\nSet id not found in the video set! Please check self.video_set_nums\n')
+
+def get_path(dataset_path, model_name, data_subset, data_type, feature_type):
+    """
+    A path generator method for saving model and config data. Creates directories
+    as needed.
+    :param model_name: model name
+    :param data_subset: all, train, test or val
+    :param data_type: type of the data (e.g. features_context_pad_resize)
+    :param feature_type: type of the feature (e.g. ped, traffic)
+    :return: The full path for the save folder
+    """
+    root = os.path.join(dataset_path, 'data')
+    save_path = os.path.join(root, model_name, data_type, feature_type, data_subset)
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    return save_path
+
+def extract_and_save(b, ped_id, set_id, vid_id, img_name, image, feature_type, dataset_path, pretrained_extractor, data_opts, video_set_nums, feat_input_size):
+    """
+    @author: Simone Scaccia
+    Extracts features from images and saves them on hard drive
+    :param img_path: The path to the image
+    :param b: The bounding box of the pedestrian
+    :param ped_id: The pedestrian id
+    :param set_id: The set id
+    :param vid_id: The video id
+    :param img_name: The image name
+    :param image: The image
+    :param save_path: The path to save the features
+    """
+    save_path = get_path(
+        dataset_path=dataset_path,
+        data_type='features'+'_'+data_opts['crop_type']+'_'+data_opts['crop_mode'], # images    
+        model_name=pretrained_extractor.model_name,
+        data_subset='all',
+        feature_type=feature_type)
+    dest_folder = get_folder_from_set(set_id, video_set_nums)
+    dest_path = get_path(
+        dataset_path=dataset_path,
+        data_type='features'+'_'+data_opts['crop_type']+'_'+data_opts['crop_mode'], # images    
+        model_name=pretrained_extractor.model_name,
+        data_subset=dest_folder,
+        feature_type=feature_type)
+    img_save_folder = os.path.join(save_path, set_id, vid_id)
+    img_save_path = os.path.join(img_save_folder, img_name+'_'+ped_id+'.pkl')
+    img_dest_folder = os.path.join(dest_path, set_id, vid_id)
+    img_dest_path = os.path.join(img_dest_folder, img_name+'_'+ped_id+'.pkl')
+    if not os.path.exists(img_dest_path) and not os.path.exists(img_save_path):
+        # Convert CV image to PIL image
+        image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        image = Image.fromarray(image)
+        
+        bbox = jitter_bbox([b],'enlarge', 2, image=image)[0]
+        bbox = squarify(bbox, 1, image.size[0])
+        bbox = list(map(int,bbox[0:4]))
+        cropped_image = image.crop(bbox)
+        img_data = img_pad(cropped_image, mode='pad_resize', size=feat_input_size)                    
+        expanded_img = pretrained_extractor.preprocess(img_data)
+        img_features = pretrained_extractor(expanded_img)
+        if not os.path.exists(img_save_folder):
+            os.makedirs(img_save_folder)
+        with open(img_save_path, 'wb') as fid:
+            pickle.dump(img_features, fid, pickle.HIGHEST_PROTOCOL) 
 
 def img_pad(img, mode = 'warp', size = 224):
     '''
@@ -99,24 +175,28 @@ def bbox_center(bbox):
     '''
     return [(bbox[2] + bbox[0])/2, (bbox[3] + bbox[1])/2] # [width, height]
 
-def squarify(bbox, squarify_ratio, img_width):
+def squarify(bbox, ratio, img_width):
+    """
+    Changes the ratio of bounding boxes to a fixed ratio
+    :param bbox: Bounding box
+    :param ratio: Ratio to be changed to
+    :param img_width: Image width
+    :return: Squarified boduning box
+    """
     width = abs(bbox[0] - bbox[2])
     height = abs(bbox[1] - bbox[3])
-    width_change = height * squarify_ratio - width
-    # width_change = float(bbox[4])*self._squarify_ratio - float(bbox[3])
-    bbox[0] = bbox[0] - width_change/2
-    bbox[2] = bbox[2] + width_change/2
-    # bbox[1] = str(float(bbox[1]) - width_change/2)
-    # bbox[3] = str(float(bbox[3]) + width_change)
-    # Squarify is applied to bounding boxes in Matlab coordinate starting from 1
+    width_change = height * ratio - width
+
+    bbox[0] = bbox[0] - width_change / 2
+    bbox[2] = bbox[2] + width_change / 2
+
     if bbox[0] < 0:
         bbox[0] = 0
-    
+
     # check whether the new bounding box goes beyond image boarders
     # If this is the case, the bounding box is shifted back
     if bbox[2] > img_width:
-        # bbox[1] = str(-float(bbox[3]) + img_dimensions[0])
-        bbox[0] = bbox[0]-bbox[2] + img_width
+        bbox[0] = bbox[0] - bbox[2] + img_width
         bbox[2] = img_width
     return bbox
 

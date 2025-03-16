@@ -29,7 +29,6 @@ SOFTWARE.
 Updated by: Simone Scaccia
 """
 import pickle
-# import pickle (tensorflow 2)
 import cv2
 import sys
 import os
@@ -44,9 +43,8 @@ from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
 from pathlib import PurePath
 from dataset.pretrained_extractor import PretrainedExtractor
-from PIL import Image
-from utils.pie_utils import img_pad, jitter_bbox, squarify, update_progress, merge_directory
-from utils.print_utils import plot_image, print_separator
+from utils.data_utils import extract_and_save, get_path, squarify, update_progress, merge_directory
+from utils.print_utils import print_separator
 
 class PIE(object):
     def __init__(self, data_opts, data_sets, feature_extractor, feat_input_size, regen_database=False, data_path='', obj_classes_list=None):
@@ -80,13 +78,13 @@ class PIE(object):
         self.obj_classes_list = obj_classes_list if obj_classes_list else ['traffic_light','vehicle','other_ped','crosswalk','transit_station','sign'] 
 
         if data_sets == 'all':
-            self.image_set_nums = {'train': ['set01', 'set02', 'set04'],
+            self.video_set_nums = {'train': ['set01', 'set02', 'set04'],
                                 'val': ['set05', 'set06'],
                                 'test': ['set03'],
                                 'all': ['set01', 'set02', 'set03',
                                         'set04', 'set05', 'set06']}
         elif data_sets == 'small':
-            self.image_set_nums = {'train': ['set04'],
+            self.video_set_nums = {'train': ['set04'],
                             'val': ['set06'],
                             'test': ['set03'],
                             'all': ['set03', 'set04', 'set06']}
@@ -117,24 +115,13 @@ class PIE(object):
         """
         return 'data/pie'
 
-    def get_image_set_ids(self, image_set):
+    def get_video_set_ids(self, video_set):
         """
         Returns default image set ids
         :param image_set: Image set split
         :return: Set ids of the image set
         """
-        return self.image_set_nums[image_set]
-    
-    def get_folder_from_set(self, set_id):
-        """
-        Returns the folder name from the set id
-        :param set_id: Set id
-        :return: Folder name
-        """
-        for folder in self.image_set_nums:
-            if set_id in self.image_set_nums[folder]:
-                return folder
-        print('\nSet id not found in the image set! Please check self.image_set_nums\n')
+        return self.video_set_nums[video_set]
 
     def _get_image_path(self, sid, vid, fid):
         """
@@ -303,26 +290,6 @@ class PIE(object):
                     print('num images don\'t match {}/{}'.format(num_frames, img_count))
                 print('\n')
 
-    def get_path(self,
-                 model_name,
-                 data_subset,
-                 data_type,
-                 feature_type):
-        """
-        A path generator method for saving model and config data. Creates directories
-        as needed.
-        :param model_name: model name
-        :param data_subset: all, train, test or val
-        :param data_type: type of the data (e.g. features_context_pad_resize)
-        :param feature_type: type of the feature (e.g. ped, traffic)
-        :return: The full path for the save folder
-        """
-        root = os.path.join(self.pie_path, 'data')
-        save_path = os.path.join(root, model_name, data_type, feature_type, data_subset)
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
-        return save_path
-
     def get_tracks(self, dataset, data_type, seq_length, overlap):
         """
         Generate tracks by sampling from pedestrian sequences
@@ -451,54 +418,9 @@ class PIE(object):
         df = df.drop_duplicates()
         
         print('')
-        return df
-    
-    def _extract_and_save(self, b, ped_id, set_id, vid_id, img_name, image, feature_type):
-        """
-        @author: Simone Scaccia
-        Extracts features from images and saves them on hard drive
-        :param img_path: The path to the image
-        :param b: The bounding box of the pedestrian
-        :param ped_id: The pedestrian id
-        :param set_id: The set id
-        :param vid_id: The video id
-        :param img_name: The image name
-        :param image: The image
-        :param save_path: The path to save the features
-        """
-        save_path = self.get_path(
-            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-            model_name=self.pretrained_extractor.model_name,
-            data_subset='all',
-            feature_type=feature_type)
-        dest_folder = self.get_folder_from_set(set_id)
-        dest_path = self.get_path(
-            data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-            model_name=self.pretrained_extractor.model_name,
-            data_subset=dest_folder,
-            feature_type=feature_type)
-        img_save_folder = os.path.join(save_path, set_id, vid_id)
-        img_save_path = os.path.join(img_save_folder, img_name+'_'+ped_id+'.pkl')
-        img_dest_folder = os.path.join(dest_path, set_id, vid_id)
-        img_dest_path = os.path.join(img_dest_folder, img_name+'_'+ped_id+'.pkl')
-        if not os.path.exists(img_dest_path) and not os.path.exists(img_save_path):
-            # Convert CV image to PIL image
-            image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-            image = Image.fromarray(image)
-            
-            bbox = jitter_bbox([b],'enlarge', 2, image=image)[0]
-            bbox = squarify(bbox, 1, image.size[0])
-            bbox = list(map(int,bbox[0:4]))
-            cropped_image = image.crop(bbox)
-            img_data = img_pad(cropped_image, mode='pad_resize', size=self.feat_input_size)                    
-            expanded_img = self.pretrained_extractor.preprocess(img_data)
-            img_features = self.pretrained_extractor(expanded_img)
-            if not os.path.exists(img_save_folder):
-                os.makedirs(img_save_folder)
-            with open(img_save_path, 'wb') as fid:
-                pickle.dump(img_features, fid, pickle.HIGHEST_PROTOCOL)        
+        return df       
 
-    def _process_set(self, set_id, set_folder_path, extract_frames, ped_dataframe: pd.DataFrame):
+    def _process_set(self, set_id, set_folder_path, extract_frames, ped_obj_dataframe: pd.DataFrame):
         print('Extracting frames from', set_id)
 
         for vid, frames in sorted(extract_frames.items()):
@@ -522,21 +444,26 @@ class PIE(object):
                     img_count += 1
 
                     # Retrieve the image path, bbox, id from the annotation dataframe
-                    df = ped_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))
+                    df = ped_obj_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(set_id, vid, '{:05d}'.format(frame_num)))
                     
                     # plot_image(image, df, self.ped_type, self.traffic_type, 'type', set_id, vid, frame_num)
 
                     # Apply the function extract_features to each row of the dataframe
                     df.apply(
                         lambda row, image=image, set_id=set_id, vid=vid, frame_num=frame_num: 
-                            self._extract_and_save(
+                            extract_and_save(
                                 list(row['bbox']), 
                                 row['id'], 
                                 set_id, 
                                 vid, 
                                 '{:05d}'.format(frame_num), 
                                 image,
-                                row['type']
+                                row['type'],
+                                self.pie_path,
+                                self.pretrained_extractor,
+                                self.data_opts,
+                                self.video_set_nums,
+                                self.feat_input_size
                             ), 
                         axis=1
                     )
@@ -559,7 +486,7 @@ class PIE(object):
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
-        ped_dataframe = self._get_ped_info_per_image(
+        ped_objs_dataframe = self._get_ped_info_per_image(
             images=sequence_data['image'],
             bboxes=sequence_data['bbox'],
             ped_ids=sequence_data['ped_ids'],
@@ -575,7 +502,7 @@ class PIE(object):
             set_folder_path = join(self.clips_path, set_id)
             extract_frames = self.get_annotated_frame_numbers(set_id)
 
-            self._process_set(set_id, set_folder_path, extract_frames, ped_dataframe) # TODO: parallelize
+            self._process_set(set_id, set_folder_path, extract_frames, ped_objs_dataframe) # TODO: parallelize
             self._organize_features()
 
     def _organize_features(self):
@@ -587,18 +514,20 @@ class PIE(object):
         folders = ['train', 'val', 'test']
         feature_types = [self.ped_type, self.traffic_type]
         for feature_type in feature_types:
-            source_path = self.get_path(
+            source_path = get_path(
+                dataset_path=self.pie_path,
                 data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                 model_name=self.pretrained_extractor.model_name,
                 data_subset='all',
                 feature_type=feature_type)
             for folder in folders:
-                dest_path = self.get_path(
+                dest_path = get_path(
+                    dataset_path=self.pie_path,
                     data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
                     model_name=self.pretrained_extractor.model_name,
                     data_subset=folder,
                     feature_type=feature_type)
-                sets = self.get_image_set_ids(folder)
+                sets = self.get_video_set_ids(folder)
                 for set_id in sets:
                     # Move the folder set_id from source_path to path
                     source_set_path = os.path.join(source_path, set_id)
@@ -1153,40 +1082,15 @@ class PIE(object):
         """
         _pids = None
         if params['data_split_type'] == 'default':
-            set_ids = self.get_image_set_ids(image_set)
+            set_ids = self.get_video_set_ids(image_set)
         else:
-            set_ids = self.get_image_set_ids('all')
+            set_ids = self.get_video_set_ids('all')
         if params['data_split_type'] == 'random':
             _pids = self._get_random_pedestrian_ids(image_set, **params['random_params'])
         elif params['data_split_type'] == 'kfold':
             _pids = self._get_kfold_pedestrian_ids(image_set, **params['kfold_params'])
 
         return set_ids, _pids
-
-    def _squarify(self, bbox, ratio, img_width):
-        """
-        Changes the ratio of bounding boxes to a fixed ratio
-        :param bbox: Bounding box
-        :param ratio: Ratio to be changed to
-        :param img_width: Image width
-        :return: Squarified boduning box
-        """
-        width = abs(bbox[0] - bbox[2])
-        height = abs(bbox[1] - bbox[3])
-        width_change = height * ratio - width
-
-        bbox[0] = bbox[0] - width_change / 2
-        bbox[2] = bbox[2] + width_change / 2
-
-        if bbox[0] < 0:
-            bbox[0] = 0
-
-        # check whether the new bounding box goes beyond image boarders
-        # If this is the case, the bounding box is shifted back
-        if bbox[2] > img_width:
-            bbox[0] = bbox[0] - bbox[2] + img_width
-            bbox[2] = img_width
-        return bbox
 
     def _height_check(self, height_rng, frame_ids, boxes, images, occlusion):
         """
@@ -1329,7 +1233,7 @@ class PIE(object):
                         continue
 
                     if sq_ratio:
-                        boxes = [self._squarify(b, sq_ratio, img_width) for b in boxes]
+                        boxes = [squarify(b, sq_ratio, img_width) for b in boxes]
 
                     image_seq.append(images[::seq_stride])
                     box_seq.append(boxes[::seq_stride])
@@ -1425,7 +1329,7 @@ class PIE(object):
                     if len(boxes) / seq_stride < params['min_track_size']:
                         continue
                     if sq_ratio:
-                        boxes = [self._squarify(b, sq_ratio, img_width) for b in boxes]
+                        boxes = [self.squarify(b, sq_ratio, img_width) for b in boxes]
 
                     image_seq.append(images[::seq_stride])
                     box_seq.append(boxes[::seq_stride])
@@ -1534,7 +1438,7 @@ class PIE(object):
                         continue
 
                     if sq_ratio:
-                        boxes = [self._squarify(b, sq_ratio, img_width) for b in boxes]
+                        boxes = [squarify(b, sq_ratio, img_width) for b in boxes]
 
                     int_prob = [[pid_annots[pid]['attributes']['intention_prob']]] * len(boxes)
                     int_bin = [[int(pid_annots[pid]['attributes']['intention_prob'] > 0.5)]] * len(boxes)
