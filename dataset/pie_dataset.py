@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import tensorflow as tf
 
-from utils.pie_utils import bbox_center, update_progress
+from utils.data_utils import bbox_center, update_progress
 
 np.set_printoptions(linewidth=np.inf)
 

@@ -65,10 +65,6 @@ class PSI(object):
                 video_target = os.path.join(video_path, video)
                 split_target = self.get_video_split(split_name, name)
 
-                if not os.path.exists(frames_target):
-                    os.makedirs(frames_target)
-                    print(f'Created frames folder for video {name}')
-
                 try:
                     vidcap = cv2.VideoCapture(video_target)
                     if not vidcap.isOpened():

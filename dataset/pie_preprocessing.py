@@ -8,7 +8,7 @@ from pathlib import PurePath
 from dataset.pie_data import PIE
 from dataset.pie_dataset import PIEGraphDataset
 from model.unpie_gcn import UnPIEGCN
-from utils.pie_utils import update_progress
+from utils.data_utils import update_progress
 from utils.print_utils import print_separator
 
 
