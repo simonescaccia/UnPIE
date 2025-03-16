@@ -19,9 +19,11 @@ class PSI(object):
 
     def __init__(self, feature_extractor, data_path):
         self.data_path = data_path
-        self.test_videos_path = 'PSI2.0_Test/videos'
+        self.test_path = 'PSI2.0_Test'
+        self.train_val_path = 'PSI2.0_TrainVal'
+        self.test_videos_path = self.test_path + '/videos'
         self.train_val_videos_path = 'PSI2.0_videos_Train-Val/videos'
-        self.json_split_file_path = 'PSI2.0_Test/splits/PSI2_split.json'
+        self.json_split_file_path = self.train_val_path + '/splits/PSI2_split.json'
         self.dataset_cache_path = data_path + '/dataset_cache'
         self.video_set_nums = {
             TRAIN: ['set01'],
@@ -127,8 +129,6 @@ class PSI(object):
 
     def init_db(self, video_list, db_log, args):
         db = {}
-        # data_split = 'train' # 'train', 'val', 'test'
-        dataroot = args.dataset_root_path
         # key_frame_folder = 'cognitive_annotation_key_frame'
         if args.dataset == 'PSI2.0':
             extended_folder = 'PSI2.0_TrainVal/annotations/cognitive_annotation_extended'
@@ -250,7 +250,7 @@ class PSI(object):
                         cv_frame_box = observed_bboxes
                         db[video_name][pedId]['frames'] = cv_frame_list
                         db[video_name][pedId]['cv_annotations']['bbox'] = cv_frame_box
-                        get_intent_des(db, video_name, pedId, [*range(len(observed_frames))], cog_annotation)
+                        self.get_intent_des(db, video_name, pedId, [*range(len(observed_frames))], cog_annotation)
                     else: # too few frames observed
                         # print("Single ped occurs too short.", video_name, pedId, len(observed_frames))
                         with open(db_log, 'a') as f:
@@ -260,7 +260,7 @@ class PSI(object):
                     with open(db_log, 'a') as f:
                         f.write(f"missing frames bbox noticed! , {video_name}, {pedId}, {len(observed_frames)}, frames observed from , {observed_frames[-1] - observed_frames[0] + 1} \n")
                     threshold = args.max_track_size  # 60
-                    cv_frame_list, cv_frame_box, cv_split_inds = split_frame_lists(observed_frames, observed_bboxes, threshold)
+                    cv_frame_list, cv_frame_box, cv_split_inds = self.split_frame_lists(observed_frames, observed_bboxes, threshold)
                     if len(cv_split_inds) == 0:
                         with open(db_log, 'a') as f:
                             f.write(f"{video_name}, {pedId}, After removing missing frames, no split left! \n")
@@ -269,7 +269,7 @@ class PSI(object):
                     elif len(cv_split_inds) == 1:
                         db[video_name][pedId]['frames'] = cv_frame_list[0]
                         db[video_name][pedId]['cv_annotations']['bbox'] = cv_frame_box[0]
-                        get_intent_des(db, video_name, pedId, cv_split_inds[0], cog_annotation)
+                        self.get_intent_des(db, video_name, pedId, cv_split_inds[0], cog_annotation)
                     else:
                         # multiple splits left after removing missing box frames
                         with open(db_log, 'a') as f:
@@ -280,7 +280,7 @@ class PSI(object):
                             add_ped_case(db, video_name, ped_splitId, nlp_vid_uid_pairs)
                             db[video_name][ped_splitId]['frames'] = cv_frame_list[i]
                             db[video_name][ped_splitId]['cv_annotations']['bbox'] = cv_frame_box[i]
-                            get_intent_des(db, video_name, ped_splitId, cv_split_inds[i], cog_annotation)
+                            self.get_intent_des(db, video_name, ped_splitId, cv_split_inds[i], cog_annotation)
                             if len(db[video_name][ped_splitId]['nlp_annotations'][list(db[video_name][ped_splitId]['nlp_annotations'].keys())[0]]['intent']) == 0:
                                 raise Exception("ERROR!")
                         del db[video_name][pedId] # no pedestrian list left, remove this video

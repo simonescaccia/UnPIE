@@ -82,6 +82,8 @@ Create `config.yml`:
   SETS_TO_EXTRACT: null or ['set01', 'set02', ...] # null for extracting all the sets
   ```
 
+## PIE dataset
+
 Download annotations and video clips from the [PIE webpage](http://data.nvision2.eecs.yorku.ca/PIE_dataset/) and place them in the `PIE_dataset` directory. 
 Annotation zip files should be copied to the main dataset folder and unzipped. There are three types of annotations in the PIE dataset: spatial annotations with text labels, object attributes, ego-vehicle information.
 
@@ -98,6 +100,18 @@ PIE_dataset
         set02
         ...
 
+```
+
+## PSI dataset
+
+Download PSI dataset from **url**. Follow the instructions:
+
+``` bash
+python dataset/psi_extend_intent_annotation.py
+```
+
+``` bash
+python dataset/psi_extend_driving_decision_annotation.py
 ```
 
 ## Preprocessing
