@@ -37,6 +37,10 @@ if __name__ == '__main__':
     video_list = sorted(os.listdir(key_frame_anotation_path))
 
     for vname in video_list:
+        # 0. consider only vname with the following format: "video_0001"
+        if not vname.startswith('video_'):
+            continue
+        
         # 1. load key-frame annotations
         key_intent_ann_file = os.path.join(key_frame_anotation_path, vname, 'pedestrian_intent.json')
         with open(key_intent_ann_file, 'r') as f:
