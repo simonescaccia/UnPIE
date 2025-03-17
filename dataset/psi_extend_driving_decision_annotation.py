@@ -1,13 +1,17 @@
 import os
 import json
-import sys
 import copy
+
+import yaml
 
     
 if __name__ == '__main__':
     print("Extend Driving Decision Annotations of PSI 2.0 Dataset.")
 
-    root_path = sys.argv[1]
+    with open('settings/config.yml', 'r') as file:
+        config_file = yaml.safe_load(file)
+
+    root_path = config_file['PSI_PATH']
 
     key_frame_anotation_path = os.path.join(root_path, 'PSI2.0_TrainVal/annotations/cognitive_annotation_key_frame')
     extended_annotation_path = os.path.join(root_path, 'PSI2.0_TrainVal/annotations/cognitive_annotation_extended')
@@ -19,6 +23,10 @@ if __name__ == '__main__':
     video_list = sorted(os.listdir(key_frame_anotation_path))
 
     for vname in video_list:
+        # 0. consider only vname with the following format: "video_0001"
+        if not vname.startswith('video_'):
+            continue
+        
         # 1. load key-frame annotations
         key_dd_ann_file = os.path.join(key_frame_anotation_path, vname, 'driving_decision.json')
         with open(key_dd_ann_file, 'r') as f:
