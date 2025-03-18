@@ -5,6 +5,7 @@ from pathlib import Path
 import pickle
 import time
 import cv2
+import numpy as np
 from tqdm import tqdm
 import sys
 
@@ -27,7 +28,7 @@ class PSI(object):
         self.train_val_videos_path = 'PSI2.0_videos_Train-Val/videos'
         self.json_split_file_path = self.train_val_path + '/splits/PSI2_split.json'
         self.dataset_cache_path = data_path + '/dataset_cache'
-        self.key_frames_path = '/annotations/cognitive_annotation_key_frame'
+        self.extended_folder = '/annotations/cognitive_annotation_extended'
         self.video_set_nums = {
             TRAIN: ['set01'],
             VAL: ['set02'],
@@ -36,6 +37,7 @@ class PSI(object):
         }
 
         self.feature_extractor = feature_extractor
+        self.intent_type = 'mean'
 
     def load_split_json(self):
         with open(self.json_split_file_path, 'r') as f:
@@ -54,7 +56,7 @@ class PSI(object):
     def extract_images_and_save_features(self, split):
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annotation_train, annotation_val, annotation_test = self.generate_database()
-        test_seq = generate_data_sequence('test', annotation_test)
+        test_seq = self.generate_data_sequence('test', annotation_test)
 
         self.split_json = self.load_split_json()
         if split == ALL:
@@ -129,7 +131,7 @@ class PSI(object):
             datasplits = json.load(f)
         print(f"Initialize {split_name} database, {time.strftime("%d%b%Y-%Hh%Mm%Ss")}")
 
-        key_frame_folder = self.test_path + self.key_frames_path if split_name == 'test' else self.train_val_path + self.key_frames_path
+        key_frame_folder = self.test_path + self.extended_folder if split_name == 'test' else self.train_val_path + self.extended_folder
 
         # 1. Init db
         db = self.init_db(sorted(datasplits[split_name]), key_frame_folder)
@@ -293,7 +295,7 @@ class PSI(object):
             if len(tracks) > 0:
                 print(f"{video_name} missing pedestrians annotations: {tracks}  \n")
     
-    def generate_data_sequence(set_name, database, args):
+    def generate_data_sequence(self, set_name, database):
         intention_prob = []
         intention_binary = []
         frame_seq = []
@@ -312,7 +314,7 @@ class PSI(object):
                 n = len(database[video][ped]['frames'])
                 pids_seq.append([ped] * n)
                 video_seq.append([video] * n)
-                intents, probs, disgrs, descripts = get_intent(database, video, ped, args)
+                intents, probs, disgrs, descripts = self.get_intent(database, video, ped)
                 intention_prob.append(probs)
                 intention_binary.append(intents)
                 disagree_score_seq.append(disgrs)
@@ -330,14 +332,14 @@ class PSI(object):
         }
 
 
-    def get_intent(database, video_name, ped_id, args):
+    def get_intent(self, database, video_name, ped_id, args):
         prob_seq = []
         intent_seq = []
         disagree_seq = []
         description_seq = []
         n_frames = len(database[video_name][ped_id]['frames'])
 
-        if args.intent_type == 'major' or args.intent_type == 'soft_vote':
+        if self.intent_type == 'major' or self.intent_type == 'soft_vote':
             vid_uid_pairs = sorted((database[video_name][ped_id]['nlp_annotations'].keys()))
             n_users = len(vid_uid_pairs)
             for i in range(n_frames):
@@ -365,30 +367,29 @@ class PSI(object):
                     raise Exception("Sequence processing not implemented!")
                 else:
                     pass
-        elif args.intent_type == 'mean':
+        elif self.intent_type == 'mean':
             vid_uid_pairs = sorted((database[video_name][ped_id]['nlp_annotations'].keys()))
             n_users = len(vid_uid_pairs)
             for i in range(n_frames):
                 labels = [database[video_name][ped_id]['nlp_annotations'][vid_uid]['intent'][i] for vid_uid in vid_uid_pairs]
                 descriptions = [database[video_name][ped_id]['nlp_annotations'][vid_uid]['description'][i] for vid_uid in vid_uid_pairs]
 
-                if args.intent_num == 2:
-                    for j in range(len(labels)):
-                        if labels[j] == 'not_sure':
-                            labels[j] = 0.5
-                        elif labels[j] == 'not_cross':
-                            labels[j] = 0
-                        elif labels[j] == 'cross':
-                            labels[j] = 1
-                        else:
-                            raise Exception("Unknown intent label: ", labels[j])
-                    # [0, 0.5, 1]
-                    intent_prob = np.mean(labels)
-                    intent_binary = 0 if intent_prob < 0.5 else 1
-                    prob_seq.append(intent_prob)
-                    intent_seq.append(intent_binary)
-                    disagree_score = sum([1 if lbl != intent_binary else 0 for lbl in labels]) / n_users
-                    disagree_seq.append(disagree_score)
-                    description_seq.append(descriptions)
+                for j in range(len(labels)):
+                    if labels[j] == 'not_sure':
+                        labels[j] = 0.5
+                    elif labels[j] == 'not_cross':
+                        labels[j] = 0
+                    elif labels[j] == 'cross':
+                        labels[j] = 1
+                    else:
+                        raise Exception("Unknown intent label: ", labels[j])
+                # [0, 0.5, 1]
+                intent_prob = np.mean(labels)
+                intent_binary = 0 if intent_prob < 0.5 else 1
+                prob_seq.append(intent_prob)
+                intent_seq.append(intent_binary)
+                disagree_score = sum([1 if lbl != intent_binary else 0 for lbl in labels]) / n_users
+                disagree_seq.append(disagree_score)
+                description_seq.append(descriptions)
 
         return intent_seq, prob_seq, disagree_seq, description_seq

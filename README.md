@@ -102,16 +102,12 @@ PIE_dataset
 
 ```
 
-## PSI dataset (remove)
+## PSI dataset
 
 Download PSI dataset from **url**. Follow the instructions:
 
 ``` bash
 python dataset/psi_extend_intent_annotation.py
-```
-
-``` bash
-python dataset/psi_extend_driving_decision_annotation.py
 ```
 
 ## Preprocessing
