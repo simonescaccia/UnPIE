@@ -2,6 +2,7 @@ import json
 import os
 import argparse
 from pathlib import Path
+import pickle
 import time
 import cv2
 from tqdm import tqdm
@@ -17,7 +18,8 @@ TRAIN_VAL = 'train_val'
 
 class PSI(object):
 
-    def __init__(self, feature_extractor, data_path):
+    def __init__(self, feature_extractor, data_path, data_opts):
+        self.data_opts = data_opts
         self.data_path = data_path
         self.test_path = 'PSI2.0_Test'
         self.train_val_path = 'PSI2.0_TrainVal'
@@ -25,6 +27,7 @@ class PSI(object):
         self.train_val_videos_path = 'PSI2.0_videos_Train-Val/videos'
         self.json_split_file_path = self.train_val_path + '/splits/PSI2_split.json'
         self.dataset_cache_path = data_path + '/dataset_cache'
+        self.key_frames_path = '/annotations/cognitive_annotation_key_frame'
         self.video_set_nums = {
             TRAIN: ['set01'],
             VAL: ['set02'],
@@ -109,39 +112,38 @@ class PSI(object):
     '''
     def create_database(self):
         for split_name in ['train', 'val', 'test']:
+            database_name = 'intent_database_' + split_name + '.pkl'
+            if os.path.exists(os.path.join(self.dataset_cache_path, database_name)):
+                continue
             with open(self.json_split_file_path, 'r') as f:
                 datasplits = json.load(f)
             print(f"Initialize {split_name} database, {time.strftime("%d%b%Y-%Hh%Mm%Ss")}")
+
+            key_frame_folder = self.test_path + self.key_frames_path if split_name == 'test' else self.train_val_path + self.key_frames_path
+
             # 1. Init db
-            db = self.init_db(sorted(datasplits[split_name]))
+            db = self.init_db(sorted(datasplits[split_name]), key_frame_folder)
             # 2. get intent, remove missing frames
-            self.update_db_annotations(db)
+            self.update_db_annotations(db, key_frame_folder)
             # 3. cut sequences, remove early frames before the first key frame, and after last key frame
             # cut_sequence(db, db_log, args)
 
-            database_name = 'intent_database_' + split_name + '.pkl'
             if not os.path.exists(self.dataset_cache_path):
                 os.makedirs(self.dataset_cache_path)
-            with open(os.path.join(args.database_path, database_name), 'wb') as fid:
+            with open(os.path.join(self.dataset_cache_path, database_name), 'wb') as fid:
                 pickle.dump(db, fid)
 
         print("Finished collecting database!")
 
-    def init_db(self, video_list, db_log, args):
+    def init_db(self, video_list, key_frame_folder):
         db = {}
-        # key_frame_folder = 'cognitive_annotation_key_frame'
-        if args.dataset == 'PSI2.0':
-            extended_folder = 'PSI2.0_TrainVal/annotations/cognitive_annotation_extended'
-        elif args.dataset == 'PSI1.0':
-            extended_folder = 'PSI1.0/annotations/cognitive_annotation_extended'
 
         for video_name in sorted(video_list):
             try:
-                with open(os.path.join(dataroot, extended_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
+                with open(os.path.join(self.data_path, key_frame_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
                     annotation = json.load(f)
             except:
-                with open(db_log, 'a') as f:
-                    f.write(f"Error loading {video_name} pedestrian intent annotation json \n")
+                print(f"Error loading {video_name} pedestrian intent annotation json \n")
                 continue
             db[video_name] = {}
             for ped in annotation['pedestrians'].keys():
@@ -219,24 +221,16 @@ class PSI(object):
             db[vname][pid]['nlp_annotations'][nlp_vid_uid]['description'] = [description_list[i] for i in split_inds]
             db[vname][pid]['nlp_annotations'][nlp_vid_uid]['key_frame'] = [key_frame_list[i] for i in split_inds]
 
-    def update_db_annotations(self, db, db_log, args):
-        dataroot = args.dataset_root_path
-        # key_frame_folder = 'cognitive_annotation_key_frame'
-        if args.dataset == 'PSI2.0':
-            extended_folder = 'PSI2.0_TrainVal/annotations/cognitive_annotation_extended'
-        elif args.dataset == 'PSI1.0':
-            extended_folder = 'PSI1.0/annotations/cognitive_annotation_extended'
-
+    def update_db_annotations(self, db, key_frame_folder):
         video_list = sorted(db.keys())
         for video_name in video_list:
             ped_list = list(db[video_name].keys())
             tracks = list(db[video_name].keys())
             try:
-                with open(os.path.join(dataroot, extended_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
+                with open(os.path.join(self.data_path, key_frame_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
                     annotation = json.load(f)
             except:
-                with open(db_log, 'a') as f:
-                    f.write(f"Error loading {video_name} pedestrian intent annotation json \n")
+                print(f"Error loading {video_name} pedestrian intent annotation json \n")
                 continue
 
             for pedId in ped_list:
@@ -244,7 +238,7 @@ class PSI(object):
                 observed_bboxes = annotation['pedestrians'][pedId]['cv_annotations']['bboxes']
                 cog_annotation = annotation['pedestrians'][pedId]['cognitive_annotations']
                 if len(observed_frames) == observed_frames[-1] - observed_frames[0] + 1: # no missing frames
-                    threshold = args.max_track_size # 16 for intent/driving decision; 60 for trajectory
+                    threshold = self.data_opts['max_size_observe'] # 15 for intent decision
                     if len(observed_frames) > threshold:
                         cv_frame_list = observed_frames
                         cv_frame_box = observed_bboxes
@@ -252,18 +246,16 @@ class PSI(object):
                         db[video_name][pedId]['cv_annotations']['bbox'] = cv_frame_box
                         self.get_intent_des(db, video_name, pedId, [*range(len(observed_frames))], cog_annotation)
                     else: # too few frames observed
-                        # print("Single ped occurs too short.", video_name, pedId, len(observed_frames))
-                        with open(db_log, 'a') as f:
-                            f.write(f"Single ped occurs too short. {video_name}, {pedId}, {len(observed_frames)} \n")
+                        print("Single ped occurs too short.", video_name, pedId, len(observed_frames))
+                        # with open(db_log, 'a') as f:
+                        #     f.write(f"Single ped occurs too short. {video_name}, {pedId}, {len(observed_frames)} \n")
                         del db[video_name][pedId]
                 else: # missing frames exist
-                    with open(db_log, 'a') as f:
-                        f.write(f"missing frames bbox noticed! , {video_name}, {pedId}, {len(observed_frames)}, frames observed from , {observed_frames[-1] - observed_frames[0] + 1} \n")
-                    threshold = args.max_track_size  # 60
+                    print(f"missing frames bbox noticed! , {video_name}, {pedId}, {len(observed_frames)}, frames observed from , {observed_frames[-1] - observed_frames[0] + 1} \n")
+                    threshold = self.data_opts['max_size_observe']
                     cv_frame_list, cv_frame_box, cv_split_inds = self.split_frame_lists(observed_frames, observed_bboxes, threshold)
                     if len(cv_split_inds) == 0:
-                        with open(db_log, 'a') as f:
-                            f.write(f"{video_name}, {pedId}, After removing missing frames, no split left! \n")
+                        print(f"{video_name}, {pedId}, After removing missing frames, no split left! \n")
 
                         del db[video_name][pedId]
                     elif len(cv_split_inds) == 1:
@@ -272,12 +264,11 @@ class PSI(object):
                         self.get_intent_des(db, video_name, pedId, cv_split_inds[0], cog_annotation)
                     else:
                         # multiple splits left after removing missing box frames
-                        with open(db_log, 'a') as f:
-                            f.write(f"{len(cv_frame_list)} splits: , {[len(s) for s in cv_frame_list]} \n")
+                        print(f"{len(cv_frame_list)} splits: , {[len(s) for s in cv_frame_list]} \n")
                         nlp_vid_uid_pairs = db[video_name][pedId]['nlp_annotations'].keys()
                         for i in range(len(cv_frame_list)):
                             ped_splitId = pedId + '-' + str(i)
-                            add_ped_case(db, video_name, ped_splitId, nlp_vid_uid_pairs)
+                            self.add_ped_case(db, video_name, ped_splitId, nlp_vid_uid_pairs)
                             db[video_name][ped_splitId]['frames'] = cv_frame_list[i]
                             db[video_name][ped_splitId]['cv_annotations']['bbox'] = cv_frame_box[i]
                             self.get_intent_des(db, video_name, ped_splitId, cv_split_inds[i], cog_annotation)
@@ -286,9 +277,7 @@ class PSI(object):
                         del db[video_name][pedId] # no pedestrian list left, remove this video
                 tracks.remove(pedId)
             if len(db[video_name].keys()) < 1: # has no valid ped sequence! Remove this video!")
-                with open(db_log, 'a') as f:
-                    f.write(f"!!!!! Video, {video_name}, has no valid ped sequence! Remove this video! \n")
+                print(f"!!!!! Video, {video_name}, has no valid ped sequence! Remove this video! \n")
                 del db[video_name]
             if len(tracks) > 0:
-                with open(db_log, 'a') as f:
-                    f.write(f"{video_name} missing pedestrians annotations: {tracks}  \n")
+                print(f"{video_name} missing pedestrians annotations: {tracks}  \n")
