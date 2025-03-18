@@ -31,6 +31,7 @@ elif dataset == 'psi':
     psi_path = config_file['PSI_PATH']
     os.chdir(psi_path)
     imdb = PSI()
-    imdb.extract_images_and_save_features()
+    split_to_extract = config_file['PSI_SPLITs_TO_EXTRACT']
+    imdb.extract_images_and_save_features(split_to_extract)
 else:
     raise ValueError('Invalid dataset name')

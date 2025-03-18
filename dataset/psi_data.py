@@ -53,8 +53,10 @@ class PSI(object):
     '''Given video path, extract frames for all videos. Check if frames exist first.'''
     def extract_images_and_save_features(self, split):
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
-        self.split_json = self.load_split_json()
+        annotation_train, annotation_val, annotation_test = self.generate_database()
+        test_seq = generate_data_sequence('test', annotation_test)
 
+        self.split_json = self.load_split_json()
         if split == ALL:
             video_paths = [self.train_val_videos_path, self.test_videos_path]
             splits = [TRAIN_VAL, TEST]
@@ -110,30 +112,39 @@ class PSI(object):
         }
     }
     '''
-    def create_database(self):
-        for split_name in ['train', 'val', 'test']:
-            database_name = 'intent_database_' + split_name + '.pkl'
-            if os.path.exists(os.path.join(self.dataset_cache_path, database_name)):
-                continue
-            with open(self.json_split_file_path, 'r') as f:
-                datasplits = json.load(f)
-            print(f"Initialize {split_name} database, {time.strftime("%d%b%Y-%Hh%Mm%Ss")}")
+    def generate_database(self):
+        database_name = "intent_database_{split_name}.pkl"
+        annotation_splits = []
+        for split in ['train', 'val', 'test']:
+            database_path = os.path.join(self.dataset_cache_path, database_name.format(split_name=split))
+            if os.path.exists(database_path):
+                with open(database_path, 'rb') as f:
+                    annotation_splits.append(pickle.load(f))
+            else:
+                annotation_splits.append(self.create_database(split))
+        return annotation_splits[0], annotation_splits[1], annotation_splits[2]
 
-            key_frame_folder = self.test_path + self.key_frames_path if split_name == 'test' else self.train_val_path + self.key_frames_path
+    def create_database(self, split_name):
+        with open(self.json_split_file_path, 'r') as f:
+            datasplits = json.load(f)
+        print(f"Initialize {split_name} database, {time.strftime("%d%b%Y-%Hh%Mm%Ss")}")
 
-            # 1. Init db
-            db = self.init_db(sorted(datasplits[split_name]), key_frame_folder)
-            # 2. get intent, remove missing frames
-            self.update_db_annotations(db, key_frame_folder)
-            # 3. cut sequences, remove early frames before the first key frame, and after last key frame
-            # cut_sequence(db, db_log, args)
+        key_frame_folder = self.test_path + self.key_frames_path if split_name == 'test' else self.train_val_path + self.key_frames_path
 
-            if not os.path.exists(self.dataset_cache_path):
-                os.makedirs(self.dataset_cache_path)
-            with open(os.path.join(self.dataset_cache_path, database_name), 'wb') as fid:
-                pickle.dump(db, fid)
+        # 1. Init db
+        db = self.init_db(sorted(datasplits[split_name]), key_frame_folder)
+        # 2. get intent, remove missing frames
+        self.update_db_annotations(db, key_frame_folder)
+        # 3. cut sequences, remove early frames before the first key frame, and after last key frame
+        # cut_sequence(db, db_log, args)
 
-        print("Finished collecting database!")
+        database_name = 'intent_database_' + split_name + '.pkl'
+        if not os.path.exists(self.dataset_cache_path):
+            os.makedirs(self.dataset_cache_path)
+        with open(os.path.join(self.dataset_cache_path, database_name), 'wb') as fid:
+            pickle.dump(db, fid)
+
+        return db
 
     def init_db(self, video_list, key_frame_folder):
         db = {}
@@ -281,3 +292,103 @@ class PSI(object):
                 del db[video_name]
             if len(tracks) > 0:
                 print(f"{video_name} missing pedestrians annotations: {tracks}  \n")
+    
+    def generate_data_sequence(set_name, database, args):
+        intention_prob = []
+        intention_binary = []
+        frame_seq = []
+        pids_seq = []
+        video_seq = []
+        box_seq = []
+        description_seq = []
+        disagree_score_seq = []
+
+        video_ids = sorted(database.keys())
+        for video in sorted(video_ids): # video_name: e.g., 'video_0001'
+            for ped in sorted(database[video].keys()): # ped_id: e.g., 'track_1'
+                frame_seq.append(database[video][ped]['frames'])
+                box_seq.append(database[video][ped]['cv_annotations']['bbox'])
+
+                n = len(database[video][ped]['frames'])
+                pids_seq.append([ped] * n)
+                video_seq.append([video] * n)
+                intents, probs, disgrs, descripts = get_intent(database, video, ped, args)
+                intention_prob.append(probs)
+                intention_binary.append(intents)
+                disagree_score_seq.append(disgrs)
+                description_seq.append(descripts)
+
+        return {
+            'frame': frame_seq,
+            'bbox': box_seq,
+            'intention_prob': intention_prob,
+            'intention_binary': intention_binary,
+            'ped_id': pids_seq,
+            'video_id': video_seq,
+            'disagree_score': disagree_score_seq,
+            'description': description_seq
+        }
+
+
+    def get_intent(database, video_name, ped_id, args):
+        prob_seq = []
+        intent_seq = []
+        disagree_seq = []
+        description_seq = []
+        n_frames = len(database[video_name][ped_id]['frames'])
+
+        if args.intent_type == 'major' or args.intent_type == 'soft_vote':
+            vid_uid_pairs = sorted((database[video_name][ped_id]['nlp_annotations'].keys()))
+            n_users = len(vid_uid_pairs)
+            for i in range(n_frames):
+                labels = [database[video_name][ped_id]['nlp_annotations'][vid_uid]['intent'][i] for vid_uid in vid_uid_pairs]
+                descriptions = [database[video_name][ped_id]['nlp_annotations'][vid_uid]['description'][i] for vid_uid in vid_uid_pairs]
+
+                if args.intent_num == 3: # major 3 class, use cross-entropy loss
+                    uni_lbls, uni_cnts = np.unique(labels, return_counts=True)
+                    intent_binary = uni_lbls[np.argmax(uni_cnts)]
+                    if intent_binary == 'not_cross':
+                        intent_binary = 0
+                    elif intent_binary == 'not_sure':
+                        intent_binary = 1
+                    elif intent_binary == 'cross':
+                        intent_binary = 2
+                    else:
+                        raise Exception("ERROR intent label from database: ", intent_binary)
+
+                    intent_prob = np.max(uni_cnts) / n_users
+                    prob_seq.append(intent_prob)
+                    intent_seq.append(intent_binary)
+                    disagree_seq.append(1 - intent_prob)
+                    description_seq.append(descriptions)
+                elif args.intent_num == 2: # only counts labels not "not-sure", but will involve issues if all annotators are not-sure.
+                    raise Exception("Sequence processing not implemented!")
+                else:
+                    pass
+        elif args.intent_type == 'mean':
+            vid_uid_pairs = sorted((database[video_name][ped_id]['nlp_annotations'].keys()))
+            n_users = len(vid_uid_pairs)
+            for i in range(n_frames):
+                labels = [database[video_name][ped_id]['nlp_annotations'][vid_uid]['intent'][i] for vid_uid in vid_uid_pairs]
+                descriptions = [database[video_name][ped_id]['nlp_annotations'][vid_uid]['description'][i] for vid_uid in vid_uid_pairs]
+
+                if args.intent_num == 2:
+                    for j in range(len(labels)):
+                        if labels[j] == 'not_sure':
+                            labels[j] = 0.5
+                        elif labels[j] == 'not_cross':
+                            labels[j] = 0
+                        elif labels[j] == 'cross':
+                            labels[j] = 1
+                        else:
+                            raise Exception("Unknown intent label: ", labels[j])
+                    # [0, 0.5, 1]
+                    intent_prob = np.mean(labels)
+                    intent_binary = 0 if intent_prob < 0.5 else 1
+                    prob_seq.append(intent_prob)
+                    intent_seq.append(intent_binary)
+                    disagree_score = sum([1 if lbl != intent_binary else 0 for lbl in labels]) / n_users
+                    disagree_seq.append(disagree_score)
+                    description_seq.append(descriptions)
+
+        return intent_seq, prob_seq, disagree_seq, description_seq
