@@ -152,13 +152,13 @@ class PSI(object):
     def create_database(self, split_name):
         with open(self.json_split_file_path, 'r') as f:
             datasplits = json.load(f)
-        print(f"Initialize {split_name} database, {time.strftime("%d%b%Y-%Hh%Mm%Ss")}")
+        print(f"Initialize {split_name} database, {time.strftime('%d%b%Y-%Hh%Mm%Ss')}")
 
         split_extended_folder = self.test_path + self.extended_folder if split_name == 'test' else self.train_val_path + self.extended_folder
         split_cv_annotation_folder = self.test_path + self.cv_annotation_folder if split_name == 'test' else self.train_val_path + self.cv_annotation_folder
 
         # 1. Init db
-        db = self.init_db(sorted(datasplits[split_name]), split_extended_folder, split_cv_annotation_folder)
+        db = self.init_db(sorted(datasplits[split_name]), split_extended_folder)
         # 2. get intent, remove missing frames
         self.update_db_annotations(db, split_extended_folder, split_cv_annotation_folder)
         # 3. cut sequences, remove early frames before the first key frame, and after last key frame
@@ -172,23 +172,16 @@ class PSI(object):
 
         return db
 
-    def init_db(self, video_list, split_extended_folder, split_cv_annotation_folder):
+    def init_db(self, video_list, split_extended_folder):
         db = {}
 
-        for video_name in sorted(video_list):
+        for video_name in tqdm(sorted(video_list)):
             # Pedestrian intent annotation
             try:
                 with open(os.path.join(self.data_path, split_extended_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
                     ped_annotation = json.load(f)
             except:
                 print(f"Error loading {video_name} pedestrian intent annotation json \n")
-                continue
-            # CV annotation
-            try:
-                with open(os.path.join(self.data_path, split_cv_annotation_folder, video_name, 'cv_annotation.json'), 'r') as f:
-                    cv_annotation = json.load(f)
-            except:
-                print(f"Error loading {video_name} cv annotation json \n")
                 continue
             
             db[video_name] = {}
@@ -272,7 +265,7 @@ class PSI(object):
 
     def update_db_annotations(self, db, split_extended_folder, split_cv_annotation_folder):
         video_list = sorted(db.keys())
-        for video_name in video_list:
+        for video_name in tqdm(video_list):
             ped_list = list(db[video_name].keys())
             tracks = list(db[video_name].keys())
             try:
@@ -282,14 +275,17 @@ class PSI(object):
                 print(f"Error loading {video_name} pedestrian intent annotation json \n")
                 continue
             try:
+                # Check cv annotation exists
+                if not os.path.exists(os.path.join(self.data_path, split_cv_annotation_folder, video_name, 'cv_annotation.json')):
+                    continue
                 with open(os.path.join(self.data_path, split_cv_annotation_folder, video_name, 'cv_annotation.json'), 'r') as f:
                     cv_annotation = json.load(f)
             except:
                 print(f"Error loading {video_name} cv annotation json \n")
                 continue
 
+            # Pedestrian intent annotation
             for pedId in ped_list:
-                # Pedestrian intent annotation
                 observed_frames = annotation['pedestrians'][pedId]['observed_frames']
                 observed_bboxes = annotation['pedestrians'][pedId]['cv_annotations']['bboxes']
                 cog_annotation = annotation['pedestrians'][pedId]['cognitive_annotations']
@@ -302,16 +298,16 @@ class PSI(object):
                         db[video_name][pedId]['cv_annotations']['bbox'] = cv_frame_box
                         self.get_intent_des(db, video_name, pedId, [*range(len(observed_frames))], cog_annotation)
                     else: # too few frames observed
-                        print("Single ped occurs too short.", video_name, pedId, len(observed_frames))
+                        # print("Single ped occurs too short.", video_name, pedId, len(observed_frames))
                         # with open(db_log, 'a') as f:
                         #     f.write(f"Single ped occurs too short. {video_name}, {pedId}, {len(observed_frames)} \n")
                         del db[video_name][pedId]
                 else: # missing frames exist
-                    print(f"missing frames bbox noticed! , {video_name}, {pedId}, {len(observed_frames)}, frames observed from , {observed_frames[-1] - observed_frames[0] + 1} \n")
+                    # print(f"missing frames bbox noticed! , {video_name}, {pedId}, {len(observed_frames)}, frames observed from , {observed_frames[-1] - observed_frames[0] + 1} \n")
                     threshold = self.data_opts['max_size_observe']
                     cv_frame_list, cv_frame_box, cv_split_inds = self.split_frame_lists(observed_frames, observed_bboxes, threshold)
                     if len(cv_split_inds) == 0:
-                        print(f"{video_name}, {pedId}, After removing missing frames, no split left! \n")
+                        # print(f"{video_name}, {pedId}, After removing missing frames, no split left! \n")
 
                         del db[video_name][pedId]
                     elif len(cv_split_inds) == 1:
@@ -320,7 +316,7 @@ class PSI(object):
                         self.get_intent_des(db, video_name, pedId, cv_split_inds[0], cog_annotation)
                     else:
                         # multiple splits left after removing missing box frames
-                        print(f"{len(cv_frame_list)} splits: , {[len(s) for s in cv_frame_list]} \n")
+                        # print(f"{len(cv_frame_list)} splits: , {[len(s) for s in cv_frame_list]} \n")
                         nlp_vid_uid_pairs = db[video_name][pedId]['nlp_annotations'].keys()
                         for i in range(len(cv_frame_list)):
                             ped_splitId = pedId + '-' + str(i)
@@ -331,15 +327,17 @@ class PSI(object):
                             if len(db[video_name][ped_splitId]['nlp_annotations'][list(db[video_name][ped_splitId]['nlp_annotations'].keys())[0]]['intent']) == 0:
                                 raise Exception("ERROR!")
                         del db[video_name][pedId] # no pedestrian list left, remove this video
+                tracks.remove(pedId)
 
-                # Object annotation
+            # Object annotation
+            for pedId in list(db[video_name].keys()):
                 frames = db[video_name][pedId]['frames']
                 if frames is None or len(frames) == 0:
                     continue
                 for frame in frames:
                     frame = 'frame_' + str(frame)
                     if frame not in cv_annotation['frames']:
-                        print(f"Frame, {frame}, not in cv_annotation! \n")
+                        # print(f"Frame, {frame}, not in cv_annotation! \n")
                         continue
                     for obj_id in cv_annotation['frames'][frame]['cv_annotation'].keys():
                         obj = cv_annotation['frames'][frame]['cv_annotation'][obj_id]
@@ -347,7 +345,6 @@ class PSI(object):
                         db[video_name][pedId]['objs_bboxes'].append(obj['bbox'])
                         db[video_name][pedId]['objs_ids'].append(obj['track_id'])
 
-                tracks.remove(pedId)
             if len(db[video_name].keys()) < 1: # has no valid ped sequence! Remove this video!")
                 print(f"!!!!! Video, {video_name}, has no valid ped sequence! Remove this video! \n")
                 del db[video_name]
@@ -376,6 +373,9 @@ class PSI(object):
                 objs_bboxes_seq.append(database[video][ped]['objs_bboxes'])
                 objs_ids_seq.append(database[video][ped]['objs_ids'])
 
+                print("ped", ped)
+                if ped == "track_27":
+                    print("database[video][ped]['frames']", database[video][ped]['frames'])
                 n = len(database[video][ped]['frames'])
                 pids_seq.append([ped] * n)
                 video_seq.append([video] * n)
@@ -401,7 +401,7 @@ class PSI(object):
         }
 
 
-    def get_intent(self, database, video_name, ped_id, args):
+    def get_intent(self, database, video_name, ped_id, intent_num = 3):
         prob_seq = []
         intent_seq = []
         disagree_seq = []
@@ -415,7 +415,7 @@ class PSI(object):
                 labels = [database[video_name][ped_id]['nlp_annotations'][vid_uid]['intent'][i] for vid_uid in vid_uid_pairs]
                 descriptions = [database[video_name][ped_id]['nlp_annotations'][vid_uid]['description'][i] for vid_uid in vid_uid_pairs]
 
-                if args.intent_num == 3: # major 3 class, use cross-entropy loss
+                if intent_num == 3: # major 3 class, use cross-entropy loss
                     uni_lbls, uni_cnts = np.unique(labels, return_counts=True)
                     intent_binary = uni_lbls[np.argmax(uni_cnts)]
                     if intent_binary == 'not_cross':
@@ -432,7 +432,7 @@ class PSI(object):
                     intent_seq.append(intent_binary)
                     disagree_seq.append(1 - intent_prob)
                     description_seq.append(descriptions)
-                elif args.intent_num == 2: # only counts labels not "not-sure", but will involve issues if all annotators are not-sure.
+                elif intent_num == 2: # only counts labels not "not-sure", but will involve issues if all annotators are not-sure.
                     raise Exception("Sequence processing not implemented!")
                 else:
                     pass

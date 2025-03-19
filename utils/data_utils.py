@@ -28,15 +28,19 @@ from PIL import Image
 from keras.utils import load_img
 import numpy as np
 
-
+# Visual helpers
 def update_progress(progress):
-    barLength = 20 # Modify this to change the length of the progress bar
+    """
+    Creates a progress bar
+    :param progress: The progress thus far
+    """
+    barLength = 20  # Modify this to change the length of the progress bar
     status = ""
     if isinstance(progress, int):
         progress = float(progress)
 
-    block = int(round(barLength*progress))
-    text = "\r[{}] {:0.2f}% {}".format( "#"*block + "-"*(barLength-block), progress*100, status)
+    block = int(round(barLength * progress))
+    text = "\r[{}] {:0.2f}% {}".format("#" * block + "-" * (barLength - block), progress * 100, status)
     sys.stdout.write(text)
     sys.stdout.flush()
 
