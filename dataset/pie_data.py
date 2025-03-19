@@ -134,22 +134,6 @@ class PIE(object):
         return join(self.images_path, sid, vid,
                     '{:05d}.png'.format(fid))
 
-    # Visual helpers
-    def update_progress(self, progress):
-        """
-        Creates a progress bar
-        :param progress: The progress thus far
-        """
-        barLength = 20  # Modify this to change the length of the progress bar
-        status = ""
-        if isinstance(progress, int):
-            progress = float(progress)
-
-        block = int(round(barLength * progress))
-        text = "\r[{}] {:0.2f}% {}".format("#" * block + "-" * (barLength - block), progress * 100, status)
-        sys.stdout.write(text)
-        sys.stdout.flush()
-
     def _print_dict(self, dic):
         """
         Prints a dictionary, one key-value pair per line
@@ -280,7 +264,7 @@ class PIE(object):
                     print('Failed to open the video {}'.format(vid))
                 while success:
                     if frame_num in frames_list:
-                        self.update_progress(img_count / num_frames)
+                        update_progress(img_count / num_frames)
                         img_count += 1
                         if not isfile(join(video_images_path, "%05.f.png") % frame_num):
                             cv2.imwrite(join(video_images_path, "%05.f.png") % frame_num, image)
@@ -440,7 +424,7 @@ class PIE(object):
 
             while success:
                 if frame_num in frames_list:
-                    self.update_progress(img_count / num_frames)
+                    update_progress(img_count / num_frames)
                     img_count += 1
 
                     # Retrieve the image path, bbox, id from the annotation dataframe
@@ -470,7 +454,7 @@ class PIE(object):
 
                 success, image = vidcap.read()
                 frame_num += 1
-            self.update_progress(1)
+            update_progress(1)
 
             if num_frames != img_count:
                 print('num images don\'t match {}/{}'.format(num_frames, img_count))

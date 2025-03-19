@@ -30,8 +30,8 @@ if dataset == 'pie':
 elif dataset == 'psi':
     psi_path = config_file['PSI_PATH']
     os.chdir(psi_path)
-    imdb = PSI()
-    split_to_extract = config_file['PSI_SPLITs_TO_EXTRACT']
+    imdb = PSI(data_path=psi_path, data_opts=data_opts, feature_extractor=feature_extractor)
+    split_to_extract = config_file['PSI_SPLITS_TO_EXTRACT']
     imdb.extract_images_and_save_features(split_to_extract)
 else:
     raise ValueError('Invalid dataset name')
