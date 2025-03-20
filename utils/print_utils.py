@@ -4,7 +4,6 @@ import cv2
 from PIL import Image
 import pandas as pd
 import tensorflow as tf
-from utils.data_utils import jitter_bbox, squarify
 
 num_dashes = 100
 
@@ -40,7 +39,7 @@ def print_model_size(model, model_name):
     print('')
     print(model_name, f" memory: {memory_mb:.2f} MB\n")
 
-def _plot_image_with_bbox(image, df, save, file_path=None):
+def plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_path=None):
     # Image with all bounding box
     image_all_bb = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     image_pil = Image.fromarray(image_all_bb)
@@ -48,8 +47,8 @@ def _plot_image_with_bbox(image, df, save, file_path=None):
     for i, row in df.iterrows():
         # Add the bounding box to the image
         b = list(row['bbox'])
-        bbox = jitter_bbox([b],'enlarge', 2, image=image_pil)[0]
-        bbox = squarify(bbox, 1, image_pil.size[0])
+        bbox = jitter_bbox_func([b],'enlarge', 2, image=image_pil)[0]
+        bbox = squarify_func(bbox, 1, image_pil.size[0])
         bbox = list(map(int,bbox[0:4]))
         cv2.rectangle(image_all_bb, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 255, 0), 2)
 
@@ -75,7 +74,7 @@ def _plot_image_with_bbox(image, df, save, file_path=None):
     else:
         plt.show()
 
-def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set_id, vid, frame_num):
+def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set_id, vid, frame_num, jitter_bbox_func, squarify_func):
     # good frames:
     # sid, vid, frameid
     # 6, 2, 14053, wait cross
@@ -95,7 +94,7 @@ def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set
             os.system('mkdir -p images')
             file_path = f'images/{set_id}-{vid}-{frame_num}.png'
             if show_bbox:
-                _plot_image_with_bbox(image, df, save, file_path)
+                plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_path)
             else:
                 _plot_image(image, save, file_path)
     else:
@@ -112,7 +111,7 @@ def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set
                 values[ped_type] >= len_min_ped and values[ped_type] <= len_max_ped:
             print("frame: ", frame_num)
             if show_bbox:
-                _plot_image_with_bbox(image, df, save)
+                plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func)
             else:
                 _plot_image(image, save)
 

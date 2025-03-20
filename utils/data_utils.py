@@ -76,6 +76,14 @@ def get_ped_info_per_image(images, bboxes, ped_ids, obj_bboxes, obj_ids, other_p
     :return: A dataframe containing annotations for each image
     """
 
+    print("len(images)", len(images))
+    print("len(ped_ids)", len(ped_ids))
+    print("len(bboxes)", len(bboxes))
+    print("len(obj_bboxes)", len(obj_bboxes))
+    print("len(obj_ids)", len(obj_ids))
+    print("len(other_ped_bboxes)", len(other_ped_bboxes))
+    print("len(other_ped_ids)", len(other_ped_ids))
+
     print_separator("Preparing annotations for each images")
 
     # Store the annotations in a dataframe wit the following columns: set_id, vid_id, image_name, img_path, bbox, ped_id

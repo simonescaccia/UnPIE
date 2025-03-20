@@ -1,7 +1,5 @@
 import json
 import os
-import argparse
-from pathlib import Path
 import pickle
 import time
 import cv2
@@ -10,7 +8,7 @@ from tqdm import tqdm
 import sys
 
 from dataset.pretrained_extractor import PretrainedExtractor
-from utils.data_utils import get_ped_info_per_image
+from utils.data_utils import extract_and_save, get_ped_info_per_image
 
 TRAIN = 'train'
 VAL = 'val'
@@ -20,9 +18,9 @@ TRAIN_VAL = 'train_val'
 
 class PSI(object):
 
-    def __init__(self, feature_extractor, data_path, data_opts, object_class_list):
+    def __init__(self, feature_extractor, data_path, data_opts, object_class_list, feat_input_size):
         self.data_opts = data_opts
-        self.data_path = data_path
+        self.psi_path = data_path
         self.test_path = 'PSI2.0_Test'
         self.train_val_path = 'PSI2.0_TrainVal'
         self.test_videos_path = self.test_path + '/videos'
@@ -42,6 +40,7 @@ class PSI(object):
         self.intent_type = 'mean'
         self.ped_type = 'peds'
         self.traffic_type = 'objs'
+        self.feat_input_size = feat_input_size
 
     def load_split_json(self):
         with open(self.json_split_file_path, 'r') as f:
@@ -73,19 +72,19 @@ class PSI(object):
     def extract_images_and_save_features(self, split):
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annotation_train, annotation_val, annotation_test = self.generate_database()
-        test_seq = self.generate_data_sequence('trian', annotation_test)
-        ped_objs_dataframe = get_ped_info_per_image(
+        test_seq = self.generate_data_sequence('train', annotation_test)
+        ped_obj_dataframe = get_ped_info_per_image(
             images=test_seq['frame'],
             bboxes=test_seq['bbox'],
             ped_ids=test_seq['ped_id'],
             obj_bboxes=test_seq['objs_bboxes'],
             obj_ids=test_seq['objs_ids'],
-            other_ped_bboxes=[],
-            other_ped_ids=[],
+            other_ped_bboxes=[[[] for _ in range(len(test_seq['ped_id'][0]))] for _ in range(len(test_seq['ped_id']))],
+            other_ped_ids=[[[] for _ in range(len(test_seq['ped_id'][0]))] for _ in range(len(test_seq['ped_id']))],
             ped_type=self.ped_type,
             traffic_type=self.traffic_type)
 
-        print("Objects: ", self.get_unique_values(test_seq['objs_classes']))
+        print("\nObjects: ", self.get_unique_values(test_seq['objs_classes']))
 
         self.split_json = self.load_split_json()
         if split == ALL:
@@ -102,9 +101,10 @@ class PSI(object):
           
         for video_path, split_name in tqdm(zip(video_paths, splits)):
             for video in tqdm(sorted(os.listdir(video_path))):
-                name = video.split('.mp4')[0]
+                video_name = video.split('.mp4')[0]
                 video_target = os.path.join(video_path, video)
-                split_target = self.get_video_split(split_name, name)
+                split_target = self.get_video_split(split_name, video_name)
+                set_id = self.video_set_nums[split_target][0]
 
                 try:
                     vidcap = cv2.VideoCapture(video_target)
@@ -116,8 +116,29 @@ class PSI(object):
                 success, frame = vidcap.read()
                 cur_frame = 0
                 while(success):
-                    frame_num = str(cur_frame).zfill(3)
-                    cv2.imwrite(os.path.join(frames_target, f'{frame_num}.jpg'), frame)
+                    # Retrieve the image path, bbox, id from the annotation dataframe
+                    df = ped_obj_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(
+                        set_id, video_name, 'frame_{}'.format(cur_frame)))
+                    # Apply the function extract_features to each row of the dataframe
+                    df.apply(
+                        lambda row, image=frame, set_id=set_id, vid=video_name, frame_num=cur_frame: 
+                            extract_and_save(
+                                list(row['bbox']), 
+                                row['id'], 
+                                set_id, 
+                                vid, 
+                                '{:05d}'.format(frame_num), 
+                                frame,
+                                row['type'],
+                                self.psi_path,
+                                self.pretrained_extractor,
+                                self.data_opts,
+                                self.video_set_nums,
+                                self.feat_input_size
+                            ), 
+                        axis=1
+                    )
+
                     success, frame = vidcap.read()
                     cur_frame += 1
                 vidcap.release()
@@ -203,7 +224,7 @@ class PSI(object):
         for video_name in tqdm(sorted(video_list)):
             # Pedestrian intent annotation
             try:
-                with open(os.path.join(self.data_path, split_extended_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
+                with open(os.path.join(self.psi_path, split_extended_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
                     ped_annotation = json.load(f)
             except:
                 print(f"Error loading {video_name} pedestrian intent annotation json \n")
@@ -222,15 +243,15 @@ class PSI(object):
             ped_list = list(db[video_name].keys())
             tracks = list(db[video_name].keys())
             try:
-                with open(os.path.join(self.data_path, split_extended_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
+                with open(os.path.join(self.psi_path, split_extended_folder, video_name, 'pedestrian_intent.json'), 'r') as f:
                     annotation = json.load(f)
             except:
                 print(f"Error loading {video_name} pedestrian intent annotation json \n")
                 continue
             try:
                 # Check cv annotation exists
-                if os.path.exists(os.path.join(self.data_path, split_cv_annotation_folder, video_name, 'cv_annotation.json')):
-                    with open(os.path.join(self.data_path, split_cv_annotation_folder, video_name, 'cv_annotation.json'), 'r') as f:
+                if os.path.exists(os.path.join(self.psi_path, split_cv_annotation_folder, video_name, 'cv_annotation.json')):
+                    with open(os.path.join(self.psi_path, split_cv_annotation_folder, video_name, 'cv_annotation.json'), 'r') as f:
                         cv_annotation = json.load(f)
             except:
                 print(f"Error loading {video_name} cv annotation json \n")
@@ -402,7 +423,10 @@ class PSI(object):
         video_ids = sorted(database.keys())
         for video in sorted(video_ids): # video_name: e.g., 'video_0001'
             for ped in sorted(database[video].keys()): # ped_id: e.g., 'track_1'
-                frame_seq.append(database[video][ped]['frames'])
+                frames = []
+                for frame in database[video][ped]['frames']:
+                    frames.append(os.path.join(self.video_set_nums[set_name][0], video, 'frame_{}'.format(frame)))
+                frame_seq.append(frames)
                 box_seq.append(database[video][ped]['cv_annotations']['bbox'])
                 objs_classes_seq.append(database[video][ped]['objs_classes'])
                 objs_bboxes_seq.append(database[video][ped]['objs_bboxes'])
