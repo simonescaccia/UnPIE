@@ -27,6 +27,10 @@ import pickle
 from PIL import Image
 from keras.utils import load_img
 import numpy as np
+import pandas as pd
+from pathlib import PurePath
+
+from utils.print_utils import print_separator
 
 # Visual helpers
 def update_progress(progress):
@@ -62,6 +66,74 @@ def merge_directory(source_dir, dest_dir):
 
 
 ######### DATA UTILITIES ##############
+
+def get_ped_info_per_image(images, bboxes, ped_ids, obj_bboxes, obj_ids, other_ped_bboxes, other_ped_ids, ped_type, traffic_type):
+    """
+    Collects annotations for each image
+    :param images: List of image paths
+    :param bboxes: List of bounding boxes
+    :param ped_ids: List of pedestrian ids
+    :return: A dataframe containing annotations for each image
+    """
+
+    print_separator("Preparing annotations for each images")
+
+    # Store the annotations in a dataframe wit the following columns: set_id, vid_id, image_name, img_path, bbox, ped_id
+    df = pd.DataFrame(columns=['set_id', 'vid_id', 'image_name', 'img_path', 'bbox', 'id', 'type', 'class'])
+    i = -1
+    data = []
+    for seq, pid in zip(images, ped_ids):
+        i += 1
+        update_progress(i / len(images))
+        for imp, b, p, o_b, o_id, op_b, op_id in zip(seq, bboxes[i], pid, obj_bboxes[i], obj_ids[i], other_ped_bboxes[i], other_ped_ids[i]):
+            set_id = PurePath(imp).parts[-3]
+            vid_id = PurePath(imp).parts[-2]
+            img_name = PurePath(imp).parts[-1].split('.')[0]
+
+            # Collect pedestrian data
+            data.append({
+                'set_id': set_id,
+                'vid_id': vid_id,
+                'image_name': img_name,
+                'img_path': imp,
+                'bbox': tuple(b),
+                'id': p[0],
+                'type': ped_type
+            })
+
+            # Collect traffic data
+            for o_b_i, o_id_i  in zip(o_b, o_id):
+                data.append({
+                    'set_id': set_id,
+                    'vid_id': vid_id,
+                    'image_name': img_name,
+                    'img_path': imp,
+                    'bbox': tuple(o_b_i),
+                    'id': o_id_i,
+                    'type': traffic_type
+                })
+            
+            # Collect other pedestrian data
+            for op_b_i, op_id_i in zip(op_b, op_id):
+                data.append({
+                    'set_id': set_id,
+                    'vid_id': vid_id,
+                    'image_name': img_name,
+                    'img_path': imp,
+                    'bbox': tuple(op_b_i),
+                    'id': op_id_i,
+                    'type': ped_type
+                })
+    update_progress(1)
+
+    # Create dataframe once from the accumulated data
+    df = pd.DataFrame(data)
+
+    # Remove duplicates
+    df = df.drop_duplicates()
+    
+    print('')
+    return df  
 
 def get_folder_from_set(set_id, video_set_nums):
     """
