@@ -40,6 +40,8 @@ class PSI(object):
         self.object_class_list = object_class_list
         self.feature_extractor = feature_extractor
         self.intent_type = 'mean'
+        self.ped_type = 'peds'
+        self.traffic_type = 'objs'
 
     def load_split_json(self):
         with open(self.json_split_file_path, 'r') as f:
