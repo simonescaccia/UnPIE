@@ -20,6 +20,7 @@ params = ParamsLoader.get_dataset_params_static(args_file, config_file)
 feature_extractor = params['feature_extractor']
 feat_input_size = params['feat_input_size']
 data_opts = params['data_opts']
+object_class_list = params['obj_classes']
 
 if dataset == 'pie':
     pie_path = config_file['PIE_PATH']
@@ -30,7 +31,7 @@ if dataset == 'pie':
 elif dataset == 'psi':
     psi_path = config_file['PSI_PATH']
     os.chdir(psi_path)
-    imdb = PSI(data_path=psi_path, data_opts=data_opts, feature_extractor=feature_extractor)
+    imdb = PSI(data_path=psi_path, data_opts=data_opts, feature_extractor=feature_extractor, object_class_list=object_class_list)
     split_to_extract = config_file['PSI_SPLITS_TO_EXTRACT']
     imdb.extract_images_and_save_features(split_to_extract)
 else:

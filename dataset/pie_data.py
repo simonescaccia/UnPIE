@@ -41,9 +41,8 @@ import pandas as pd
 from os.path import join, abspath, isfile, isdir
 from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
-from pathlib import PurePath
 from dataset.pretrained_extractor import PretrainedExtractor
-from utils.data_utils import extract_and_save, get_path, squarify, update_progress, merge_directory
+from utils.data_utils import extract_and_save, get_path, get_ped_info_per_image, squarify, update_progress, merge_directory
 from utils.print_utils import print_separator
 
 class PIE(object):
@@ -333,76 +332,7 @@ class PIE(object):
                         - seq_length + 1, overlap_stride)])
 
         bboxes = bb
-        return d, images, bboxes, ped_ids
-
-    def _get_ped_info_per_image(self, images, bboxes, ped_ids, obj_bboxes, obj_ids, other_ped_bboxes, other_ped_ids):
-        """
-        @author: Simone Scaccia
-        Collects annotations for each image
-        :param images: List of image paths
-        :param bboxes: List of bounding boxes
-        :param ped_ids: List of pedestrian ids
-        :return: A dataframe containing annotations for each image
-        """
-
-        print_separator("Preparing annotations for each images")
-
-        # Store the annotations in a dataframe wit the following columns: set_id, vid_id, image_name, img_path, bbox, ped_id
-        df = pd.DataFrame(columns=['set_id', 'vid_id', 'image_name', 'img_path', 'bbox', 'id', 'type', 'class'])
-        i = -1
-        data = []
-        for seq, pid in zip(images, ped_ids):
-            i += 1
-            update_progress(i / len(images))
-            for imp, b, p, o_b, o_id, op_b, op_id in zip(seq, bboxes[i], pid, obj_bboxes[i], obj_ids[i], other_ped_bboxes[i], other_ped_ids[i]):
-                set_id = PurePath(imp).parts[-3]
-                vid_id = PurePath(imp).parts[-2]
-                img_name = PurePath(imp).parts[-1].split('.')[0]
-
-                # Collect pedestrian data
-                data.append({
-                    'set_id': set_id,
-                    'vid_id': vid_id,
-                    'image_name': img_name,
-                    'img_path': imp,
-                    'bbox': tuple(b),
-                    'id': p[0],
-                    'type': self.ped_type
-                })
-
-                # Collect traffic data
-                for o_b_i, o_id_i  in zip(o_b, o_id):
-                    data.append({
-                        'set_id': set_id,
-                        'vid_id': vid_id,
-                        'image_name': img_name,
-                        'img_path': imp,
-                        'bbox': tuple(o_b_i),
-                        'id': o_id_i,
-                        'type': self.traffic_type
-                    })
-                
-                # Collect other pedestrian data
-                for op_b_i, op_id_i in zip(op_b, op_id):
-                    data.append({
-                        'set_id': set_id,
-                        'vid_id': vid_id,
-                        'image_name': img_name,
-                        'img_path': imp,
-                        'bbox': tuple(op_b_i),
-                        'id': op_id_i,
-                        'type': self.ped_type
-                    })
-        update_progress(1)
-
-        # Create dataframe once from the accumulated data
-        df = pd.DataFrame(data)
-
-        # Remove duplicates
-        df = df.drop_duplicates()
-        
-        print('')
-        return df       
+        return d, images, bboxes, ped_ids     
 
     def _process_set(self, set_id, set_folder_path, extract_frames, ped_obj_dataframe: pd.DataFrame):
         print('Extracting frames from', set_id)
@@ -470,14 +400,16 @@ class PIE(object):
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annot_database = self.generate_database()
         sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
-        ped_objs_dataframe = self._get_ped_info_per_image(
+        ped_objs_dataframe = get_ped_info_per_image(
             images=sequence_data['image'],
             bboxes=sequence_data['bbox'],
             ped_ids=sequence_data['ped_ids'],
             obj_bboxes=sequence_data['obj_bboxes'],
             obj_ids=sequence_data['obj_ids'],
             other_ped_bboxes=sequence_data['other_ped_bboxes'],
-            other_ped_ids=sequence_data['other_ped_ids'])
+            other_ped_ids=sequence_data['other_ped_ids'],
+            ped_type=self.ped_type,
+            traffic_type=self.traffic_type)
         
         print_separator("Extracting features and saving on hard drive using the {} model".format(self.feature_extractor))
         # Extract image features
