@@ -8,7 +8,7 @@ from tqdm import tqdm
 import sys
 
 from dataset.pretrained_extractor import PretrainedExtractor
-from utils.data_utils import extract_and_save, get_ped_info_per_image
+from utils.data_utils import extract_and_save, get_ped_info_per_image, organize_features
 
 TRAIN = 'train'
 VAL = 'val'
@@ -72,7 +72,7 @@ class PSI(object):
     def extract_images_and_save_features(self, split):
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annotation_train, annotation_val, annotation_test = self.generate_database()
-        test_seq = self.generate_data_sequence('train', annotation_test)
+        test_seq = self.generate_data_sequence('test', annotation_test)
         ped_obj_dataframe = get_ped_info_per_image(
             images=test_seq['frame'],
             bboxes=test_seq['bbox'],
@@ -128,7 +128,7 @@ class PSI(object):
                                 set_id, 
                                 vid, 
                                 '{:05d}'.format(frame_num), 
-                                frame,
+                                image,
                                 row['type'],
                                 self.psi_path,
                                 self.pretrained_extractor,
@@ -143,6 +143,13 @@ class PSI(object):
                     cur_frame += 1
                 vidcap.release()
                 # break
+            organize_features(
+                ped_type=self.ped_type,
+                traffic_type=self.traffic_type,
+                dataset_path=self.psi_path,
+                data_opts=self.data_opts,
+                pretrained_extractor=self.pretrained_extractor,
+                video_set_nums=self.video_set_nums)
 
     '''
     Database organization
@@ -433,7 +440,7 @@ class PSI(object):
                 objs_ids_seq.append(database[video][ped]['objs_ids'])
 
                 n = len(database[video][ped]['frames'])
-                pids_seq.append([ped] * n)
+                pids_seq.append([[ped]] * n)
                 video_seq.append([video] * n)
                 intents, probs, disgrs, descripts = self.get_intent(database, video, ped)
                 intention_prob.append(probs)
