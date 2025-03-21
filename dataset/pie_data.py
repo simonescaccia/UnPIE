@@ -42,7 +42,7 @@ from os.path import join, abspath, isfile, isdir
 from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
 from dataset.pretrained_extractor import PretrainedExtractor
-from utils.data_utils import extract_and_save, get_path, get_ped_info_per_image, squarify, update_progress, merge_directory
+from utils.data_utils import extract_and_save, get_path, get_ped_info_per_image, organize_features, squarify, update_progress, merge_directory
 from utils.print_utils import print_separator
 
 class PIE(object):
@@ -113,14 +113,6 @@ class PIE(object):
         Returns the default path where pie is expected to be installed.
         """
         return 'data/pie'
-
-    def get_video_set_ids(self, video_set):
-        """
-        Returns default image set ids
-        :param image_set: Image set split
-        :return: Set ids of the image set
-        """
-        return self.video_set_nums[video_set]
 
     def _get_image_path(self, sid, vid, fid):
         """
@@ -419,44 +411,13 @@ class PIE(object):
             extract_frames = self.get_annotated_frame_numbers(set_id)
 
             self._process_set(set_id, set_folder_path, extract_frames, ped_objs_dataframe) # TODO: parallelize
-            self._organize_features()
-
-    def _organize_features(self):
-        """
-        @author: Simone Scaccia
-        Organizes the features in the default folders
-        """
-        print_separator("Moving features to the default folder")
-        folders = ['train', 'val', 'test']
-        feature_types = [self.ped_type, self.traffic_type]
-        for feature_type in feature_types:
-            source_path = get_path(
+            organize_features(
+                ped_type=self.ped_type,
+                traffic_type=self.traffic_type,
                 dataset_path=self.pie_path,
-                data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                model_name=self.pretrained_extractor.model_name,
-                data_subset='all',
-                feature_type=feature_type)
-            for folder in folders:
-                dest_path = get_path(
-                    dataset_path=self.pie_path,
-                    data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
-                    model_name=self.pretrained_extractor.model_name,
-                    data_subset=folder,
-                    feature_type=feature_type)
-                sets = self.get_video_set_ids(folder)
-                for set_id in sets:
-                    # Move the folder set_id from source_path to path
-                    source_set_path = os.path.join(source_path, set_id)
-                    dest_set_path = os.path.join(dest_path, set_id)
-                    # Check if the folder exists
-                    if not os.path.exists(source_set_path):
-                        continue
-                    print("Moving", source_set_path, "to", dest_set_path)
-                    if os.path.exists(dest_set_path):
-                        merge_directory(source_set_path, dest_set_path)
-                    else:
-                        shutil.move(source_set_path, dest_set_path)
-        print('')
+                data_opts=self.data_opts,
+                pretrained_extractor=self.pretrained_extractor,
+                video_set_nums=self.video_set_nums)
 
     # Annotation processing helpers
     def _map_text_to_scalar(self, label_type, value):

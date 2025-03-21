@@ -67,6 +67,43 @@ def merge_directory(source_dir, dest_dir):
 
 ######### DATA UTILITIES ##############
 
+def organize_features(ped_type, traffic_type, dataset_path, data_opts, pretrained_extractor, video_set_nums):
+    """
+    @author: Simone Scaccia
+    Organizes the features in the default folders
+    """
+    print_separator("Moving features to the default folder")
+    folders = ['train', 'val', 'test']
+    feature_types = [ped_type, traffic_type]
+    for feature_type in feature_types:
+        source_path = get_path(
+            dataset_path=dataset_path,
+            data_type='features'+'_'+data_opts['crop_type']+'_'+data_opts['crop_mode'], # images    
+            model_name=pretrained_extractor.model_name,
+            data_subset='all',
+            feature_type=feature_type)
+        for folder in folders:
+            dest_path = get_path(
+                dataset_path=dataset_path,
+                data_type='features'+'_'+data_opts['crop_type']+'_'+data_opts['crop_mode'], # images    
+                model_name=pretrained_extractor.model_name,
+                data_subset=folder,
+                feature_type=feature_type)
+            sets = video_set_nums[folder]
+            for set_id in sets:
+                # Move the folder set_id from source_path to path
+                source_set_path = os.path.join(source_path, set_id)
+                dest_set_path = os.path.join(dest_path, set_id)
+                # Check if the folder exists
+                if not os.path.exists(source_set_path):
+                    continue
+                print("Moving", source_set_path, "to", dest_set_path)
+                if os.path.exists(dest_set_path):
+                    merge_directory(source_set_path, dest_set_path)
+                else:
+                    shutil.move(source_set_path, dest_set_path)
+    print('')
+
 def get_ped_info_per_image(images, bboxes, ped_ids, obj_bboxes, obj_ids, other_ped_bboxes, other_ped_ids, ped_type, traffic_type):
     """
     Collects annotations for each image
@@ -75,14 +112,6 @@ def get_ped_info_per_image(images, bboxes, ped_ids, obj_bboxes, obj_ids, other_p
     :param ped_ids: List of pedestrian ids
     :return: A dataframe containing annotations for each image
     """
-
-    print("len(images)", len(images))
-    print("len(ped_ids)", len(ped_ids))
-    print("len(bboxes)", len(bboxes))
-    print("len(obj_bboxes)", len(obj_bboxes))
-    print("len(obj_ids)", len(obj_ids))
-    print("len(other_ped_bboxes)", len(other_ped_bboxes))
-    print("len(other_ped_ids)", len(other_ped_ids))
 
     print_separator("Preparing annotations for each images")
 
