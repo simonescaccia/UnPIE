@@ -114,6 +114,14 @@ class PIE(object):
         """
         return 'data/pie'
 
+    def get_video_set_ids(self, video_set):
+        """
+        Returns default image set ids
+        :param image_set: Image set split
+        :return: Set ids of the image set
+        """
+        return self.video_set_nums[video_set]
+
     def _get_image_path(self, sid, vid, fid):
         """
         Generates and returns the image path given ids
@@ -772,61 +780,6 @@ class PIE(object):
         print("Number of pedestrian bounding boxes:\n",
               '\n '.join('{}: {}'.format(tag, cnt) for tag, cnt in sorted(traffic_box_count.items())),
               '\n total: ', sum(traffic_box_count.values()))
-
-    def balance_samples_count(self, seq_data, label_type, random_seed=42):
-        """
-        Balances the number of positive and negative samples by randomly sampling
-        from the more represented samples. Only works for binary classes.
-        :param seq_data: The sequence data to be balanced.
-        :param label_type: The lable type based on which the balancing takes place.
-        The label values must be binary, i.e. only 0, 1.
-        :param random_seed: The seed for random number generator.
-        :return: Balanced data sequence.
-        """
-        for lbl in seq_data[label_type]:
-            if lbl not in [0, 1]:
-                raise Exception("The label values used for balancing must be"
-                                " either 0 or 1")
-
-        # balances the number of positive and negative samples
-        print_separator("Balancing the number of positive and negative intention samples", space=False)
-
-        gt_labels = seq_data[label_type]
-        num_pos_samples = np.count_nonzero(np.array(gt_labels))
-        num_neg_samples = len(gt_labels) - num_pos_samples
-
-        new_seq_data = {}
-        # finds the indices of the samples with larger quantity
-        if num_neg_samples == num_pos_samples:
-            print('Positive and negative samples are already balanced')
-            return seq_data
-        else:
-            print('Unbalanced: \t Positive: {} \t Negative: {}'.format(num_pos_samples, num_neg_samples))
-            if num_neg_samples > num_pos_samples:
-                rm_index = np.where(np.array(gt_labels) == 0)[0]
-            else:
-                rm_index = np.where(np.array(gt_labels) == 1)[0]
-
-            # Calculate the difference of sample counts
-            dif_samples = abs(num_neg_samples - num_pos_samples)
-            # shuffle the indices
-            np.random.seed(random_seed)
-            np.random.shuffle(rm_index)
-            # reduce the number of indices to the difference
-            rm_index = rm_index[0:dif_samples]
-            # update the data
-            for k in seq_data:
-                seq_data_k = seq_data[k]
-                if not isinstance(seq_data[k], list) and not isinstance(seq_data[k], np.ndarray):
-                    new_seq_data[k] = seq_data[k]
-                else:
-                    new_seq_data[k] = [seq_data_k[i] for i in range(0, len(seq_data_k)) if i not in rm_index]
-
-            new_gt_labels = new_seq_data[label_type]
-            num_pos_samples = np.count_nonzero(np.array(new_gt_labels))
-            print('Balanced:\t Positive: %d  \t Negative: %d\n'
-                  % (num_pos_samples, len(new_seq_data[label_type]) - num_pos_samples))
-        return new_seq_data
 
     # Process pedestrian ids
     def _get_pedestrian_ids(self):

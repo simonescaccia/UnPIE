@@ -48,7 +48,7 @@ class ParamsLoader:
         return dataset_params
 
 
-    def get_pie_params(self):
+    def get_dataset_params(self):
         return self.get_dataset_params_static(self.args, self.config)
 
 
@@ -230,7 +230,7 @@ class ParamsLoader:
     def get_params(self, datasets, is_test):
 
         save_params, load_params = self._get_save_load_params_from_arg()
-        pie_params = self.get_pie_params()
+        pie_params = self.get_dataset_params()
 
         self.args['emb_dim'] = self.args['scene_output_layer_dim'] + self.args['gcn_output_layer_dim']
         self.args['kmeans_k'] = [self.args['clustering_groups']] * self.args['num_kmeans']
