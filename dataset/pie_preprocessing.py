@@ -7,18 +7,18 @@ from pathlib import PurePath
 
 from dataset.pie_data import PIE
 from dataset.pie_dataset import PIEGraphDataset
+from dataset.psi_data import PSI
 from model.unpie_gcn import UnPIEGCN
-from utils.data_utils import update_progress
+from utils.data_utils import get_path, update_progress
 from utils.print_utils import print_separator
 
 
-class PIEPreprocessing(object):
+class  DatasetPreprocessing(object):
     '''
     Given the PIE data, this class combines image features to create the image embedding for each pedestrian,
     generating input data for clustering computation.
     '''
-    def __init__(self, params):
-        self.pie_path = params['pie_path']
+    def __init__(self, params, dataset):
         self.data_opts = params['data_opts']
         self.batch_size = params['batch_size']
         self.inference_batch_size = params['inference_batch_size']
@@ -37,64 +37,65 @@ class PIEPreprocessing(object):
         self.num_of_total_frames = 0
         self.dataset_objs_statistics = {obj: {} for obj in self.obj_classes_list}
 
-        self.pie = PIE(
-            data_path=self.pie_path, 
-            data_opts=self.data_opts, 
-            data_sets=self.data_sets, 
-            feat_input_size=self.feat_input_size, 
-            feature_extractor=self.feature_extractor,
-            obj_classes_list=self.obj_classes_list)
-
-    def get_datasets(self):
+        if dataset == 'pie':
+            self.dataset_path = params['pie_path']
+            self.dataset = PIE(
+                data_path=self.dataset_path, 
+                data_opts=self.data_opts, 
+                data_sets=self.data_sets, 
+                feat_input_size=self.feat_input_size, 
+                feature_extractor=self.feature_extractor,
+                obj_classes_list=self.obj_classes_list)
+        elif dataset == 'psi':
+            self.dataset_path = params['psi_path']
+            self.dataset = PSI(
+                data_path=self.dataset_path, 
+                data_opts=self.data_opts,
+                feat_input_size=self.feat_input_size, 
+                feature_extractor=self.feature_extractor,
+                obj_classes_list=self.obj_classes_list)     
+        else:
+            raise Exception("Unknown dataset name!")
+        
+    def get_datasets(self, only_test=False):
         '''
         Build the inputs for the clustering computation
         '''
         # PIE preprocessing
         print_separator('PIE preprocessing')
 
-        # Load the data
-        test_features= None
-        train_features = self._get_features('train')
-        val_features = self._get_features('val')
+        # Load the test data
         test_features = self._get_features('test')
+
+        if not only_test:
+            train_features = self._get_features('train')
+            val_features = self._get_features('val')
+        else:
+            train_features = val_features = None
 
         self._prints_dataset_statistics()
 
         # Get the max number of nodes for each class across all splits
         max_nodes_dict, _ = self._get_max_nodes_dict(
             [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
+            if not only_test else [test_features['max_nodes_dict']]
         )
 
         # One-hot classes
         one_hot_classes = self._get_one_hot_classes(
             [train_features['obj_classes'], val_features['obj_classes'], test_features['obj_classes']]
+            if not only_test else [test_features['obj_classes']]
         )
         max_num_nodes = len(one_hot_classes)
 
         print('Max number of nodes in a graph: {}'.format(max_num_nodes))
         print('Classes max number of nodes: {}'.format(max_nodes_dict))
-        print('Number of clases: {}'.format(len(one_hot_classes)))
+        print('Number of classes: {}'.format(len(one_hot_classes)))
 
-        # Load the data
-        test_dataset = None
-        test_len = 0
-        train_dataloader, train_len = self._get_dataloader('train', train_features, max_nodes_dict, max_num_nodes, one_hot_classes)
-        val_dataloader, val_len = self._get_dataloader('val', val_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+        # Load the test data
         test_dataset, test_len = self._get_dataloader('test', test_features, max_nodes_dict, max_num_nodes, one_hot_classes)
 
-        return {
-            'train': {
-                'dataloader': train_dataloader,
-                'len': train_len,
-                'num_nodes': max_num_nodes,
-                'len_one_hot_classes': len(one_hot_classes)
-            },
-            'val': {
-                'dataloader': val_dataloader,
-                'len': val_len,
-                'num_nodes': max_num_nodes,
-                'len_one_hot_classes': len(one_hot_classes)
-            },
+        datasets = {
             'test': {
                 'dataloader': test_dataset,
                 'len': test_len,
@@ -102,6 +103,27 @@ class PIEPreprocessing(object):
                 'len_one_hot_classes': len(one_hot_classes)
             }
         }
+
+        if not only_test:
+            train_dataloader, train_len = self._get_dataloader('train', train_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+            val_dataloader, val_len = self._get_dataloader('val', val_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+
+            datasets.update({
+                'train': {
+                    'dataloader': train_dataloader,
+                    'len': train_len,
+                    'num_nodes': max_num_nodes,
+                    'len_one_hot_classes': len(one_hot_classes)
+                },
+                'val': {
+                    'dataloader': val_dataloader,
+                    'len': val_len,
+                    'num_nodes': max_num_nodes,
+                    'len_one_hot_classes': len(one_hot_classes)
+                }
+            })
+
+        return datasets
 
     def _get_one_hot_classes(self, list_obj_classes):
         # Get classes
@@ -130,7 +152,7 @@ class PIEPreprocessing(object):
     
     def _get_features(self, data_split):
         # Generate data sequences
-        features_d = self.pie.generate_data_trajectory_sequence(data_split, **self.data_opts)
+        features_d = self.dataset.generate_data_trajectory_sequence(data_split, **self.data_opts)
 
         self._extract_dataset_statistics(features_d.copy())
 
@@ -141,7 +163,7 @@ class PIEPreprocessing(object):
 
         # Balance the number of samples in each split
         if self.balance_dataset:
-            features_d = self.pie.balance_samples_count(features_d, label_type='intention_binary')
+            features_d = self._balance_samples_count(features_d, label_type='intention_binary')
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         features_d = self._load_features(features_d, data_split=data_split)
@@ -235,16 +257,18 @@ class PIEPreprocessing(object):
         other_ped_ids = data['other_ped_ids']
 
         # load the feature files if exists
-        peds_load_path = self.pie.get_path(
+        peds_load_path = get_path(
+            dataset_path=self.dataset_path,
             data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
             model_name=self.feature_extractor,
             data_subset = data_split,
-            feature_type=self.pie.get_ped_type())
-        objs_load_path = self.pie.get_path(
+            feature_type=self.dataset.get_ped_type())
+        objs_load_path = get_path(
+            dataset_path=self.dataset_path,
             data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
             model_name=self.feature_extractor,
             data_subset = data_split,
-            feature_type=self.pie.get_traffic_type())
+            feature_type=self.dataset.get_traffic_type())
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_split, peds_load_path))
 
         ped_sequences, obj_sequences, other_ped_sequences = [], [], []
@@ -426,5 +450,60 @@ class PIEPreprocessing(object):
         print("rows: ", rows)
         print(table)
         print("Mean occurrence", mean_occurrence)
+
+    def _balance_samples_count(self, seq_data, label_type, random_seed=42):
+        """
+        Balances the number of positive and negative samples by randomly sampling
+        from the more represented samples. Only works for binary classes.
+        :param seq_data: The sequence data to be balanced.
+        :param label_type: The lable type based on which the balancing takes place.
+        The label values must be binary, i.e. only 0, 1.
+        :param random_seed: The seed for random number generator.
+        :return: Balanced data sequence.
+        """
+        for lbl in seq_data[label_type]:
+            if lbl not in [0, 1]:
+                raise Exception("The label values used for balancing must be"
+                                " either 0 or 1")
+
+        # balances the number of positive and negative samples
+        print_separator("Balancing the number of positive and negative intention samples", space=False)
+
+        gt_labels = seq_data[label_type]
+        num_pos_samples = np.count_nonzero(np.array(gt_labels))
+        num_neg_samples = len(gt_labels) - num_pos_samples
+
+        new_seq_data = {}
+        # finds the indices of the samples with larger quantity
+        if num_neg_samples == num_pos_samples:
+            print('Positive and negative samples are already balanced')
+            return seq_data
+        else:
+            print('Unbalanced: \t Positive: {} \t Negative: {}'.format(num_pos_samples, num_neg_samples))
+            if num_neg_samples > num_pos_samples:
+                rm_index = np.where(np.array(gt_labels) == 0)[0]
+            else:
+                rm_index = np.where(np.array(gt_labels) == 1)[0]
+
+            # Calculate the difference of sample counts
+            dif_samples = abs(num_neg_samples - num_pos_samples)
+            # shuffle the indices
+            np.random.seed(random_seed)
+            np.random.shuffle(rm_index)
+            # reduce the number of indices to the difference
+            rm_index = rm_index[0:dif_samples]
+            # update the data
+            for k in seq_data:
+                seq_data_k = seq_data[k]
+                if not isinstance(seq_data[k], list) and not isinstance(seq_data[k], np.ndarray):
+                    new_seq_data[k] = seq_data[k]
+                else:
+                    new_seq_data[k] = [seq_data_k[i] for i in range(0, len(seq_data_k)) if i not in rm_index]
+
+            new_gt_labels = new_seq_data[label_type]
+            num_pos_samples = np.count_nonzero(np.array(new_gt_labels))
+            print('Balanced:\t Positive: %d  \t Negative: %d\n'
+                  % (num_pos_samples, len(new_seq_data[label_type]) - num_pos_samples))
+        return new_seq_data
                 
 

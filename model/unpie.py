@@ -60,7 +60,6 @@ class UnPIE():
         num_clusters = len(self.percentiles) if self.cluster_alg == 'density' else num_kmeans_k
 
         self.memory_bank = MemoryBank(self.data_len, self.emb_dim)
-        self.all_labels = self.params['datasets']['train']['dataloader'].dataset.y
 
         # Initialize lbl_init_values with 0 and 1s randomly
         lbl_init_values = np.random.randint(2, size=self.data_len)
@@ -340,6 +339,9 @@ class UnPIE():
     def train(self):
         # Write args
         write_dict(self.args, os.path.join(self.cache_dir, 'args.txt')) 
+        # Save train_labels for testing the model
+        self.train_labels = self.params['datasets']['train']['dataloader'].dataset.y
+        np.save(os.path.join(self.cache_dir, 'train_labels.npy'), self.train_labels)
 
         print_separator('Starting UnPIE training')
         self._restore_model(self.last_check_manager.latest_checkpoint)
@@ -405,6 +407,9 @@ class UnPIE():
 
     def test(self):
         print_separator('Starting UnPIE testing')
+        # Restore the training labels for computing metrics
+        self.train_labels = np.load(os.path.join(self.cache_dir, 'train_labels.npy'))
+
         self._restore_model(self.last_check_manager.latest_checkpoint)
         self._run_test_loop('last')
         self._restore_model(self.best_check_manager.latest_checkpoint)
@@ -439,11 +444,11 @@ class UnPIE():
             instance_t,
             k,
             num_classes):
-        all_labels = self.all_labels
+        train_labels = self.train_labels
         curr_dist, _ = output
-        all_labels = tuple_get_one(all_labels)
+        train_labels = tuple_get_one(train_labels)
         top_dist, top_indices = tf.nn.top_k(curr_dist, k=k) # top k closest neighbor (highest similarity) for each test sample, top_dist: similarity score, top_indices: index of the closest neighbor
-        top_labels = tf.gather(all_labels, top_indices) # retrieve the labels of the nearest neighbors
+        top_labels = tf.gather(train_labels, top_indices) # retrieve the labels of the nearest neighbors
         top_labels_one_hot = tf.one_hot(top_labels, num_classes)
         top_prob = tf.exp(top_dist / instance_t)
         top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1) # Each one-hot encoded label is weighted by its corresponding probability.
