@@ -178,7 +178,6 @@ class UnPIESTGCN(tf.keras.Model):
         scene_num_output_layers = params['scene_num_output_layers']
         drop_tcn = params['drop_tcn']
         drop_conv = params['drop_conv']
-        num_nodes = params['num_nodes']
         seq_len = params['seq_len']
         stgcn_kernel_size = params['stgcn_kernel_size']
         self.edge_importance = params['edge_importance']
@@ -188,7 +187,6 @@ class UnPIESTGCN(tf.keras.Model):
         self.seq_len = params['seq_len']
         self.num_nodes = params['num_nodes']
         self.output_feat_extr = params['feat_output_size']
-        self.len_one_hot_classes = params['len_one_hot_classes']
         self.batch_size = params['batch_size']
         self.emb_dim = params['emb_dim']
 
@@ -209,7 +207,7 @@ class UnPIESTGCN(tf.keras.Model):
                     dropout_conv=0.5,
                     downsample=True if i==0 else False,
                     params=params,
-                    channel_in=self.output_feat_extr + self.len_one_hot_classes))
+                    channel_in=self.output_feat_extr + self.num_nodes)) # add the one-hot classes
         for i in range(gcn_num_output_layers):
             self.STGCN_layers_x.append(
                 STGCN(
@@ -238,7 +236,7 @@ class UnPIESTGCN(tf.keras.Model):
                         dropout_conv=0,
                         downsample=True if i==0 else False,
                         params=params,
-                        channel_in=self.output_feat_extr + self.len_one_hot_classes))
+                        channel_in=self.output_feat_extr + self.num_nodes)) # add the one-hot classes
             for _ in range(scene_num_output_layers):
                 self.STGCN_layers_b.append(
                     STGCN(
@@ -258,8 +256,8 @@ class UnPIESTGCN(tf.keras.Model):
             self.edge_importance_x = [
                 tf.Variable(
                     tf.random.normal(
-                        shape=(num_nodes, num_nodes),
-                        stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
+                        shape=(self.num_nodes, self.num_nodes),
+                        stddev=tf.sqrt(2.0 / (self.num_nodes * self.num_nodes)),  # He initialization
                     ),
                     trainable=True,
                 )
@@ -269,8 +267,8 @@ class UnPIESTGCN(tf.keras.Model):
                     self.edge_importance_b = [
                         tf.Variable(
                             tf.random.normal(
-                                shape=(num_nodes, num_nodes),
-                                stddev=tf.sqrt(2.0 / (num_nodes * num_nodes)),  # He initialization
+                                shape=(self.num_nodes, self.num_nodes),
+                                stddev=tf.sqrt(2.0 / (self.num_nodes * self.num_nodes)),  # He initialization
                             ),
                             trainable=True,
                         )
@@ -344,7 +342,7 @@ class UnPIESTGCN(tf.keras.Model):
         inputs = [
             tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.output_feat_extr), name='x', batch_size=self.batch_size),
             tf.keras.Input(shape=(self.seq_len, self.num_nodes, 4), name='b', batch_size=self.batch_size),
-            tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.len_one_hot_classes), name='c', batch_size=self.batch_size),
+            tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.num_nodes), name='c', batch_size=self.batch_size),
             tf.keras.Input(shape=(self.seq_len, self.num_nodes, self.num_nodes), name='a', batch_size=self.batch_size)
         ]
 

@@ -1,19 +1,19 @@
 import sys
 import tensorflow as tf
 
-from dataset.pie_preprocessing import DatasetPreprocessing
+from dataset.dataset_preprocessing import DatasetPreprocessing
 from model.params_loader import ParamsLoader
 from model.unpie import UnPIE
 from utils.print_utils import print_separator
 
 def get_unpie(training_step, train_test, dataset):
     is_test = train_test > 0 # 0: train only, 1: train and test, 2: test only
-    only_test = train_test == 2
+    is_only_test = train_test == 2
 
     params_loader = ParamsLoader(training_step)
     dataset_preprocessing = DatasetPreprocessing(params_loader.get_dataset_params(), dataset)
-    datasets = dataset_preprocessing.get_datasets(only_test)
-    params = params_loader.get_params(datasets, is_test)
+    datasets = dataset_preprocessing.get_datasets(is_only_test)
+    params = params_loader.get_params(datasets, is_test, is_only_test)
     args = params_loader.get_args()
     unpie = UnPIE(params, args)
     return unpie
