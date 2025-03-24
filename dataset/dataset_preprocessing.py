@@ -57,7 +57,7 @@ class  DatasetPreprocessing(object):
         else:
             raise Exception("Unknown dataset name!")
         
-    def get_datasets(self, only_test=False):
+    def get_datasets(self, is_only_test=False):
         '''
         Build the inputs for the clustering computation
         '''
@@ -67,7 +67,7 @@ class  DatasetPreprocessing(object):
         # Load the test data
         test_features = self._get_features('test')
 
-        if not only_test:
+        if not is_only_test:
             train_features = self._get_features('train')
             val_features = self._get_features('val')
         else:
@@ -75,71 +75,48 @@ class  DatasetPreprocessing(object):
 
         self._prints_dataset_statistics()
 
-        # Get the max number of nodes for each class across all splits
-        max_nodes_dict, _ = self._get_max_nodes_dict(
+        # Print statistics: Get the max number of nodes for each class across all splits
+        class_max_nodes_dict, _ = self._get_max_nodes_dict(
             [train_features['max_nodes_dict'], val_features['max_nodes_dict'], test_features['max_nodes_dict']]
-            if not only_test else [test_features['max_nodes_dict']]
+            if not is_only_test else [test_features['max_nodes_dict']]
         )
+        print('Classes max number of nodes: {}'.format(class_max_nodes_dict))
 
-        # One-hot classes
-        one_hot_classes = self._get_one_hot_classes(
-            [train_features['obj_classes'], val_features['obj_classes'], test_features['obj_classes']]
-            if not only_test else [test_features['obj_classes']]
-        )
-        max_num_nodes = len(one_hot_classes)
+        graph_nodes_classes = self.obj_classes_list + [self.ped_class]
+        one_hot_classes = self._get_one_hot_classes(graph_nodes_classes)
 
-        print('Max number of nodes in a graph: {}'.format(max_num_nodes))
-        print('Classes max number of nodes: {}'.format(max_nodes_dict))
-        print('Number of classes: {}'.format(len(one_hot_classes)))
+        print('Number of nodes in a graph: {}'.format(len(graph_nodes_classes)))
 
         # Load the test data
-        test_dataset, test_len = self._get_dataloader('test', test_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+        test_dataset, test_len = self._get_dataloader('test', test_features, graph_nodes_classes, one_hot_classes)
 
         datasets = {
             'test': {
                 'dataloader': test_dataset,
-                'len': test_len,
-                'num_nodes': max_num_nodes,
-                'len_one_hot_classes': len(one_hot_classes)
+                'len': test_len
             }
         }
 
-        if not only_test:
-            train_dataloader, train_len = self._get_dataloader('train', train_features, max_nodes_dict, max_num_nodes, one_hot_classes)
-            val_dataloader, val_len = self._get_dataloader('val', val_features, max_nodes_dict, max_num_nodes, one_hot_classes)
+        if not is_only_test:
+            train_dataloader, train_len = self._get_dataloader('train', train_features, graph_nodes_classes, one_hot_classes)
+            val_dataloader, val_len = self._get_dataloader('val', val_features, graph_nodes_classes, one_hot_classes)
 
             datasets.update({
                 'train': {
                     'dataloader': train_dataloader,
-                    'len': train_len,
-                    'num_nodes': max_num_nodes,
-                    'len_one_hot_classes': len(one_hot_classes)
+                    'len': train_len
                 },
                 'val': {
                     'dataloader': val_dataloader,
-                    'len': val_len,
-                    'num_nodes': max_num_nodes,
-                    'len_one_hot_classes': len(one_hot_classes)
+                    'len': val_len
                 }
             })
 
         return datasets
 
     def _get_one_hot_classes(self, list_obj_classes):
-        # Get classes
-        classes_set = set(
-            obj_class
-            for split in list_obj_classes
-            for seq in split
-            for frame in seq
-            for obj_class in frame
-        )
-        classes_set.add(self.ped_class)
-        if self.other_ped_class in self.obj_classes_list:
-            classes_set.add(self.other_ped_class)
-
         # One-hot encode classes
-        classes_list = sorted(classes_set)  # Sorting ensures consistent order between different trainings
+        classes_list = sorted(list_obj_classes)  # Sorting ensures consistent order between different trainings
         class_to_index = {cls: i for i, cls in enumerate(classes_list)}
 
         # One-hot encoding
@@ -170,11 +147,10 @@ class  DatasetPreprocessing(object):
 
         return features_d
 
-    def _get_dataloader(self, data_split, features_d, max_nodes_dict, max_num_nodes, one_hot_classes):
+    def _get_dataloader(self, data_split, features_d, graph_nodes_classes, one_hot_classes):
         pie_dataset = PIEGraphDataset(
             features_d,
-            max_nodes_dict,
-            max_num_nodes,
+            graph_nodes_classes,
             one_hot_classes,
             [self.ped_class, self.other_ped_class],
             transform_a=UnPIEGCN.transform,

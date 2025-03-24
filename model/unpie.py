@@ -49,7 +49,7 @@ class UnPIE():
         )
 
         # Memory bank and clustering
-        self.data_len = self.params['model_params']['model_func_params']['data_len']
+        self.data_len = self._get_data_len()
         self.emb_dim = self.params['model_params']['model_func_params']['emb_dim']
         self.task = self.params['model_params']['model_func_params']['task']
         self.kmeans_k = self.params['model_params']['model_func_params']['kmeans_k']
@@ -78,11 +78,7 @@ class UnPIE():
         )
 
         # Optimizer
-        opt_params = self.params['optimizer_params']
-        self.learning_rate = self._get_learning_rate()
-        self.optimizer = tf.keras.optimizers.SGD(
-            learning_rate=self.learning_rate, 
-            **opt_params)
+        self.optimizer, self.learning_rate = self._get_optimizer()
 
         # Best accuracy
         self.best_val_acc = tf.Variable(0.0, trainable=False, dtype=tf.float32)
@@ -111,6 +107,24 @@ class UnPIE():
     
     def get_cluster_labels(self):
         return self.cluster_labels
+
+    def _get_data_len(self):
+        if self.params['is_only_test']:
+            # Load the true labels
+            return np.load(os.path.join(self.cache_dir, 'train_labels.npy')).shape[0]
+        else:
+            return self.params['model_params']['model_func_params']['data_len']
+
+    def _get_optimizer(self):
+        if self.params['is_only_test']:
+            return tf.keras.optimizers.SGD(), None
+        else:
+            opt_params = self.params['optimizer_params']
+            learning_rate = self._get_learning_rate()
+            optimizer = tf.keras.optimizers.SGD(
+                learning_rate=learning_rate, 
+                **opt_params)
+            return optimizer, learning_rate
 
     def _build_network(self, x, b, c, a, y, i, train):
         model_params = self.params['model_params']

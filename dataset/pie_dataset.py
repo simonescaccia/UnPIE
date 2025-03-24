@@ -9,9 +9,8 @@ np.set_printoptions(linewidth=np.inf)
 class PIEGraphDataset(torch.utils.data.Dataset):
     def __init__(self, 
                  features, 
-                 max_nodes_dict, 
-                 max_num_nodes, 
-                 one_hot_classes, 
+                 graph_nodes_classes,
+                 one_hot_classes,
                  ped_classes,
                  height, 
                  width, 
@@ -20,8 +19,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         self.edge_weigths = edge_weigths
         self.features = features
         self.transform_a = transform_a
-        self.max_nodes_dict = max_nodes_dict
-        self.max_num_nodes = max_num_nodes
+        self.graph_nodes_classes = graph_nodes_classes
         self.one_hot_classes = one_hot_classes
         self.ped_classes = ped_classes
         self.img_height = height
@@ -41,10 +39,9 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         '''
         features = self.features
         transform_a = self.transform_a
-        max_nodes_dict = self.max_nodes_dict
-        max_num_nodes = self.max_num_nodes
-        ped_classes = self.ped_classes
+        graph_nodes_classes = self.graph_nodes_classes
         one_hot_classes = self.one_hot_classes
+        ped_classes = self.ped_classes
 
         ped_feats = features['ped_feats'] # [num_seqs, seq_len, emb_dim]
         ped_bboxes = features['ped_bboxes'] # [num_seqs, seq_len, 4]
@@ -61,7 +58,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         # Prepare objects start position. Class order: ped, obj_class_1, obj_class_2, ..., obj_class_n , other_peds
         class_init_pos = 1
         obj_class_pos = {}
-        for k, v in max_nodes_dict.items():
+        for k in graph_nodes_classes:
             if k not in ped_classes:
                 obj_class_pos[k] = {}
                 obj_class_pos[k]['init_pos'] = class_init_pos
@@ -73,10 +70,10 @@ class PIEGraphDataset(torch.utils.data.Dataset):
         seq_len = len(ped_feats[0])
 
         # Pre-allocate for the sequence
-        x_seq = np.zeros((num_seqs, seq_len, max_num_nodes, ped_feats[0][0].shape[0]), dtype=np.float32)
-        b_seq = np.zeros((num_seqs, seq_len, max_num_nodes, 4), dtype=np.float32)
-        c_seq = np.zeros((num_seqs, seq_len, max_num_nodes, len(one_hot_classes)), dtype=np.float32)
-        a_seq = np.zeros((num_seqs, seq_len, max_num_nodes, max_num_nodes), dtype=np.float32)
+        x_seq = np.zeros((num_seqs, seq_len, len(graph_nodes_classes), ped_feats[0][0].shape[0]), dtype=np.float32)
+        b_seq = np.zeros((num_seqs, seq_len, len(graph_nodes_classes), 4), dtype=np.float32)
+        c_seq = np.zeros((num_seqs, seq_len, len(graph_nodes_classes), len(graph_nodes_classes)), dtype=np.float32)
+        a_seq = np.zeros((num_seqs, seq_len, len(graph_nodes_classes), len(graph_nodes_classes)), dtype=np.float32)
         y_seq = np.zeros((num_seqs,), dtype=np.uint8)
 
         for i in range(num_seqs):
@@ -91,7 +88,7 @@ class PIEGraphDataset(torch.utils.data.Dataset):
                 ped_position = bbox_center(ped_bboxes[i][j])
                 num_node = 1
 
-                edge_weights = np.zeros((max_num_nodes,), dtype=np.float32) 
+                edge_weights = np.zeros((len(graph_nodes_classes),), dtype=np.float32) 
 
                 # Object nodes
                 for k, (obj_feat, obj_bbox, obj_class) in enumerate(zip(obj_feats[i][j], obj_bboxes[i][j], obj_classes[i][j])):

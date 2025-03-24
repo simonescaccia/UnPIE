@@ -138,13 +138,13 @@ class ParamsLoader:
 
         return save_params, load_params
 
-    def _get_model_func_params(self, dataset_len, num_nodes):
+    def _get_model_func_params(self, train_dataset_len):
         model_params = {
             "instance_t": self.args['instance_t'],
             "instance_k": self.args[self.setting]['instance_k'],
             "kmeans_k": self.args['kmeans_k'],
             "task": self.args[self.setting]['task'],
-            "data_len": dataset_len,
+            "data_len": train_dataset_len,
             "emb_dim": self.args['emb_dim'],
             "gcn_middle_layer_dim": self.args['gcn_middle_layer_dim'],
             "gcn_middle_2_layer_dim": self.args['gcn_middle_2_layer_dim'],
@@ -162,14 +162,13 @@ class ParamsLoader:
             "scene_num_input_layers": self.args['scene_num_input_layers'],
             "scene_num_output_layers": self.args['scene_num_output_layers'],
             "seq_len": self.args['num_frames'],
-            "num_nodes": num_nodes,
+            "num_nodes": len(self.args['obj_classes'].split(',')) + 1, # ped + obj_classes
             "edge_importance": self.args['edge_importance'],
             "is_scene": self.args['is_scene'],
             "share_edge_importance": self.args['share_edge_importance'],
             "cluster_alg": self.args['cluster_alg'],
             "num_classes": self.args['num_classes'],
             "stgcn_kernel_size": self.args['stgcn_kernel_size'],
-            "len_one_hot_classes": self.args['len_one_hot_classes'],
             "feat_output_size": self.args[self.args['feature_extractor']+'_output_size'],
             "batch_size": self.args['batch_size'],
         }
@@ -206,50 +205,53 @@ class ParamsLoader:
             ## Add other loss reports (loss_model, loss_noise)
             train_params['targets'] = {}
 
-        inference_targets = {
-            'k': self.args['kNN_inference'],
-            'instance_t': self.args['instance_t'],
-            'num_classes': self.args['num_classes']
-        }
-
-        inference_params = {
-            'targets': inference_targets,
-            'inference_batch_size': self.args['inference_batch_size'],
-        }
-
         params = {
             'loss_params': loss_params,
             'learning_rate_params': learning_rate_params,
             'optimizer_params': optimizer_params,
             'train_params': train_params,
-            'inference_params': inference_params,
         }
 
         return params
+    
+    def get_inference_params(self):
+        inference_targets = {
+            'k': self.args['kNN_inference'],
+            'instance_t': self.args['instance_t'],
+            'num_classes': self.args['num_classes']
+        }
+        inference_params = {
+            'targets': inference_targets,
+            'inference_batch_size': self.args['inference_batch_size'],
+        }
+        params = {
+            'inference_params': inference_params,
+        }
+        return params
 
-    def get_params(self, datasets, is_test):
+    def get_params(self, datasets, is_test, is_only_test):
 
         save_params, load_params = self._get_save_load_params_from_arg()
         pie_params = self.get_dataset_params()
 
         self.args['emb_dim'] = self.args['scene_output_layer_dim'] + self.args['gcn_output_layer_dim']
         self.args['kmeans_k'] = [self.args['clustering_groups']] * self.args['num_kmeans']
-        self.args['len_one_hot_classes'] = datasets['train']['len_one_hot_classes']
-        model_func_params = self._get_model_func_params(datasets['train']['len'], datasets['train']['num_nodes'])
+        model_func_params = self._get_model_func_params(datasets['train']['len'] if not is_only_test else None) # datasets['train']['len'] only set when training
         model_params = {
             'model_func_params': model_func_params
         }
 
         generic_params = {
             'is_test': is_test,
-            'pie_path': pie_params['pie_path'],
+            'is_only_test': is_only_test,
             'save_params': save_params,
             'load_params': load_params,
             'data_opts': pie_params['data_opts'],
             'model_params': model_params,
             'datasets': datasets,
         }
-        train_params = self.get_train_params(datasets)
+        train_params = self.get_train_params(datasets) if not is_only_test else {} # datasets only set when training
+        inference_params = self.get_inference_params()
 
-        all_params = {**generic_params, **train_params}
+        all_params = {**generic_params, **train_params, **inference_params}
         return all_params
