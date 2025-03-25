@@ -183,9 +183,6 @@ class  DatasetPreprocessing(object):
         other_ped_ids = dataset['other_ped_ids'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 1)
         ped_ids = dataset['ped_ids'].copy() # shape: (num_ped, num_frames, 1)
         int_bin = dataset['intention_binary'].copy() # shape: (num_ped, num_frames, 1)
-        print("int_bin len", len(int_bin))
-        print("int_bin[0] len", len(int_bin[0]))
-        print("int_bin[0][0] len", len(int_bin[0][0]))
 
         overlap_stride = seq_length if overlap == 0 else \
         int((1 - overlap) * seq_length)

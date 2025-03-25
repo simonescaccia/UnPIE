@@ -16,10 +16,13 @@ VAL = 'val'
 TEST = 'test'
 ALL = 'all'
 TRAIN_VAL = 'train_val'
+PED_IDS = 'ped_ids'
 
 class PSI(Data):
 
     def __init__(self, feature_extractor, data_path, data_opts, obj_classes_list, feat_input_size):
+        super(PSI, self).__init__()
+
         self.data_opts = data_opts
         self.psi_path = data_path
         self.test_path = 'PSI2.0_Test'
@@ -39,9 +42,7 @@ class PSI(Data):
         self.object_class_list = obj_classes_list
         self.feature_extractor = feature_extractor
         self.intent_type = 'mean'
-        self.ped_type = 'peds'
         self.other_ped_type = 'other_ped'
-        self.traffic_type = 'objs'
         self.feat_input_size = feat_input_size
 
     def load_split_json(self):
@@ -77,11 +78,11 @@ class PSI(Data):
         ped_obj_dataframe = get_ped_info_per_image(
             images=test_seq['image'],
             bboxes=test_seq['bbox'],
-            ped_ids=test_seq['ped_id'],
+            ped_ids=test_seq[PED_IDS],
             obj_bboxes=test_seq['obj_bboxes'],
             obj_ids=test_seq['obj_ids'],
-            other_ped_bboxes=[[[] for _ in range(len(test_seq['ped_id'][0]))] for _ in range(len(test_seq['ped_id']))],
-            other_ped_ids=[[[] for _ in range(len(test_seq['ped_id'][0]))] for _ in range(len(test_seq['ped_id']))],
+            other_ped_bboxes=[[[] for _ in range(len(test_seq[PED_IDS][0]))] for _ in range(len(test_seq[PED_IDS]))],
+            other_ped_ids=[[[] for _ in range(len(test_seq[PED_IDS][0]))] for _ in range(len(test_seq[PED_IDS]))],
             ped_type=self.ped_type,
             traffic_type=self.traffic_type)
 
@@ -128,7 +129,7 @@ class PSI(Data):
                                 row['id'], 
                                 set_id, 
                                 vid, 
-                                '{:05d}'.format(frame_num), 
+                                'frame_{}'.format(frame_num), 
                                 image,
                                 row['type'],
                                 self.psi_path,
@@ -476,7 +477,7 @@ class PSI(Data):
             'other_ped_bboxes': other_ped_bboxes_seq,
             'intention_prob': intention_prob,
             'intention_binary': intention_binary,
-            'ped_ids': pids_seq,
+            PED_IDS: pids_seq,
             'video_id': video_seq,
             'disagree_score': disagree_score_seq,
             'description': description_seq
@@ -536,7 +537,7 @@ class PSI(Data):
                         raise Exception("Unknown intent label: ", labels[j])
                 # [0, 0.5, 1]
                 intent_prob = np.mean(labels)
-                intent_binary = 0 if intent_prob < 0.5 else 1
+                intent_binary = [0] if intent_prob < 0.5 else [1]
                 prob_seq.append(intent_prob)
                 intent_seq.append(intent_binary)
                 disagree_score = sum([1 if lbl != intent_binary else 0 for lbl in labels]) / n_users

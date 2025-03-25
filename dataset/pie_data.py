@@ -53,6 +53,8 @@ class PIE(Data):
         :param regen_database: Whether generate the database or not
         :param data_path: The path to wh
         """
+        super(PIE, self).__init__()
+
         self.regen_database = regen_database
 
         # Paths
@@ -68,9 +70,6 @@ class PIE(Data):
         self.images_path = join(self.pie_path, 'images')
         
         self.data_opts = data_opts
-        
-        self.ped_type = 'peds'
-        self.traffic_type = 'objs'
 
         self.feature_extractor = feature_extractor
         self.feat_input_size = feat_input_size
@@ -102,12 +101,6 @@ class PIE(Data):
         if not isdir(cache_path):
             makedirs(cache_path)
         return cache_path
-
-    def get_ped_type(self):
-        return self.ped_type
-    
-    def get_traffic_type(self):
-        return self.traffic_type
 
     def _get_default_path(self):
         """
