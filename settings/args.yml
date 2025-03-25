@@ -21,7 +21,7 @@ IR:
   lr_decay_steps: 30 # learning rate decay steps
   train_num_workers: 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 5 # number of training epochs
+  train_num_epochs: 200 # number of training epochs
   load_task: null # load task
   load_step: null # load step
   clstr_update_per_epoch: 0 # number of cluster updates per epoch

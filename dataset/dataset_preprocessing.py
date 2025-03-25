@@ -6,7 +6,7 @@ import pickle
 from pathlib import PurePath
 
 from dataset.pie_data import PIE
-from dataset.pie_dataset import PIEGraphDataset
+from dataset.graph_dataset import GraphDataset
 from dataset.psi_data import PSI
 from model.unpie_gcn import UnPIEGCN
 from utils.data_utils import get_path, update_progress
@@ -129,7 +129,7 @@ class  DatasetPreprocessing(object):
     
     def _get_features(self, data_split):
         # Generate data sequences
-        features_d = self.dataset.generate_data_trajectory_sequence(data_split, **self.data_opts)
+        features_d = self.dataset.generate_data_sequence(data_split, **self.data_opts)
 
         self._extract_dataset_statistics(features_d.copy())
 
@@ -148,7 +148,7 @@ class  DatasetPreprocessing(object):
         return features_d
 
     def _get_dataloader(self, data_split, features_d, graph_nodes_classes, one_hot_classes):
-        pie_dataset = PIEGraphDataset(
+        graph_dataset = GraphDataset(
             features_d,
             graph_nodes_classes,
             one_hot_classes,
@@ -160,10 +160,10 @@ class  DatasetPreprocessing(object):
         )
 
         if data_split == 'train':
-            return torch.utils.data.DataLoader(pie_dataset, batch_size=self.batch_size, shuffle=True), pie_dataset.__len__()
+            return torch.utils.data.DataLoader(graph_dataset, batch_size=self.batch_size, shuffle=True), graph_dataset.__len__()
         else:
-            pie_dataset.shuffle()
-            return torch.utils.data.DataLoader(pie_dataset, batch_size=self.inference_batch_size, shuffle=False), pie_dataset.__len__()
+            graph_dataset.shuffle()
+            return torch.utils.data.DataLoader(graph_dataset, batch_size=self.inference_batch_size, shuffle=False), graph_dataset.__len__()
             
     def _get_data(self, dataset, seq_length, overlap):
         """
@@ -183,6 +183,9 @@ class  DatasetPreprocessing(object):
         other_ped_ids = dataset['other_ped_ids'].copy() # shape: (num_ped, num_frames, num_seq, num_other_peds, 1)
         ped_ids = dataset['ped_ids'].copy() # shape: (num_ped, num_frames, 1)
         int_bin = dataset['intention_binary'].copy() # shape: (num_ped, num_frames, 1)
+        print("int_bin len", len(int_bin))
+        print("int_bin[0] len", len(int_bin[0]))
+        print("int_bin[0][0] len", len(int_bin[0][0]))
 
         overlap_stride = seq_length if overlap == 0 else \
         int((1 - overlap) * seq_length)

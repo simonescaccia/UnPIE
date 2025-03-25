@@ -41,11 +41,12 @@ import pandas as pd
 from os.path import join, abspath, isfile, isdir
 from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
+from dataset.generic_data import Data
 from dataset.pretrained_extractor import PretrainedExtractor
 from utils.data_utils import extract_and_save, get_path, get_ped_info_per_image, organize_features, squarify, update_progress, merge_directory
 from utils.print_utils import print_separator
 
-class PIE(object):
+class PIE(Data):
     def __init__(self, data_opts, data_sets, feature_extractor, feat_input_size, regen_database=False, data_path='', obj_classes_list=None):
         """
         Class constructor
@@ -970,7 +971,7 @@ class PIE(object):
         """
         return [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2]
 
-    def generate_data_trajectory_sequence(self, image_set, **opts):
+    def generate_data_sequence(self, image_set, **opts):
         """
         Generates pedestrian tracks
         :param image_set: the split set to produce for. Options are train, test, val.

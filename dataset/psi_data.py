@@ -7,6 +7,7 @@ import numpy as np
 from tqdm import tqdm
 import sys
 
+from dataset.generic_data import Data
 from dataset.pretrained_extractor import PretrainedExtractor
 from utils.data_utils import extract_and_save, get_ped_info_per_image, organize_features
 
@@ -16,9 +17,9 @@ TEST = 'test'
 ALL = 'all'
 TRAIN_VAL = 'train_val'
 
-class PSI(object):
+class PSI(Data):
 
-    def __init__(self, feature_extractor, data_path, data_opts, object_class_list, feat_input_size):
+    def __init__(self, feature_extractor, data_path, data_opts, obj_classes_list, feat_input_size):
         self.data_opts = data_opts
         self.psi_path = data_path
         self.test_path = 'PSI2.0_Test'
@@ -35,10 +36,11 @@ class PSI(object):
             TEST: ['set03'],
             ALL: ['set01', 'set02', 'set03']
         }
-        self.object_class_list = object_class_list
+        self.object_class_list = obj_classes_list
         self.feature_extractor = feature_extractor
         self.intent_type = 'mean'
         self.ped_type = 'peds'
+        self.other_ped_type = 'other_ped'
         self.traffic_type = 'objs'
         self.feat_input_size = feat_input_size
 
@@ -71,20 +73,19 @@ class PSI(object):
     '''Given video path, extract frames for all videos. Check if frames exist first.'''
     def extract_images_and_save_features(self, split):
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
-        annotation_train, annotation_val, annotation_test = self.generate_database()
-        test_seq = self.generate_data_sequence('test', annotation_test)
+        test_seq = self.generate_data_sequence('test')
         ped_obj_dataframe = get_ped_info_per_image(
-            images=test_seq['frame'],
+            images=test_seq['image'],
             bboxes=test_seq['bbox'],
             ped_ids=test_seq['ped_id'],
-            obj_bboxes=test_seq['objs_bboxes'],
-            obj_ids=test_seq['objs_ids'],
+            obj_bboxes=test_seq['obj_bboxes'],
+            obj_ids=test_seq['obj_ids'],
             other_ped_bboxes=[[[] for _ in range(len(test_seq['ped_id'][0]))] for _ in range(len(test_seq['ped_id']))],
             other_ped_ids=[[[] for _ in range(len(test_seq['ped_id'][0]))] for _ in range(len(test_seq['ped_id']))],
             ped_type=self.ped_type,
             traffic_type=self.traffic_type)
 
-        print("\nObjects: ", self.get_unique_values(test_seq['objs_classes']))
+        print("\nObjects: ", self.get_unique_values(test_seq['obj_classes']))
 
         self.split_json = self.load_split_json()
         if split == ALL:
@@ -203,7 +204,7 @@ class PSI(object):
         return annotation_splits[0], annotation_splits[1], annotation_splits[2]
 
     def create_database(self, split_name):
-        with open(self.json_split_file_path, 'r') as f:
+        with open(os.path.join(self.psi_path, self.json_split_file_path), 'r') as f:
             datasplits = json.load(f)
         print(f"Initialize {split_name} database, {time.strftime('%d%b%Y-%Hh%Mm%Ss')}")
 
@@ -321,18 +322,25 @@ class PSI(object):
                     obj_classes = []
                     obj_bboxes = []
                     obj_ids = []
+                    other_ped_ids = []
+                    other_ped_bboxes = []
                     for obj_id in cv_annotation['frames'][frame]['cv_annotation'].keys():
                         obj = cv_annotation['frames'][frame]['cv_annotation'][obj_id]
                         # Select only trained classes
                         if obj['object_type'] in self.object_class_list:
-                            obj_classes.append(obj['object_type'])
-                            obj_bboxes.append(obj['bbox'])
-                            obj_ids.append(obj['track_id'])
+                            if obj['object_type'] == self.other_ped_type:
+                                other_ped_ids.append(obj['track_id'])
+                                other_ped_bboxes.append(obj['bbox'])
+                            else:
+                                obj_classes.append(obj['object_type'])
+                                obj_bboxes.append(obj['bbox'])
+                                obj_ids.append(obj['track_id'])
 
-                    db[video_name][pedId]['objs_classes'].append(obj_classes)
-                    db[video_name][pedId]['objs_bboxes'].append(obj_bboxes)
-                    db[video_name][pedId]['objs_ids'].append(obj_ids)
-
+                    db[video_name][pedId]['obj_classes'].append(obj_classes)
+                    db[video_name][pedId]['obj_bboxes'].append(obj_bboxes)
+                    db[video_name][pedId]['obj_ids'].append(obj_ids)
+                    db[video_name][pedId]['other_ped_ids'].append(other_ped_ids)
+                    db[video_name][pedId]['other_ped_bboxes'].append(other_ped_bboxes)
 
             if len(db[video_name].keys()) < 1: # has no valid ped sequence! Remove this video!")
                 print(f"!!!!! Video, {video_name}, has no valid ped sequence! Remove this video! \n")
@@ -355,9 +363,11 @@ class PSI(object):
             'nlp_annotations': {
                 # [vid_uid_pair: {'intent': [], 'description': [], 'key_frame': []}]
             },
-            'objs_classes': [],
-            'objs_bboxes': [],
-            'objs_ids': []
+            'obj_classes': [],
+            'obj_bboxes': [],
+            'obj_ids': [],
+            'other_ped_ids': [],
+            'other_ped_bboxes': []
         }
         for vid_uid in nlp_vid_uid_pairs:
             db[video_name][ped_name]['nlp_annotations'][vid_uid] = {
@@ -414,7 +424,10 @@ class PSI(object):
             db[vname][pid]['nlp_annotations'][nlp_vid_uid]['description'] = [description_list[i] for i in split_inds]
             db[vname][pid]['nlp_annotations'][nlp_vid_uid]['key_frame'] = [key_frame_list[i] for i in split_inds]
 
-    def generate_data_sequence(self, set_name, database):
+    def generate_data_sequence(self, set_name, **kwargs):
+        train, val, test = self.generate_database()
+        database = train if set_name == 'train' else val if set_name == 'val' else test
+
         intention_prob = []
         intention_binary = []
         frame_seq = []
@@ -423,9 +436,11 @@ class PSI(object):
         box_seq = []
         description_seq = []
         disagree_score_seq = []
-        objs_classes_seq = []
-        objs_bboxes_seq = []    
-        objs_ids_seq = []
+        obj_classes_seq = []
+        obj_bboxes_seq = []    
+        obj_ids_seq = []
+        other_ped_ids_seq = []
+        other_ped_bboxes_seq = []
 
         video_ids = sorted(database.keys())
         for video in sorted(video_ids): # video_name: e.g., 'video_0001'
@@ -435,9 +450,11 @@ class PSI(object):
                     frames.append(os.path.join(self.video_set_nums[set_name][0], video, 'frame_{}'.format(frame)))
                 frame_seq.append(frames)
                 box_seq.append(database[video][ped]['cv_annotations']['bbox'])
-                objs_classes_seq.append(database[video][ped]['objs_classes'])
-                objs_bboxes_seq.append(database[video][ped]['objs_bboxes'])
-                objs_ids_seq.append(database[video][ped]['objs_ids'])
+                obj_classes_seq.append(database[video][ped]['obj_classes'])
+                obj_bboxes_seq.append(database[video][ped]['obj_bboxes'])
+                obj_ids_seq.append(database[video][ped]['obj_ids'])
+                other_ped_ids_seq.append(database[video][ped]['other_ped_ids'])
+                other_ped_bboxes_seq.append(database[video][ped]['other_ped_bboxes'])
 
                 n = len(database[video][ped]['frames'])
                 pids_seq.append([[ped]] * n)
@@ -450,14 +467,16 @@ class PSI(object):
             
 
         return {
-            'frame': frame_seq,
+            'image': frame_seq,
             'bbox': box_seq,
-            'objs_classes': objs_classes_seq,
-            'objs_bboxes': objs_bboxes_seq,
-            'objs_ids': objs_ids_seq,
+            'obj_classes': obj_classes_seq,
+            'obj_bboxes': obj_bboxes_seq,
+            'obj_ids': obj_ids_seq,
+            'other_ped_ids': other_ped_ids_seq,
+            'other_ped_bboxes': other_ped_bboxes_seq,
             'intention_prob': intention_prob,
             'intention_binary': intention_binary,
-            'ped_id': pids_seq,
+            'ped_ids': pids_seq,
             'video_id': video_seq,
             'disagree_score': disagree_score_seq,
             'description': description_seq
