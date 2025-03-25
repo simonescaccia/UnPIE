@@ -6,7 +6,7 @@ from utils.data_utils import bbox_center, update_progress
 
 np.set_printoptions(linewidth=np.inf)
 
-class PIEGraphDataset(torch.utils.data.Dataset):
+class GraphDataset(torch.utils.data.Dataset):
     def __init__(self, 
                  features, 
                  graph_nodes_classes,
