@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 from pathlib import PurePath
 
-from utils.print_utils import print_separator
+from utils.print_utils import plot_image_with_bbox, print_separator
 
 # Visual helpers
 def update_progress(progress):
@@ -115,7 +115,7 @@ def get_ped_info_per_image(images, bboxes, ped_ids, obj_bboxes, obj_ids, other_p
 
     print_separator("Preparing annotations for each images")
 
-    # Store the annotations in a dataframe wit the following columns: set_id, vid_id, image_name, img_path, bbox, ped_id
+    # Store the annotations in a dataframe with the following columns: set_id, vid_id, image_name, img_path, bbox, ped_id
     df = pd.DataFrame(columns=['set_id', 'vid_id', 'image_name', 'img_path', 'bbox', 'id', 'type', 'class'])
     i = -1
     data = []

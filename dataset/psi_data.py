@@ -9,14 +9,14 @@ import sys
 
 from dataset.generic_data import Data
 from dataset.pretrained_extractor import PretrainedExtractor
-from utils.data_utils import extract_and_save, get_ped_info_per_image, organize_features
+from utils.data_utils import extract_and_save, get_ped_info_per_image, jitter_bbox, organize_features, squarify
+from utils.print_utils import plot_image_with_bbox
 
 TRAIN = 'train'
 VAL = 'val'
 TEST = 'test'
 ALL = 'all'
 TRAIN_VAL = 'train_val'
-PED_IDS = 'ped_ids'
 
 class PSI(Data):
 
@@ -50,14 +50,6 @@ class PSI(Data):
             split_json = json.load(f)
         return split_json
 
-    def get_video_split(self, split_name, video_name):
-        if split_name != TRAIN_VAL:
-            return split_name
-        else:
-            for split, videos in self.split_json.items():
-                if video_name in videos:
-                    return split
-
     def get_unique_values(self, data, seen=None):
         if seen is None:
             seen = set()
@@ -72,41 +64,37 @@ class PSI(Data):
 
 
     '''Given video path, extract frames for all videos. Check if frames exist first.'''
-    def extract_images_and_save_features(self, split):
+    def extract_images_and_save_features(self, splits):
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
-        test_seq = self.generate_data_sequence('test')
-        ped_obj_dataframe = get_ped_info_per_image(
-            images=test_seq['image'],
-            bboxes=test_seq['bbox'],
-            ped_ids=test_seq[PED_IDS],
-            obj_bboxes=test_seq['obj_bboxes'],
-            obj_ids=test_seq['obj_ids'],
-            other_ped_bboxes=[[[] for _ in range(len(test_seq[PED_IDS][0]))] for _ in range(len(test_seq[PED_IDS]))],
-            other_ped_ids=[[[] for _ in range(len(test_seq[PED_IDS][0]))] for _ in range(len(test_seq[PED_IDS]))],
-            ped_type=self.ped_type,
-            traffic_type=self.traffic_type)
 
-        print("\nObjects: ", self.get_unique_values(test_seq['obj_classes']))
+        for split in splits:
+            print(f"\nExtracting features for {split} set")            
+            sequence_data = self.generate_data_sequence(split)
+            ped_obj_dataframe = get_ped_info_per_image(
+                images=sequence_data['image'],
+                bboxes=sequence_data['bbox'],
+                ped_ids=sequence_data['ped_ids'],
+                obj_bboxes=sequence_data['obj_bboxes'],
+                obj_ids=sequence_data['obj_ids'],
+                other_ped_bboxes=sequence_data['other_ped_bboxes'],
+                other_ped_ids=sequence_data['other_ped_ids'],
+                ped_type=self.ped_type,
+                traffic_type=self.traffic_type)
 
-        self.split_json = self.load_split_json()
-        if split == ALL:
-            video_paths = [self.train_val_videos_path, self.test_videos_path]
-            splits = [TRAIN_VAL, TEST]
-        elif split == TRAIN_VAL:
-            video_paths = [self.train_val_videos_path]
-            splits = [TRAIN_VAL]
-        elif split == TEST:
-            video_paths = [self.test_videos_path]
-            splits = [TEST]
-        else:
-            raise ValueError('Invalid split name')
-          
-        for video_path, split_name in tqdm(zip(video_paths, splits)):
+            print("\nObjects: ", self.get_unique_values(sequence_data['obj_classes']))
+
+            self.split_json = self.load_split_json()
+            if split == TRAIN or split == VAL: 
+                video_path = self.train_val_videos_path
+            elif split == TEST:
+                video_path = self.test_videos_path
+            else:
+                raise ValueError('Invalid split name')
+
             for video in tqdm(sorted(os.listdir(video_path))):
                 video_name = video.split('.mp4')[0]
                 video_target = os.path.join(video_path, video)
-                split_target = self.get_video_split(split_name, video_name)
-                set_id = self.video_set_nums[split_target][0]
+                set_id = self.video_set_nums[split][0]
 
                 try:
                     vidcap = cv2.VideoCapture(video_target)
@@ -121,6 +109,9 @@ class PSI(Data):
                     # Retrieve the image path, bbox, id from the annotation dataframe
                     df = ped_obj_dataframe.query('set_id == "{}" and vid_id == "{}" and image_name == "{}"'.format(
                         set_id, video_name, 'frame_{}'.format(cur_frame)))
+                    
+                    # plot_image_with_bbox(frame, df, save=False, jitter_bbox_func=jitter_bbox, squarify_func=squarify)
+
                     # Apply the function extract_features to each row of the dataframe
                     df.apply(
                         lambda row, image=frame, set_id=set_id, vid=video_name, frame_num=cur_frame: 
@@ -465,7 +456,6 @@ class PSI(Data):
                 intention_binary.append(intents)
                 disagree_score_seq.append(disgrs)
                 description_seq.append(descripts)
-            
 
         return {
             'image': frame_seq,
@@ -477,7 +467,7 @@ class PSI(Data):
             'other_ped_bboxes': other_ped_bboxes_seq,
             'intention_prob': intention_prob,
             'intention_binary': intention_binary,
-            PED_IDS: pids_seq,
+            'ped_ids': pids_seq,
             'video_id': video_seq,
             'disagree_score': disagree_score_seq,
             'description': description_seq

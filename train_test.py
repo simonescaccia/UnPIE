@@ -14,7 +14,7 @@ def get_unpie(training_step, train_test, dataset):
     dataset_preprocessing = DatasetPreprocessing(params_loader.get_dataset_params(), dataset)
     datasets = dataset_preprocessing.get_datasets(is_only_test)
     params = params_loader.get_params(datasets, is_test, is_only_test)
-    args = params_loader.get_args()
+    args = params_loader.get_args(dataset)
     unpie = UnPIE(params, args)
     return unpie
 
