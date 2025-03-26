@@ -46,6 +46,7 @@ class  DatasetPreprocessing(object):
                 feat_input_size=self.feat_input_size, 
                 feature_extractor=self.feature_extractor,
                 obj_classes_list=self.obj_classes_list)
+            self.dataset_name = 'PIE'
         elif dataset == 'psi':
             self.dataset_path = params['psi_path']
             self.dataset = PSI(
@@ -53,7 +54,8 @@ class  DatasetPreprocessing(object):
                 data_opts=self.data_opts,
                 feat_input_size=self.feat_input_size, 
                 feature_extractor=self.feature_extractor,
-                obj_classes_list=self.obj_classes_list)     
+                obj_classes_list=self.obj_classes_list)
+            self.dataset_name = 'PSI'  
         else:
             raise Exception("Unknown dataset name!")
         
@@ -62,7 +64,7 @@ class  DatasetPreprocessing(object):
         Build the inputs for the clustering computation
         '''
         # PIE preprocessing
-        print_separator('PIE preprocessing')
+        print_separator('{} preprocessing'.format(self.dataset_name))
 
         # Load the test data
         test_features = self._get_features('test')
