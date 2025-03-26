@@ -39,7 +39,7 @@ def print_model_size(model, model_name):
     print('')
     print(model_name, f" memory: {memory_mb:.2f} MB\n")
 
-def plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_path=None):
+def plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_path=None, show_bbox=False):
     # Image with all bounding box
     image_all_bb = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     image_pil = Image.fromarray(image_all_bb)
@@ -54,13 +54,14 @@ def plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_
 
         # Crop the bounding box from the image
         crop = image[bbox[1]:bbox[3], bbox[0]:bbox[2]]
-        if save:
-            cv2.imwrite(f'{file_path.split(".png")[0]}-crop-{i}.png', crop)
-        else:
-            crop = cv2.cvtColor(crop,cv2.COLOR_BGR2RGB)
-            plt.imshow(crop)
-            plt.axis('off')
-            plt.show()
+        if show_bbox:
+            if save:
+                cv2.imwrite(f'{file_path.split(".png")[0]}-crop-{i}.png', crop)
+            else:
+                crop = cv2.cvtColor(crop,cv2.COLOR_BGR2RGB)
+                plt.imshow(crop)
+                plt.axis('off')
+                plt.show()
 
     plt.imshow(image_all_bb)
     plt.axis('off')

@@ -52,7 +52,8 @@ class ParamsLoader:
         return self.get_dataset_params_static(self.args, self.config)
 
 
-    def get_args(self):
+    def get_args(self, dataset):
+        self.args['dataset_name'] = dataset
         return self.args
 
 
