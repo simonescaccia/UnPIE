@@ -43,10 +43,10 @@ class ParamsLoader:
             'feat_input_size': args[args['feature_extractor']+'_input_size'],
             'data_sets': args['data_sets'],
             'balance_dataset': args['balance_dataset'],
-            'obj_classes': args['obj_classes'].split(','),
+            'obj_classes': [] if args['obj_classes'] == '' else args['obj_classes'].split(','),
         }
         return dataset_params
-
+    
 
     def get_dataset_params(self):
         return self.get_dataset_params_static(self.args, self.config)
@@ -163,7 +163,7 @@ class ParamsLoader:
             "scene_num_input_layers": self.args['scene_num_input_layers'],
             "scene_num_output_layers": self.args['scene_num_output_layers'],
             "seq_len": self.args['num_frames'],
-            "num_nodes": len(self.args['obj_classes'].split(',')) + 1, # ped + obj_classes
+            "num_nodes": len([] if self.args['obj_classes'] == '' else args['obj_classes'].split(',')) + 1, # ped + obj_classes
             "edge_importance": self.args['edge_importance'],
             "is_scene": self.args['is_scene'],
             "share_edge_importance": self.args['share_edge_importance'],

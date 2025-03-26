@@ -60,7 +60,7 @@ data_sets: 'all' # data sets to use (small, all)
 feature_extractor: 'vgg16' # feature extractor to use (vgg16, efficientnetb3)
 edge_importance: True # weights for edges in the graph.
 edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
-obj_classes: 'traffic_light,crosswalk' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
+obj_classes: '' # traffic_light,crosswalk object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
 # obj_classes: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
 balance_dataset: False # whether to balance the dataset with same number of samples per class
 num_frames: 15 # number of frames in each clip
