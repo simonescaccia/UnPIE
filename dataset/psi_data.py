@@ -10,7 +10,7 @@ import sys
 from dataset.generic_data import Data
 from dataset.pretrained_extractor import PretrainedExtractor
 from utils.data_utils import extract_and_save, get_ped_info_per_image, jitter_bbox, organize_features, squarify
-from utils.print_utils import plot_image_with_bbox
+from utils.print_utils import plot_image_with_bbox, print_separator
 
 TRAIN = 'train'
 VAL = 'val'
@@ -417,6 +417,7 @@ class PSI(Data):
             db[vname][pid]['nlp_annotations'][nlp_vid_uid]['key_frame'] = [key_frame_list[i] for i in split_inds]
 
     def generate_data_sequence(self, set_name, **kwargs):
+        print_separator("Generating sequence data", bottom_new_line=False)
         train, val, test = self.generate_database()
         database = train if set_name == 'train' else val if set_name == 'val' else test
 
@@ -456,6 +457,9 @@ class PSI(Data):
                 intention_binary.append(intents)
                 disagree_score_seq.append(disgrs)
                 description_seq.append(descripts)
+
+        print('Subset: %s' % set_name)
+        print('Total number of samples: %d ' % len(frame_seq))
 
         return {
             'image': frame_seq,

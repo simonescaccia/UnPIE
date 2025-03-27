@@ -385,9 +385,10 @@ class  DatasetPreprocessing(object):
 
             for frame_objs, frame_other_peds in zip(objs_seq_frames, other_peds_seq_frames):
                 frame_objs_dict = {obj: 0 for obj in self.obj_classes_list}
-
                 # Objects
                 for obj in frame_objs:
+                    if obj not in frame_objs_dict.keys(): # obj not found on the main dict
+                        continue
                     idx = frame_objs_dict[obj]
                     if idx not in self.dataset_objs_statistics[obj].keys(): # obj index not found on the main dict
                         self.dataset_objs_statistics[obj][idx] = 1
@@ -396,6 +397,8 @@ class  DatasetPreprocessing(object):
                     frame_objs_dict[obj] += 1
                 
                 # Other peds
+                if 'other_ped' not in frame_objs_dict.keys(): # other ped not found on the main dict
+                    continue
                 for i, _ in enumerate(frame_other_peds):
                     if i not in self.dataset_objs_statistics['other_ped'].keys(): # other ped index not found on the main dict
                         self.dataset_objs_statistics['other_ped'][i] = 1

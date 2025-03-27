@@ -2,6 +2,7 @@ import os
 import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
+import numpy as np
 import pandas as pd
 import tensorflow as tf
 
@@ -28,6 +29,23 @@ def print_separator(message=None, space=True, top_new_line=True, bottom_new_line
     if space and bottom_new_line:
         print()
     return
+
+def plot_lambda_experiments(type, experiments: list):
+    # type = table or plot
+    # experiments = [{'name': '...', lambda': ..., 'best': {}}]
+    if type == 'table':
+        headers = ['Name', 'Lambda', 'ACC', 'AUC', 'F1', 'P', 'R', 'AP']
+        print(' & '.join(headers))
+        for experiment in experiments:
+            row = []
+            row.append(experiment['name'])
+            row.append(experiment['lambda'])
+            for k, v in experiment['best'].items():
+                row.append(np.round(v, 2))
+            row  = ' & '.join(map(str, row))
+            print(row)
+    elif type == 'plot':
+        pass
 
 def print_model_size(model, model_name):
     # Calculate the number of parameters

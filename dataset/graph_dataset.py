@@ -92,6 +92,8 @@ class GraphDataset(torch.utils.data.Dataset):
 
                 # Object nodes
                 for k, (obj_feat, obj_bbox, obj_class) in enumerate(zip(obj_feats[i][j], obj_bboxes[i][j], obj_classes[i][j])):
+                    if obj_class not in obj_class_pos:
+                        continue
                     num_node = obj_class_pos[obj_class]['init_pos']
                     obj_distance = self._get_distance(ped_position, bbox_center(obj_bboxes[i][j][k]))
                     if obj_distance <= obj_class_pos[obj_class]['class_nearest_obj_dist']:
