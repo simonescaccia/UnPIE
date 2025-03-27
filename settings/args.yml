@@ -21,14 +21,15 @@ IR:
   lr_decay_steps: 30 # learning rate decay steps
   train_num_workers: 1 # number of workers for training data loader
   val_num_workers: 1 # number of workers for validation data loader
-  train_num_epochs: 200 # number of training epochs
+  train_num_epochs: 10 # number of training epochs
   load_task: null # load task
   load_step: null # load step
   clstr_update_per_epoch: 0 # number of cluster updates per epoch
-  instance_k: 0 # m: noise to add to the loss. m in [0, 9229] for a non balanced dataset; m in [0, 5245] for a balanced dataset 
+  instance_k: 4096 # m: noise to add to the loss. m in [0, 9229] for a non balanced dataset; m in [0, 5245] for a balanced dataset (PIE) (9229 = #(train_samples - 1))
+  # instance_k: 3962 # m: noise to add to the loss. m in [0, 3962] for a non balanced dataset; m in [0, 2029] for a balanced dataset (PSI)
 LA:
   task: 'LA'
-  weight_decay: 0.0001 # loss function weight decay
+  weight_decay: 0.1 # loss function weight decay
   init_lr: 0.03 # optimizer learning rates
   target_lr: 0.03 # optimizer learning rates
   lr_decay_start: 10000 # learning rate decay start
@@ -36,7 +37,7 @@ LA:
   lr_decay_steps: 20 # learning rate decay steps
   train_num_workers: 1
   val_num_workers: 1
-  train_num_epochs: 0
+  train_num_epochs: 100
   load_task: 'IR'
   clstr_update_per_epoch: 5 # number of cluster updates per epoch
   instance_k: 512 # k background neighbors to sample. If 0, all training samples are considered
@@ -60,7 +61,8 @@ data_sets: 'all' # data sets to use (small, all)
 feature_extractor: 'vgg16' # feature extractor to use (vgg16, efficientnetb3)
 edge_importance: True # weights for edges in the graph.
 edge_weigths: False # Choose between False, no_norm, norm, norm_compl, compl
-obj_classes: '' # traffic_light,crosswalk object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
+obj_classes: 'traffic_light,crosswalk' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
+# obj_classes: ''
 # obj_classes: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign' # object classes to consider from: 'traffic_light,vehicle,other_ped,crosswalk,transit_station,sign'
 balance_dataset: False # whether to balance the dataset with same number of samples per class
 num_frames: 15 # number of frames in each clip

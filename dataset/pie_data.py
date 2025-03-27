@@ -982,32 +982,18 @@ class PIE(Data):
                 'kfold_params: Parameters for kfold split generation. (see _get_kfold_pedestrian_ids)
         :return: Sequence data
         """
-        params = {'fstride': 1,
-                  'sample_type': 'all',  # 'beh'
-                  'height_rng': [0, float('inf')],
-                  'squarify_ratio': 0,
-                  'data_split_type': 'default',  # kfold, random, default
-                  'seq_type': 'intention',
-                  'min_track_size': 15,
-                  'random_params': {'ratios': None,
-                                    'val_data': True,
-                                    'regen_data': False},
-                  'kfold_params': {'num_folds': 5, 'fold': 1}}
-
-        params.update(opts)
-
-        print_separator("Generating trajectory sequence data", bottom_new_line=False)
+        print_separator("Generating sequence data", bottom_new_line=False)
         # self._print_dict(params)
         annot_database = self.generate_database()
 
-        if params['seq_type'] == 'trajectory':
-            sequence_data = self._get_trajectories(image_set, annot_database, **params)
-        elif params['seq_type'] == 'crossing':
-            sequence_data = self._get_crossing(image_set, annot_database, **params)
-        elif params['seq_type'] == 'intention':
-            sequence_data = self._get_intention(image_set, annot_database, **params)
-        elif params['seq_type'] == 'all':
-            sequence_data = self._get_all(image_set, annot_database, **params)
+        if opts['seq_type'] == 'trajectory':
+            sequence_data = self._get_trajectories(image_set, annot_database, **opts)
+        elif opts['seq_type'] == 'crossing':
+            sequence_data = self._get_crossing(image_set, annot_database, **opts)
+        elif opts['seq_type'] == 'intention':
+            sequence_data = self._get_intention(image_set, annot_database, **opts)
+        elif opts['seq_type'] == 'all':
+            sequence_data = self._get_all(image_set, annot_database, **opts)
         else:
             raise Exception("Wrong sequence type is selected.")
         return sequence_data

@@ -18,7 +18,7 @@ class ParamsLoader:
             'squarify_ratio': 0,
             'data_split_type': 'default',  #  kfold, random, default
             'seq_type': 'intention', #  crossing , intention
-            'min_track_size': 0, #  discard tracks that are shorter
+            'min_track_size': args['num_frames'], #  discard tracks that are shorter
             'max_size_observe': args['num_frames'],  # number of observation frames
             'max_size_predict': 5,  # number of prediction frames
             'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
@@ -27,7 +27,11 @@ class ParamsLoader:
             'crop_mode': 'pad_resize',  # pad with 0s and resize to VGG input
             'encoder_input_type': [],
             'decoder_input_type': ['bbox'],
-            'output_type': ['intention_binary']
+            'output_type': ['intention_binary'],
+            'random_params': {'ratios': None,
+                              'val_data': True,
+                              'regen_data': False},
+            'kfold_params': {'num_folds': 5, 'fold': 1}
         }
         dataset_params = {
             'data_opts': data_opts,
@@ -163,7 +167,7 @@ class ParamsLoader:
             "scene_num_input_layers": self.args['scene_num_input_layers'],
             "scene_num_output_layers": self.args['scene_num_output_layers'],
             "seq_len": self.args['num_frames'],
-            "num_nodes": len([] if self.args['obj_classes'] == '' else args['obj_classes'].split(',')) + 1, # ped + obj_classes
+            "num_nodes": len([] if self.args['obj_classes'] == '' else self.args['obj_classes'].split(',')) + 1, # ped + obj_classes
             "edge_importance": self.args['edge_importance'],
             "is_scene": self.args['is_scene'],
             "share_edge_importance": self.args['share_edge_importance'],
