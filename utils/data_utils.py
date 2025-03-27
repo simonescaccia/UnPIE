@@ -183,18 +183,17 @@ def get_folder_from_set(set_id, video_set_nums):
             return folder
     print('\nSet id not found in the video set! Please check self.video_set_nums\n')
 
-def get_path(dataset_path, model_name, data_subset, data_type, feature_type):
+def get_path(dataset_path, model_name, data_type, feature_type):
     """
     A path generator method for saving model and config data. Creates directories
     as needed.
     :param model_name: model name
-    :param data_subset: all, train, test or val
     :param data_type: type of the data (e.g. features_context_pad_resize)
     :param feature_type: type of the feature (e.g. ped, traffic)
     :return: The full path for the save folder
     """
     root = os.path.join(dataset_path, 'data')
-    save_path = os.path.join(root, model_name, data_type, feature_type, data_subset)
+    save_path = os.path.join(root, model_name, data_type, feature_type)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     return save_path
@@ -216,20 +215,10 @@ def extract_and_save(b, ped_id, set_id, vid_id, img_name, image, feature_type, d
         dataset_path=dataset_path,
         data_type='features'+'_'+data_opts['crop_type']+'_'+data_opts['crop_mode'], # images    
         model_name=pretrained_extractor.model_name,
-        data_subset='all',
-        feature_type=feature_type)
-    dest_folder = get_folder_from_set(set_id, video_set_nums)
-    dest_path = get_path(
-        dataset_path=dataset_path,
-        data_type='features'+'_'+data_opts['crop_type']+'_'+data_opts['crop_mode'], # images    
-        model_name=pretrained_extractor.model_name,
-        data_subset=dest_folder,
         feature_type=feature_type)
     img_save_folder = os.path.join(save_path, set_id, vid_id)
     img_save_path = os.path.join(img_save_folder, img_name+'_'+ped_id+'.pkl')
-    img_dest_folder = os.path.join(dest_path, set_id, vid_id)
-    img_dest_path = os.path.join(img_dest_folder, img_name+'_'+ped_id+'.pkl')
-    if not os.path.exists(img_dest_path) and not os.path.exists(img_save_path):
+    if not os.path.exists(img_save_path):
         # Convert CV image to PIL image
         image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
         image = Image.fromarray(image)
