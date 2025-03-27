@@ -43,7 +43,7 @@ from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
 from dataset.generic_data import Data
 from dataset.pretrained_extractor import PretrainedExtractor
-from utils.data_utils import extract_and_save, get_path, get_ped_info_per_image, organize_features, squarify, update_progress, merge_directory
+from utils.data_utils import extract_and_save, get_folder_from_set, get_path, get_ped_info_per_image, organize_features, squarify, update_progress, merge_directory
 from utils.print_utils import print_separator
 
 class PIE(Data):
@@ -384,7 +384,7 @@ class PIE(Data):
                 print('num images don\'t match {}/{}'.format(num_frames, img_count))
             print('\n')
 
-    def extract_images_and_save_features(self, sets_to_extract):
+    def extract_images_and_save_features(self, splits):
         """
         @author: Simone Scaccia
         Extracts annotated images from clips, compute features and saves on hard drive
@@ -393,33 +393,34 @@ class PIE(Data):
         """  
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annot_database = self.generate_database()
-        sequence_data = self._get_intention(sets_to_extract, annot_database, **self.data_opts)
-        ped_objs_dataframe = get_ped_info_per_image(
-            images=sequence_data['image'],
-            bboxes=sequence_data['bbox'],
-            ped_ids=sequence_data['ped_ids'],
-            obj_bboxes=sequence_data['obj_bboxes'],
-            obj_ids=sequence_data['obj_ids'],
-            other_ped_bboxes=sequence_data['other_ped_bboxes'],
-            other_ped_ids=sequence_data['other_ped_ids'],
-            ped_type=self.ped_type,
-            traffic_type=self.traffic_type)
-        
-        print_separator("Extracting features and saving on hard drive using the {} model".format(self.feature_extractor))
-        # Extract image features
-        set_folders = sets_to_extract
-        for set_id in set_folders:
-            set_folder_path = join(self.clips_path, set_id)
-            extract_frames = self.get_annotated_frame_numbers(set_id)
-
-            self._process_set(set_id, set_folder_path, extract_frames, ped_objs_dataframe) # TODO: parallelize
-            organize_features(
+        for split in splits:
+            sequence_data = self._get_intention(split, annot_database, **self.data_opts)
+            ped_objs_dataframe = get_ped_info_per_image(
+                images=sequence_data['image'],
+                bboxes=sequence_data['bbox'],
+                ped_ids=sequence_data['ped_ids'],
+                obj_bboxes=sequence_data['obj_bboxes'],
+                obj_ids=sequence_data['obj_ids'],
+                other_ped_bboxes=sequence_data['other_ped_bboxes'],
+                other_ped_ids=sequence_data['other_ped_ids'],
                 ped_type=self.ped_type,
-                traffic_type=self.traffic_type,
-                dataset_path=self.pie_path,
-                data_opts=self.data_opts,
-                pretrained_extractor=self.pretrained_extractor,
-                video_set_nums=self.video_set_nums)
+                traffic_type=self.traffic_type)
+            
+            print_separator("Extracting features and saving on hard drive using the {} model".format(self.feature_extractor))
+            # Extract image features
+            set_folders = self.get_video_set_ids(split)
+            for set_id in set_folders:
+                set_folder_path = join(self.clips_path, set_id)
+                extract_frames = self.get_annotated_frame_numbers(set_id)
+
+                self._process_set(set_id, set_folder_path, extract_frames, ped_objs_dataframe) # TODO: parallelize
+                organize_features(
+                    ped_type=self.ped_type,
+                    traffic_type=self.traffic_type,
+                    dataset_path=self.pie_path,
+                    data_opts=self.data_opts,
+                    pretrained_extractor=self.pretrained_extractor,
+                    video_set_nums=self.video_set_nums)
 
     # Annotation processing helpers
     def _map_text_to_scalar(self, label_type, value):
@@ -785,7 +786,10 @@ class PIE(Data):
         pids = []
         for sid in sorted(annotations):
             for vid in sorted(annotations[sid]):
-                pids.extend(annotations[sid][vid]['ped_annotations'].keys())
+                video_pids = annotations[sid][vid]['ped_annotations'].keys()
+                # add the split prefix to each pid to track the split
+                video_pids = [get_folder_from_set(sid, self.video_set_nums) + '_' + pid for pid in video_pids]
+                
         return pids
 
     def _get_random_pedestrian_ids(self, image_set, ratios=None, val_data=True, regen_data=False):
@@ -861,7 +865,7 @@ class PIE(Data):
             print('pie {} samples written to {}'.format('random', cache_file))
         return sample_split[image_set]
 
-    def _get_kfold_pedestrian_ids(self, image_set, num_folds=5, fold=1):
+    def _get_kfold_pedestrian_ids(self, image_set, num_folds=5, fold=1, val_percent=0.15):
         """
         Generates kfold pedestrian ids
         :param image_set: Image set split
@@ -887,7 +891,10 @@ class PIE(Data):
             fold_idx = {'pid': ped_ids}
             count = 1
             for train_index, test_index in kf.split(ped_ids):
-                fold_idx[count] = {'train': train_index.tolist(), 'test': test_index.tolist()}
+                train_len = len(train_index)
+                train_percent = 1 - val_percent
+                train_list, val_list = train_index.tolist()[:int(train_len * train_percent)], train_index.tolist()[int(train_len * train_percent):]
+                fold_idx[count] = {'train': train_list, 'val': val_list, 'test': test_index.tolist()}
                 count += 1
             with open(cache_file, 'wb') as fid:
                 pickle.dump(fold_idx, fid, pickle.HIGHEST_PROTOCOL)
@@ -983,7 +990,6 @@ class PIE(Data):
         :return: Sequence data
         """
         print_separator("Generating sequence data", bottom_new_line=False)
-        # self._print_dict(params)
         annot_database = self.generate_database()
 
         if opts['seq_type'] == 'trajectory':
@@ -1237,6 +1243,9 @@ class PIE(Data):
 
                     boxes = pid_annots[pid]['bbox'][start_idx:end_idx + 1]
                     frame_ids = frames[start_idx:end_idx + 1]
+                    print("sid, vid, f", sid, vid, frame_ids[0])
+                    print("self._get_image_path(sid, vid, f)", self._get_image_path(sid, vid, frame_ids[0]))
+                    sys.exit()
                     images = [self._get_image_path(sid, vid, f) for f in frame_ids]
                     occlusions = pid_annots[pid]['occlusion'][start_idx:end_idx + 1]
 

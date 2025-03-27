@@ -3,3 +3,4 @@ venv2
 __pycache__
 settings/config.yml
 checkpoints/
+try.py
