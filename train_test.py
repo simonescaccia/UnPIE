@@ -27,7 +27,8 @@ if __name__ == '__main__':
         raise ValueError('Please provide the fold number')
     fold = None if len(sys.argv) < 6 else int(sys.argv[5])
 
-    print_separator('UnPIE started, step: ' + training_step, top_new_line=False)
+    kfold_message = ',  fold: ' + str(fold) + '/' + str(num_kfolds) if num_kfolds else ''
+    print_separator('UnPIE started, step: ' + training_step + kfold_message, top_new_line=False)
     
     unpie = get_unpie(training_step, train_test, dataset, num_kfolds, fold)
 

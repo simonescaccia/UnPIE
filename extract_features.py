@@ -16,7 +16,6 @@ if not config_file['IS_GPU']:
 
 dataset = sys.argv[1]
 is_kfold = True if len(sys.argv) > 2 else False
-print("is_kfold: ", is_kfold)
 
 params = ParamsLoader.get_dataset_params_static(args_file, config_file, 5 if is_kfold else None, 1 if is_kfold else None)
 feature_extractor = params['feature_extractor']

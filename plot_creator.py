@@ -155,12 +155,18 @@ def get_df(file_path):
 print_separator('Plotting training results', bottom_new_line=False)
 df_tot_val = pd.DataFrame(columns=['epoch', 'top1'])
 
-training_steps = sys.argv[1:]
+# Load params
+training_steps = sys.argv[1]
+training_steps = training_steps.split(',')
+num_kfolds = None if len(sys.argv) < 3 else int(sys.argv[2])
+if num_kfolds and len(sys.argv) < 4:
+    raise ValueError('Please provide the fold number')
+fold = None if len(sys.argv) < 4 else int(sys.argv[3])
 for i in tqdm(range(len(training_steps))):
-    params_loader = ParamsLoader(training_steps[i])
+    params_loader = ParamsLoader(training_steps[i], num_kfolds, fold)
     params = params_loader.get_plot_params()
     
-    cache_dir = params['cache_dir'] # Set cache directory
+    cache_dir = params['cache_dir']
     log_file_path = os.path.join(cache_dir, params['train_log_file'])
     val_log_file_path = os.path.join(cache_dir, params['val_log_file'])
     

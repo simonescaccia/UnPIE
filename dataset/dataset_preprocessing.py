@@ -239,13 +239,11 @@ class  DatasetPreprocessing(object):
             dataset_path=self.dataset_path,
             data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
             model_name=self.feature_extractor,
-            data_subset = data_split,
             feature_type=self.dataset.get_ped_type())
         objs_load_path = get_path(
             dataset_path=self.dataset_path,
             data_type='features'+'_'+self.data_opts['crop_type']+'_'+self.data_opts['crop_mode'], # images    
             model_name=self.feature_extractor,
-            data_subset = data_split,
             feature_type=self.dataset.get_traffic_type())
         print("Loading {} features crop_type=context crop_mode=pad_resize \nsave_path={}, ".format(data_split, peds_load_path))
 

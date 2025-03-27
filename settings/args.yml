@@ -29,7 +29,7 @@ IR:
   # instance_k: 3962 # m: noise to add to the loss. m in [0, 3962] for a non balanced dataset; m in [0, 2029] for a balanced dataset (PSI)
 LA:
   task: 'LA'
-  weight_decay: 0.1 # loss function weight decay
+  weight_decay: 0.0001 # loss function weight decay
   init_lr: 0.03 # optimizer learning rates
   target_lr: 0.03 # optimizer learning rates
   lr_decay_start: 10000 # learning rate decay start

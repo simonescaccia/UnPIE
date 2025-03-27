@@ -2,7 +2,7 @@ import os
 import yaml
 
 class ParamsLoader:
-    def __init__(self, training_step, num_kfolds, fold):
+    def __init__(self, training_step, num_kfolds=None, fold=None):
         self.config = self._get_yml_file('settings/config.yml')
         self.args = self._get_yml_file('settings/args.yml')
         self.setting = training_step
@@ -20,7 +20,7 @@ class ParamsLoader:
             'squarify_ratio': 0,
             'data_split_type': 'kfold' if num_kfolds else 'default',  #  kfold, random, default,
             'seq_type': 'intention', #  crossing , intention
-            'min_track_size': args['num_frames'], #  discard tracks that are shorter
+            'min_track_size': 0, #  discard tracks that are shorter
             'max_size_observe': args['num_frames'],  # number of observation frames
             'max_size_predict': 5,  # number of prediction frames
             'seq_overlap_rate': 0.5,  # how much consecutive sequences overlap
