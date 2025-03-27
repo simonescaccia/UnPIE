@@ -2,21 +2,23 @@ import os
 import yaml
 
 class ParamsLoader:
-    def __init__(self, training_step):
+    def __init__(self, training_step, num_kfolds, fold):
         self.config = self._get_yml_file('settings/config.yml')
         self.args = self._get_yml_file('settings/args.yml')
         self.setting = training_step
+        self.num_kfolds = num_kfolds
+        self.fold = fold
 
         self._set_environment()
 
     @staticmethod
-    def get_dataset_params_static(args, config):
+    def get_dataset_params_static(args, config, num_kfolds, fold):
         data_opts = {
             'fstride': 1,
             'sample_type': 'all', 
             'height_rng': [0, float('inf')],
             'squarify_ratio': 0,
-            'data_split_type': 'default',  #  kfold, random, default
+            'data_split_type': 'kfold' if num_kfolds else 'default',  #  kfold, random, default,
             'seq_type': 'intention', #  crossing , intention
             'min_track_size': args['num_frames'], #  discard tracks that are shorter
             'max_size_observe': args['num_frames'],  # number of observation frames
@@ -31,7 +33,7 @@ class ParamsLoader:
             'random_params': {'ratios': None,
                               'val_data': True,
                               'regen_data': False},
-            'kfold_params': {'num_folds': 5, 'fold': 1}
+            'kfold_params': {'num_folds': num_kfolds, 'fold': fold},
         }
         dataset_params = {
             'data_opts': data_opts,
@@ -53,7 +55,7 @@ class ParamsLoader:
     
 
     def get_dataset_params(self):
-        return self.get_dataset_params_static(self.args, self.config)
+        return self.get_dataset_params_static(self.args, self.config, self.num_kfolds, self.fold)
 
 
     def get_args(self, dataset):
@@ -114,6 +116,8 @@ class ParamsLoader:
         dir_num_epochs = ''
         for step in train_steps.split(','):
             dir_num_epochs += str(self.args[step]['train_num_epochs']) + '_'
+        if self.num_kfolds:
+            dir_num_epochs += 'kfold_' + str(self.num_kfolds) + '_' + str(self.fold) + '_'
         dir_num_epochs = dir_num_epochs[:-1]
         cache_dir = os.path.join(
                 self.args['cache_dir'], dir_num_epochs, task)
