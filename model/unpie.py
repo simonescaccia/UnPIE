@@ -78,7 +78,7 @@ class UnPIE():
         )
 
         # Optimizer
-        self.optimizer, self.learning_rate = self._get_optimizer()
+        self.optimizer, self.learning_rate = self._get_sgd_optimizer()
 
         # Best accuracy
         self.best_val_acc = tf.Variable(0.0, trainable=False, dtype=tf.float32)
@@ -115,7 +115,7 @@ class UnPIE():
         else:
             return self.params['model_params']['model_func_params']['data_len']
 
-    def _get_optimizer(self):
+    def _get_sgd_optimizer(self):
         if self.params['is_only_test']:
             return tf.keras.optimizers.SGD(), None
         else:
@@ -125,6 +125,12 @@ class UnPIE():
                 learning_rate=learning_rate, 
                 **opt_params)
             return optimizer, learning_rate
+        
+    def _get_adam_optimizer(self):
+        learning_rate = self._get_learning_rate()
+        optimizer = tf.keras.optimizers.Adam(
+            learning_rate=learning_rate)
+        return optimizer, learning_rate
 
     def _build_network(self, x, b, c, a, y, i, train):
         model_params = self.params['model_params']

@@ -30,18 +30,30 @@ def print_separator(message=None, space=True, top_new_line=True, bottom_new_line
         print()
     return
 
-def plot_lambda_experiments(type, experiments: list):
+def plot_experiments(type, experiments: list, exp_name, mean=False):
     # type = table or plot
     # experiments = [{'name': '...', lambda': ..., 'best': {}}]
     if type == 'table':
-        headers = ['Name', 'Lambda', 'ACC', 'AUC', 'F1', 'P', 'R', 'AP']
+        columns = {}
+        headers = ['Name', exp_name.lower().capitalize(), 'ACC', 'AUC', 'F1', 'P', 'R', 'AP']
         print(' & '.join(headers))
         for experiment in experiments:
             row = []
             row.append(experiment['name'])
-            row.append(experiment['lambda'])
+            row.append(experiment[exp_name])
             for k, v in experiment['best'].items():
-                row.append(np.round(v, 2))
+                if k not in columns:
+                    columns[k] = []
+                columns[k].append(v)
+                row.append('%.2f' % np.round(v, 2))
+            row  = ' & '.join(map(str, row))
+            print(row)
+        if mean:
+            row = []
+            row.append(' ')
+            row.append('Mean')
+            for k, v in columns.items():
+                row.append(np.round(np.mean(v), 2))
             row  = ' & '.join(map(str, row))
             print(row)
     elif type == 'plot':
