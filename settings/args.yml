@@ -14,8 +14,8 @@ train_steps: 'IR,LA,SUP' # training steps
 IR:
   task: 'IR' # task name
   weight_decay: 0.0001 # loss function weight decay
-  init_lr: 0.0003 # optimizer learning rates
-  target_lr: 0.0003 # optimizer learning rates
+  init_lr: 0.03 # optimizer learning rates
+  target_lr: 0.03 # optimizer learning rates
   lr_decay_start: 10000 # learning rate decay start
   lr_decay: 0.02 # learning rate decay
   lr_decay_steps: 30 # learning rate decay steps

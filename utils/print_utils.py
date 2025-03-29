@@ -47,6 +47,7 @@ def plot_experiments(type, experiments: list, exp_name, mean=False):
                 columns[k].append(v)
                 row.append('%.2f' % np.round(v, 2))
             row  = ' & '.join(map(str, row))
+            row = row + ' \\\\'
             print(row)
         if mean:
             row = []
