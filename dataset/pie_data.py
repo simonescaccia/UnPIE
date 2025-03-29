@@ -1213,6 +1213,12 @@ class PIE(Data):
         obj_classes_seq, obj_boxes_seq, other_ped_boxes_seq = [], [], []
         obj_ids_seq, other_ped_ids_seq = [], []
 
+        self.path = 'dataset/annotations.txt'
+        # Delete the file if it exists
+        if os.path.exists(self.path):
+            # Delete the file
+            os.remove(self.path)
+
         print("set_ids", set_ids)
         for sid in set_ids:
             for vid in sorted(annotations[sid]):
@@ -1226,6 +1232,10 @@ class PIE(Data):
                     exp_start_frame = pid_annots[pid]['attributes']['exp_start_point']
                     critical_frame = pid_annots[pid]['attributes']['critical_point']
                     frames = pid_annots[pid]['frames']
+
+                    # Write the pedestrian id and the critical frame to self.path
+                    with open(self.path, 'a') as f:
+                        f.write(f"Pedestrian ID: {pid}, Critical Frame: {critical_frame}\n")
 
                     start_idx = frames.index(exp_start_frame)
                     end_idx = frames.index(critical_frame)

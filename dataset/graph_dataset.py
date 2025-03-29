@@ -14,9 +14,17 @@ class GraphDataset(torch.utils.data.Dataset):
                  ped_classes,
                  height, 
                  width, 
-                 edge_weigths, 
+                 edge_weights, 
                  transform_a=None):
-        self.edge_weigths = edge_weigths
+        
+        self.path = 'dataset/both_objects.txt'
+        # Delete the file if it exists
+        import os
+        if os.path.exists(self.path):
+            # Delete the file
+            os.remove(self.path)
+
+        self.edge_weights = edge_weights
         self.features = features
         self.transform_a = transform_a
         self.graph_nodes_classes = graph_nodes_classes
@@ -105,10 +113,15 @@ class GraphDataset(torch.utils.data.Dataset):
                         b_seq[i, j, num_node, :] = self._normalize_bbox(obj_bbox.copy())
                         c_seq[i, j, num_node, :] = one_hot_classes[obj_class]
                     
-                        if not self.edge_weigths:
+                        if not self.edge_weights:
                             edge_weights[num_node] = 1
                         else:
                             edge_weights[num_node] = obj_distance
+
+                if edge_weights[1] != 0 and edge_weights[2] != 0:
+                    # Print to file if both objects are present
+                    with open(self.path, 'a') as f:
+                        f.write("Both objects at id {}\n".format(i))
 
                 # Restore the object class min position for the new iteration
                 for k, v in obj_class_pos.items():
@@ -128,7 +141,7 @@ class GraphDataset(torch.utils.data.Dataset):
                             b_seq[i, j, num_node, :] = self._normalize_bbox(other_ped_bbox.copy())
                             c_seq[i, j, num_node, :] = one_hot_classes[ped_classes[1]]                    
 
-                            if not self.edge_weigths:
+                            if not self.edge_weights:
                                 edge_weights[num_node] = 1
                             else:    
                                 edge_weights[num_node] = other_ped_distance
@@ -154,13 +167,13 @@ class GraphDataset(torch.utils.data.Dataset):
     
     def _get_distance(self, ped_position, obj_position):
         distance = np.linalg.norm(np.array(ped_position) - np.array(obj_position)) # Euclidean distance between two points
-        if self.edge_weigths == 'no_norm':
+        if self.edge_weights == 'no_norm':
             pass
-        elif self.edge_weigths == 'norm':
+        elif self.edge_weights == 'norm':
             distance = distance / self.normalization_factor
-        elif self.edge_weigths == 'compl':
+        elif self.edge_weights == 'compl':
             distance = self.normalization_factor - distance
-        elif self.edge_weigths == 'norm_compl':
+        elif self.edge_weights == 'norm_compl':
             distance = 1 - (distance / self.normalization_factor)
         return distance
     

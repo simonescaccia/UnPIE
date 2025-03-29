@@ -97,6 +97,11 @@ class UnPIE():
         self.monitor_metric = 'Accuracy s.l.' if self.task == 'SUP' else 'Accuracy u.f.l.'
         # self.monitor_metric = 'Precision s.l.' if self.task == 'SUP' else 'Precision u.f.l.'
         
+        self.path = 'dataset/tp_tn_fn_fp.txt'
+        # Delete the file if it exists
+        if os.path.exists(self.path):
+            # Delete the file
+            os.remove(self.path)
 
         # Loss
         if self.task == 'SUP':
@@ -377,7 +382,7 @@ class UnPIE():
         if self.task == 'SUP':
             targets = self._perf_func_sup(y, outputs)
         else:
-            targets = self._perf_func_kNN(y, outputs, **target_params)
+            targets = self._perf_func_kNN(y, i, outputs, **target_params)
             # targets.update(self._perf_func_unsup(y, i, outputs))
         return targets
 
@@ -460,7 +465,7 @@ class UnPIE():
     # Compute metrics for unsupervised feature learning
     def _perf_func_kNN(
             self,
-            y, output, 
+            y, i, output, 
             instance_t,
             k,
             num_classes):
@@ -474,7 +479,8 @@ class UnPIE():
         top_labels_one_hot *= tf.expand_dims(top_prob, axis=-1) # Each one-hot encoded label is weighted by its corresponding probability.
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1) # Averages the weighted probabilities across the kk neighbors for each test sample.
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
-        curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)
+        curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)    
+        self._print_tp_tn_fn_fp(y, curr_pred, i)
         accuracy = sklearn.metrics.accuracy_score(y, curr_pred)
         f1_score = sklearn.metrics.f1_score(y, curr_pred, zero_division=0)
         roc_auc = sklearn.metrics.roc_auc_score(y, curr_pred)
@@ -549,4 +555,25 @@ class UnPIE():
                 accuracy = sklearn.metrics.accuracy_score(y, y_pred)
                 metrics[f'Accuracy u.l. {percentile}'] = accuracy
             return metrics
-                
+        
+    def _print_tp_tn_fn_fp(self, y, curr_pred, i):
+        i = i.numpy()
+        # print i of TP, TN, FP, FN
+        TP, TN, FP, FN = [], [], [], []
+        for idx in range(len(curr_pred)):
+            if curr_pred[idx] == y[idx]:
+                if y[idx] == 1:
+                    TP.append(i[idx])
+                else:
+                    TN.append(i[idx])
+            else:
+                if y[idx] == 1:
+                    FP.append(i[idx])
+                else:
+                    FN.append(i[idx])
+        # Write to self.path
+        with open(self.path, 'a') as f:
+            f.write(f'TP: {TP}\n')
+            f.write(f'TN: {TN}\n')
+            f.write(f'FP: {FP}\n')
+            f.write(f'FN: {FN}\n')  

@@ -50,19 +50,29 @@ def plot_cluster(save_path, step):
 def plot_cluster_epoch(save_path, data_2d, epoch, y, algorithm):
     alg_path = os.path.join(save_path, algorithm)
 
-    # Create a figure for the true labels plot
+    # # Create a figure for the true labels plot
+    # plt.figure(figsize=(7, 7))
+    # unique_labels = np.unique(y)
+    # unique_labels = unique_labels[::-1]
+    # for label in unique_labels:
+    #     label_points = data_2d[y == label]
+    #     plt.scatter(label_points[:, 0], label_points[:, 1], label=f'{label}', s=5)
+    # plt.legend()
+
     plt.figure(figsize=(7, 7))
-    unique_labels = np.unique(y)
-    unique_labels = unique_labels[::-1]
+    unique_labels = np.unique(y)[::-1]
+
     for label in unique_labels:
         label_points = data_2d[y == label]
         plt.scatter(label_points[:, 0], label_points[:, 1], label=f'{label}', s=5)
+
     plt.legend()
+    plt.axis('off')  # Remove axis values
 
     # Save the figure
     os.system('mkdir -p %s' % alg_path)
     file_name = os.path.join(alg_path, f'epoch_{epoch}_{algorithm}.png')
-    plt.savefig(file_name)
+    plt.savefig(file_name, bbox_inches='tight')
     plt.close()  # Close the figure to avoid interactive display
 
 def _plot_grid(files, memory_bank_path, save_path, y, algorithm):
