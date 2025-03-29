@@ -156,7 +156,7 @@ class  DatasetPreprocessing(object):
             img_seq = features_d['images'][idx]
             with open(self.path, 'a') as f:
                 for img in img_seq:
-                    f.write(f"{ped_id[0][0]} {img} \n")
+                    f.write(f"{idx} {ped_id[0][0]} {img} \n")
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         features_d = self._load_features(features_d, data_split=data_split)
