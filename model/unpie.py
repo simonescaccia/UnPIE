@@ -568,9 +568,9 @@ class UnPIE():
                     TN.append(i[idx])
             else:
                 if y[idx] == 1:
-                    FP.append(i[idx])
-                else:
                     FN.append(i[idx])
+                else:
+                    FP.append(i[idx])
         # Write to self.path
         with open(self.path, 'a') as f:
             f.write(f'TP: {TP}\n')
