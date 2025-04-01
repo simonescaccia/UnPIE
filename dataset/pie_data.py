@@ -43,8 +43,8 @@ from os import makedirs, listdir
 from sklearn.model_selection import train_test_split, KFold
 from dataset.generic_data import Data
 from dataset.pretrained_extractor import PretrainedExtractor
-from utils.data_utils import extract_and_save, get_folder_from_set, get_path, get_ped_info_per_image, organize_features, squarify, update_progress, merge_directory
-from utils.print_utils import print_separator
+from utils.data_utils import extract_and_save, get_ped_info_per_image, squarify, update_progress
+from utils.print_utils import plot_image, print_separator
 
 class PIE(Data):
     def __init__(self, data_opts, data_sets, feature_extractor, feat_input_size, regen_database=False, data_path='', obj_classes_list=None):
@@ -1213,11 +1213,11 @@ class PIE(Data):
         obj_classes_seq, obj_boxes_seq, other_ped_boxes_seq = [], [], []
         obj_ids_seq, other_ped_ids_seq = [], []
 
-        self.path = 'dataset/annotations.txt'
-        # Delete the file if it exists
-        if os.path.exists(self.path):
-            # Delete the file
-            os.remove(self.path)
+        # self.path = 'dataset/annotations.txt'
+        # # Delete the file if it exists
+        # if os.path.exists(self.path):
+        #     # Delete the file
+        #     os.remove(self.path)
 
         print("set_ids", set_ids)
         for sid in set_ids:
@@ -1232,10 +1232,6 @@ class PIE(Data):
                     exp_start_frame = pid_annots[pid]['attributes']['exp_start_point']
                     critical_frame = pid_annots[pid]['attributes']['critical_point']
                     frames = pid_annots[pid]['frames']
-
-                    # Write the pedestrian id and the critical frame to self.path
-                    with open(self.path, 'a') as f:
-                        f.write(f"Pedestrian ID: {pid}, Critical Frame: {critical_frame}\n")
 
                     start_idx = frames.index(exp_start_frame)
                     end_idx = frames.index(critical_frame)
@@ -1257,6 +1253,10 @@ class PIE(Data):
 
                     int_prob = [[pid_annots[pid]['attributes']['intention_prob']]] * len(boxes)
                     int_bin = [[int(pid_annots[pid]['attributes']['intention_prob'] > 0.5)]] * len(boxes)
+
+                    # # Write the pedestrian id and the critical frame to self.path
+                    # with open(self.path, 'a') as f:
+                    #     f.write(f"Pedestrian ID: {pid}, Critical Frame: {critical_frame}, int_bin: {int_bin[0][0]}\n")
 
                     # Get the objects in the frame
                     objs_bbox = [[] for _ in range(len(boxes))]

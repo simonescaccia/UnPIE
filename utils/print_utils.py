@@ -77,6 +77,7 @@ def plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_
     
     for i, row in df.iterrows():
         # Add the bounding box to the image
+        print("Plotting bbox: ", row['id'], row['type'])
         b = list(row['bbox'])
         bbox = jitter_bbox_func([b],'enlarge', 2, image=image_pil)[0]
         bbox = squarify_func(bbox, 1, image_pil.size[0])
@@ -102,6 +103,7 @@ def plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_
     fig = plt.gcf()
     fig.set_size_inches(19.2, 10.8)
     if save:
+        print("Saving ", file_path)
         plt.savefig(file_path, bbox_inches='tight', pad_inches=0)
     else:
         plt.show()
@@ -114,21 +116,19 @@ def plot_image(image, df: pd.DataFrame, ped_type, traffic_type, type_column, set
     # 6, 1, 14272, social
     # 6, 1, 16748
     # 2, 2, 8502, cross with less bbox
+    print("Plotting image: ", set_id, vid, frame_num)
     search = False
     save = True
     show_bbox = True
     if not search:
-        # save or show frame
-        target_frame = 8502
-        target_video = 'video_0002'
-        target_set = 'set02'
-        if set_id == target_set and vid == target_video and (frame_num == target_frame-1 or frame_num == target_frame or frame_num == target_frame+1):
-            os.system('mkdir -p images')
-            file_path = f'images/{set_id}-{vid}-{frame_num}.png'
-            if show_bbox:
-                plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_path)
-            else:
-                _plot_image(image, save, file_path)
+        os.system('mkdir -p images')
+        file_path = f'images/{set_id}-{vid}-{frame_num}.png'
+        file_path_bbox = f'images/{set_id}-{vid}-{frame_num}--bbox.png'
+        if show_bbox:
+            plot_image_with_bbox(image, df, save, jitter_bbox_func, squarify_func, file_path_bbox)
+            _plot_image(image, save, file_path)
+        else:
+            _plot_image(image, save, file_path)
     else:
         # search frames
         len_min_traffic = 5
