@@ -8,7 +8,7 @@ from pathlib import PurePath
 from dataset.pie_data import PIE
 from dataset.graph_dataset import GraphDataset
 from dataset.psi_data import PSI
-from model.unpie_gcn import UnPIEGCN
+from model.unpie_st_gcn import UnPIESTGCN
 from utils.data_utils import get_path, update_progress
 from utils.print_utils import print_separator
 
@@ -31,11 +31,11 @@ class  DatasetPreprocessing(object):
         self.feat_input_size = params['feat_input_size']
         self.obj_classes_list = params['obj_classes']
 
-        self.path = 'dataset/ped_images.txt'
-        # Delete the file if it exists
-        if os.path.exists(self.path):
-            # Delete the file
-            os.remove(self.path)
+        # self.path = 'dataset/ped_images.txt'
+        # # Delete the file if it exists
+        # if os.path.exists(self.path):
+        #     # Delete the file
+        #     os.remove(self.path)
 
         self.ped_class = 'ped'
         self.other_ped_class = 'other_ped'
@@ -150,13 +150,13 @@ class  DatasetPreprocessing(object):
         if self.balance_dataset:
             features_d = self._balance_samples_count(features_d, label_type='intention_binary')
 
-        # Save images for each ped_id from TP, TN, FP, FN ids
-        for idx in range(len(features_d['ped_ids'])):
-            ped_id = features_d['ped_ids'][idx]
-            img_seq = features_d['images'][idx]
-            with open(self.path, 'a') as f:
-                for img in img_seq:
-                    f.write(f"{idx} {ped_id[0][0]} {img} \n")
+        # # Save images for each ped_id from TP, TN, FP, FN ids
+        # for idx in range(len(features_d['ped_ids'])):
+        #     ped_id = features_d['ped_ids'][idx]
+        #     img_seq = features_d['images'][idx]
+        #     with open(self.path, 'a') as f:
+        #         for img in img_seq:
+        #             f.write(f"{idx} {ped_id[0][0]} {img} \n")
 
         # Load image features, train_img shape: (num_seqs, seq_length, embedding_size)
         features_d = self._load_features(features_d, data_split=data_split)
@@ -169,7 +169,7 @@ class  DatasetPreprocessing(object):
             graph_nodes_classes,
             one_hot_classes,
             [self.ped_class, self.other_ped_class],
-            transform_a=UnPIEGCN.transform,
+            transform_a=UnPIESTGCN.transform,
             height=self.img_height,
             width=self.img_width,
             edge_weights=self.edge_weigths

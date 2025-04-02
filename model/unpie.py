@@ -97,11 +97,11 @@ class UnPIE():
         self.monitor_metric = 'Accuracy s.l.' if self.task == 'SUP' else 'Accuracy u.f.l.'
         # self.monitor_metric = 'Precision s.l.' if self.task == 'SUP' else 'Precision u.f.l.'
         
-        self.path = 'dataset/tp_tn_fn_fp.txt'
-        # Delete the file if it exists
-        if os.path.exists(self.path):
-            # Delete the file
-            os.remove(self.path)
+        # self.path = 'dataset/tp_tn_fn_fp.txt'
+        # # Delete the file if it exists
+        # if os.path.exists(self.path):
+        #     # Delete the file
+        #     os.remove(self.path)
 
         # Loss
         if self.task == 'SUP':
@@ -480,7 +480,7 @@ class UnPIE():
         top_labels_one_hot = tf.reduce_mean(top_labels_one_hot, axis=1) # Averages the weighted probabilities across the kk neighbors for each test sample.
         _, curr_pred = tf.nn.top_k(top_labels_one_hot, k=1)
         curr_pred = tf.squeeze(tf.cast(curr_pred, tf.int32), axis=1)    
-        self._print_tp_tn_fn_fp(y, curr_pred, i)
+        # self._print_tp_tn_fn_fp(y, curr_pred, i)
         accuracy = sklearn.metrics.accuracy_score(y, curr_pred)
         f1_score = sklearn.metrics.f1_score(y, curr_pred, zero_division=0)
         roc_auc = sklearn.metrics.roc_auc_score(y, curr_pred)

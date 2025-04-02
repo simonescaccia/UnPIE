@@ -17,12 +17,12 @@ class GraphDataset(torch.utils.data.Dataset):
                  edge_weights, 
                  transform_a=None):
         
-        self.path = 'dataset/both_objects.txt'
-        # Delete the file if it exists
-        import os
-        if os.path.exists(self.path):
-            # Delete the file
-            os.remove(self.path)
+        # self.path = 'dataset/both_objects.txt'
+        # # Delete the file if it exists
+        # import os
+        # if os.path.exists(self.path):
+        #     # Delete the file
+        #     os.remove(self.path)
 
         self.edge_weights = edge_weights
         self.features = features
@@ -118,14 +118,14 @@ class GraphDataset(torch.utils.data.Dataset):
                         else:
                             edge_weights[num_node] = obj_distance
 
-                if edge_weights[1] != 0 and edge_weights[2] != 0:
-                    # Print to file if both objects are present
-                    with open(self.path, 'a') as f:
-                        f.write("Both objects at id {}\n".format(i))
-                if edge_weights[1] == 0 and edge_weights[2] == 0:
-                    # Print to file if both objects are not present
-                    with open(self.path, 'a') as f:
-                        f.write("No objects at id {}\n".format(i))
+                # if edge_weights[1] != 0 and edge_weights[2] != 0:
+                #     # Print to file if both objects are present
+                #     with open(self.path, 'a') as f:
+                #         f.write("Both objects at id {}\n".format(i))
+                # if edge_weights[1] == 0 and edge_weights[2] == 0:
+                #     # Print to file if both objects are not present
+                #     with open(self.path, 'a') as f:
+                #         f.write("No objects at id {}\n".format(i))
 
                 # Restore the object class min position for the new iteration
                 for k, v in obj_class_pos.items():
