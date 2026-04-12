@@ -1,5 +1,5 @@
 # UnPIE
-Unsupervised learning based Pedestrian Intention Estimation with Graph Neural Networks.
+[Unsupervised pedestrian intention estimation through deep neural embeddings and spatio-temporal graph convolutional networks.](https://link.springer.com/article/10.1007/s10044-025-01483-0) 
 
 ![graph_representation](/images/Figure_4.png)
 
@@ -11,12 +11,6 @@ Instance Recognition method  |  Local Aggregation method
 :---------------------------:|:---------------------------:
 ![](/images/mem_banks_ir.png)  |  ![](/images/mem_banks_la.png)
 
-## Credits
-Some modules are taken and modified from the following repositories:
-- [Pedestrian Intention Estimation (PIE) dataset](http://data.nvision2.eecs.yorku.ca/PIE_dataset/).
-- [Pedestrian intention and trajectory estimation (PIEPredict) model](https://github.com/aras62/PIEPredict).
-- [Scene-STGCN](https://github.com/tue-mps/Scene-STGCN)
-- [Unsupervised Learning from Video with Deep Neural Embeddings (VIE) model](https://github.com/neuroailab/VIE).
 
 ## Setup
 
@@ -131,4 +125,11 @@ Run the following command to extract and save all the image features needed by t
   ```
 
 where x can be SUP for supervised learning, IR or IR_LA for unsupervised learning.
+
+## Credits
+Some modules are taken and modified from the following repositories:
+- [Pedestrian Intention Estimation (PIE) dataset](http://data.nvision2.eecs.yorku.ca/PIE_dataset/).
+- [Pedestrian intention and trajectory estimation (PIEPredict) model](https://github.com/aras62/PIEPredict).
+- [Scene-STGCN](https://github.com/tue-mps/Scene-STGCN)
+- [Unsupervised Learning from Video with Deep Neural Embeddings (VIE) model](https://github.com/neuroailab/VIE).
 
