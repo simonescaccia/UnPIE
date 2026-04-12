@@ -1,5 +1,5 @@
 # UnPIE
-[Unsupervised pedestrian intention estimation through deep neural embeddings and spatio-temporal graph convolutional networks.](https://link.springer.com/article/10.1007/s10044-025-01483-0) 
+Paper: [Unsupervised pedestrian intention estimation through deep neural embeddings and spatio-temporal graph convolutional networks.](https://link.springer.com/article/10.1007/s10044-025-01483-0) 
 
 ![graph_representation](/images/Figure_4.png)
 
