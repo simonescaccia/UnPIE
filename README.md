@@ -1,16 +1,21 @@
-# UnPIE
-Paper: [Unsupervised pedestrian intention estimation through deep neural embeddings and spatio-temporal graph convolutional networks.](https://link.springer.com/article/10.1007/s10044-025-01483-0) 
+<div align="center">
+
+# UnPIE: Unsupervised pedestrian intention estimation through deep neural embeddings and spatio-temporal graph convolutional networks
+
+> [Unsupervised pedestrian intention estimation through deep neural embeddings and spatio-temporal graph convolutional networks](https://link.springer.com/article/10.1007/s10044-025-01483-0), 
+> Simone Scaccia, Francesco Pro, Irene Amerini, 2025
 
 ![graph_representation](/images/Figure_4.png)
 
-UnPIE network:
+### UnPIE network
 ![unpie_network](/images/unpie2.png)
 
-Unsupervised training visualization:
+### Unsupervised training visualization
 Instance Recognition method  |  Local Aggregation method
 :---------------------------:|:---------------------------:
 ![](/images/mem_banks_ir.png)  |  ![](/images/mem_banks_la.png)
 
+</div>
 
 ## Setup
 
@@ -125,6 +130,24 @@ Run the following command to extract and save all the image features needed by t
   ```
 
 where x can be SUP for supervised learning, IR or IR_LA for unsupervised learning.
+
+
+## Citation
+If you find our work useful in your research, please consider citing our publications:
+```bibtex
+@Article{Scaccia2025,
+    author  = {Scaccia, Simone and Pro, Francesco and Amerini, Irene},
+    title   = {Unsupervised pedestrian intention estimation through deep neural embeddings and spatio-temporal graph convolutional networks},
+    journal = {Pattern Analysis and Applications},
+    year    = {2025},
+    month   = {May},
+    issn    = {1433-755X},
+    doi     = {10.1007/s10044-025-01483-0},
+    url     = {https://doi.org/10.1007/s10044-025-01483-0}
+}
+
+
+```
 
 ## Credits
 Some modules are taken and modified from the following repositories:
