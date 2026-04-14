@@ -35,15 +35,20 @@ Check `$PATH`:
   echo $PATH
   ```
 
-Add `export PATH="/home/username/miniconda3/bin:$PATH"` at the end of `~/.profile` file if the directory is not present (substituting username):
+Add `export PATH="/home/username/miniconda3/bin:$PATH"` at the end of `~/.profile` file if the directory is not present (*substituting username*):
   
   ```bash
   echo "export PATH=\"/home/username/miniconda3/bin:\$PATH\"" >> ~/.profile
   ```
 
-Create environment:
+Reboot the system. Create environment:
   ```bash
   conda env create -f environment_tf2.yaml
+  ```
+
+Init conda:
+  ```bash
+  conda init
   ```
 
 Activate environment:
@@ -51,10 +56,6 @@ Activate environment:
   conda activate unpie-tf2-env
   ```
 
-Deactivate environment:
-  ```bash
-  conda deactivate
-  ```
 
 ### Docker environment
 
