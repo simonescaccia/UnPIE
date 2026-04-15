@@ -41,7 +41,6 @@ Annotation zip files should be copied to the main dataset folder and unzipped. T
 You can run this command to get the annotations:
 
 ```
-
 cd PIE_dataset
 wget -O annotations.zip https://github.com/aras62/PIE/blob/master/annotations/annotations.zip?raw=true
 wget -O annotations_attributes.zip https://github.com/aras62/PIE/blob/master/annotations/annotations_attributes.zip?raw=true
@@ -61,7 +60,6 @@ PIE_dataset
         set01
         set02
         ...
-
 ```
 
 
