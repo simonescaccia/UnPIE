@@ -7,15 +7,72 @@
 
 ![graph_representation](/images/Figure_4.png)
 
-### UnPIE network
+## UnPIE network
 ![unpie_network](/images/unpie2.png)
 
-### Unsupervised training visualization
+## Unsupervised training visualization
 Instance Recognition method  |  Local Aggregation method
 :---------------------------:|:---------------------------:
 ![](/images/mem_banks_ir.png)  |  ![](/images/mem_banks_la.png)
 
 </div>
+
+## Training/Testing Dataset
+
+### PIE dataset
+
+Download annotations and video clips from the [PIE webpage](http://data.nvision2.eecs.yorku.ca/PIE_dataset/) and place them in the `PIE_dataset` directory, 
+
+You can run this command to get the videos:
+
+```
+wget -r -np -c -nH -R index.html https://data.nvision2.eecs.yorku.ca/PIE_dataset/PIE_clips/
+```
+
+**Note**: download all the sets to run training and cross-validation, or only *set03* to run testing: 
+
+```
+wget -r -np -c -nH -R index.html https://data.nvision2.eecs.yorku.ca/PIE_dataset/PIE_clips/set03/
+```
+
+
+Annotation zip files should be copied to the main dataset folder and unzipped. There are three types of annotations in the PIE dataset: spatial annotations with text labels, object attributes, ego-vehicle information.
+
+You can run this command to get the annotations:
+
+```
+
+cd PIE_dataset
+wget -O annotations.zip https://github.com/aras62/PIE/blob/master/annotations/annotations.zip?raw=true
+wget -O annotations_attributes.zip https://github.com/aras62/PIE/blob/master/annotations/annotations_attributes.zip?raw=true
+wget -O annotations_vehicle.zip https://github.com/aras62/PIE/blob/master/annotations/annotations_vehicle.zip?raw=true
+unzip 'annotations*.zip' && rm annotations*.zip
+```
+
+The folder structure should look like this:
+
+```
+PIE_dataset
+    annotations
+        set01
+        set02
+        ...
+    PIE_clips
+        set01
+        set02
+        ...
+
+```
+
+
+### PSI dataset
+
+Download PSI dataset from **url**. Follow the instructions:
+
+``` bash
+python dataset/psi_extend_intent_annotation.py
+```
+
 
 ## Setup
 
@@ -70,9 +127,9 @@ Run docker container
   ```
 
 
-### UnPIE setup
+## UnPIE setup
 
-Create `config.yml`:
+Create `config.yml` in the repo root:
 
   ```yaml
   PIE_PATH: 'path\to\PIE_dataset'
@@ -82,33 +139,6 @@ Create `config.yml`:
   SETS_TO_EXTRACT: null or ['set01', 'set02', ...] # null for extracting all the sets
   ```
 
-## PIE dataset
-
-Download annotations and video clips from the [PIE webpage](http://data.nvision2.eecs.yorku.ca/PIE_dataset/) and place them in the `PIE_dataset` directory. 
-Annotation zip files should be copied to the main dataset folder and unzipped. There are three types of annotations in the PIE dataset: spatial annotations with text labels, object attributes, ego-vehicle information.
-
-The folder structure should look like this:
-
-```
-PIE_dataset
-    annotations
-        set01
-        set02
-        ...
-    PIE_clips
-        set01
-        set02
-        ...
-
-```
-
-## PSI dataset
-
-Download PSI dataset from **url**. Follow the instructions:
-
-``` bash
-python dataset/psi_extend_intent_annotation.py
-```
 
 ## Preprocessing
 Run the following command to extract and save all the image features needed by the GNN without saving each frame:
@@ -117,6 +147,7 @@ Run the following command to extract and save all the image features needed by t
   python extract_features.py
   ```
 ![feature_extraction](/images/feature_extraction_2_white.png)
+
 
 ## Training and testing
 
