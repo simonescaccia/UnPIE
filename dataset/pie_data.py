@@ -384,7 +384,7 @@ class PIE(Data):
                 print('num images don\'t match {}/{}'.format(num_frames, img_count))
             print('\n')
 
-    def extract_images_and_save_features(self, set_to_extract):
+    def extract_images_and_save_features(self, split_to_extract):
         """
         @author: Simone Scaccia
         Extracts annotated images from clips, compute features and saves on hard drive
@@ -393,7 +393,7 @@ class PIE(Data):
         """  
         self.pretrained_extractor = PretrainedExtractor(self.feature_extractor) # Create extractor model
         annot_database = self.generate_database()
-        sequence_data = self._get_intention(set_to_extract, annot_database, **self.data_opts)
+        sequence_data = self._get_intention(split_to_extract, annot_database, **self.data_opts)
         ped_objs_dataframe = get_ped_info_per_image(
             images=sequence_data['image'],
             bboxes=sequence_data['bbox'],
@@ -407,7 +407,7 @@ class PIE(Data):
         
         print_separator("Extracting features and saving on hard drive using the {} model".format(self.feature_extractor))
         # Extract image features
-        set_folders = set_to_extract
+        set_folders = self.video_set_nums[split_to_extract]
         for set_id in set_folders:
             set_folder_path = join(self.clips_path, set_id)
             extract_frames = self.get_annotated_frame_numbers(set_id)

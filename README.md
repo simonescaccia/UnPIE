@@ -127,14 +127,13 @@ Run docker container
 
 ## UnPIE setup
 
-Create `config.yml` in the repo root:
+Create `config.yml` in settings folder:
 
   ```yaml
   PIE_PATH: 'path\to\PIE_dataset'
-  PIE_RAW_PATH: 'path\to\PIE_clips'
   PRETRAINED_MODEL_PATH: 'path\to\pretrained\model'
   IS_GPU: False or True
-  SETS_TO_EXTRACT: null or ['set01', 'set02', ...] # null for extracting all the sets
+  PIE_SPLITS_TO_EXTRACT: 'all'  # train, val, test, or all
   ```
 
 
@@ -142,7 +141,7 @@ Create `config.yml` in the repo root:
 Run the following command to extract and save all the image features needed by the GNN without saving each frame:
 
   ```bash
-  python extract_features.py
+  python extract_features.py pie
   ```
 ![feature_extraction](/images/feature_extraction_2_white.png)
 

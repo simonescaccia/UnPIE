@@ -27,8 +27,8 @@ if dataset == 'pie':
     pie_path = config_file['PIE_PATH']
     os.chdir(pie_path)
     imdb = PIE(data_path=pie_path, data_opts=data_opts, data_sets='all', feature_extractor=feature_extractor, feat_input_size=feat_input_size)
-    sets_to_extract = config_file['PIE_SPLITS_TO_EXTRACT'] or imdb.get_video_set_ids('all')
-    imdb.extract_images_and_save_features(sets_to_extract)
+    split_to_extract = config_file['PIE_SPLITS_TO_EXTRACT'] or imdb.get_video_set_ids('all')
+    imdb.extract_images_and_save_features(split_to_extract)
 elif dataset == 'psi':
     psi_path = config_file['PSI_PATH']
     os.chdir(psi_path)

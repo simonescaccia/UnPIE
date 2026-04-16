@@ -37,7 +37,7 @@ class ParamsLoader:
         }
         dataset_params = {
             'data_opts': data_opts,
-            'psi_path': config['PSI_PATH'],
+            # 'psi_path': config['PSI_PATH'],
             'pie_path': config['PIE_PATH'],
             'batch_size': args['batch_size'],
             'inference_batch_size': args['inference_batch_size'],
