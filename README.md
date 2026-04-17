@@ -62,14 +62,14 @@ PIE_dataset
         ...
 ```
 
-
+<!-- 
 ### PSI dataset
 
 Download PSI dataset from **url**. Follow the instructions:
 
 ``` bash
 python dataset/psi_extend_intent_annotation.py
-```
+``` -->
 
 
 ## Setup
@@ -158,6 +158,7 @@ Run the following command to extract and save all the image features needed by t
   sh run_testing_x.sh
   ```
 
+
 where x can be SUP for supervised learning, IR or IR_LA for unsupervised learning.
 
 
@@ -174,8 +175,6 @@ If you find our work useful in your research, please consider citing our publica
     doi     = {10.1007/s10044-025-01483-0},
     url     = {https://doi.org/10.1007/s10044-025-01483-0}
 }
-
-
 ```
 
 ## Credits
