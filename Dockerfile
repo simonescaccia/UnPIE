@@ -10,3 +10,5 @@ RUN pip install -r requirements_tf2.txt
 FROM env
 
 COPY . .
+
+RUN sed -i "1s/.*/PIE_PATH: '\/PIE_dataset\/'/" settings/config.yml
