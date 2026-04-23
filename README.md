@@ -116,12 +116,12 @@ Activate environment:
 
 Build Dockerfile
   ```bash
-  docker build -t unpie:v1 .
+  sudo docker build -t unpie:v1 .
   ```
 
 Run docker container
   ```bash
-  docker run --rm -it -v /local/path/to/PIE_dataset:/PIE_dataset --name unpie-v1-c1 --gpus device= unpie:v1
+  sudo docker run --rm -it -v ../PIE_dataset:/PIE_dataset --name unpie-v1-c1 --gpus all unpie:v1
   ```
 
 
