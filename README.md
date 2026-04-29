@@ -74,6 +74,23 @@ python dataset/psi_extend_intent_annotation.py
 
 ## Setup
 
+### Docker environment
+
+Build Dockerfile
+  ```bash
+  sudo docker build -t unpie:v1 .
+  ```
+
+Run docker container
+  ```bash
+  sudo docker run --rm -it \
+  -v /absolute/path/to/PIE_dataset:/PIE_dataset \
+  -v /absolute/path/to/UnPIE/checkpoints:/app/checkpoints \
+  --name unpie-v1-c1 \
+  --gpus all \
+  unpie:v1
+  ```
+
 ### Conda environment
 
 [Miniconda](https://docs.anaconda.com/miniconda/) Linux installation:
@@ -112,19 +129,6 @@ Activate environment:
   ```
 
 
-### Docker environment
-
-Build Dockerfile
-  ```bash
-  sudo docker build -t unpie:v1 .
-  ```
-
-Run docker container
-  ```bash
-  sudo docker run --rm -it -v ../PIE_dataset:/PIE_dataset --name unpie-v1-c1 --gpus all unpie:v1
-  ```
-
-
 ## UnPIE setup
 
 Create `config.yml` in settings folder:
@@ -150,16 +154,15 @@ Run the following command to extract and save all the image features needed by t
 
   Training:
   ```bash
-  sh  run_training_x.sh
+  sh  run_training_IR_LA.sh
   ```
 
   Testing:
   ```bash
-  sh run_testing_x.sh
+  sh run_testing_IR_LA.sh
   ```
 
-
-where x can be SUP for supervised learning, IR or IR_LA for unsupervised learning.
+where IR or IR_LA are for unsupervised learning, SUP for supervised learning.
 
 
 ## Citation
