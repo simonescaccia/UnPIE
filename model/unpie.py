@@ -94,7 +94,7 @@ class UnPIE():
         self.last_check_manager = tf.train.CheckpointManager(self.checkpoint, self.last_check_dir, max_to_keep=1)
         self.best_check_manager = tf.train.CheckpointManager(self.checkpoint, self.best_check_dir, max_to_keep=1)
 
-        self.monitor_metric = 'Accuracy s.l.' if self.task == 'SUP' else 'Accuracy u.f.l.'
+        self.monitor_metric = 'Accuracy s.l.' if self.task == 'SUP' else 'AVG all'
         # self.monitor_metric = 'Precision s.l.' if self.task == 'SUP' else 'Precision u.f.l.'
         
         # self.path = 'dataset/tp_tn_fn_fp.txt'
@@ -407,6 +407,7 @@ class UnPIE():
             agg_res = self._online_agg(agg_res, res)
 
         val_result = self._agg_func(agg_res)
+        val_result['AVG all'] = np.mean(list(val_result.values()))
         
         return val_result
     
